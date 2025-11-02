@@ -32,7 +32,7 @@ public class Hotel {
             message = "Phone number is not in correct format"
     )
     @NotNull
-    String phoneNumber;
+    String phone;
     @Column(length = 5000)
     String description;
     String category;

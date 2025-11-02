@@ -27,12 +27,13 @@ public class Account {
     @Length(min = 6, message = "Username must be at least 6 characters")
     String username;
 
-
     @Length(min = 6, message = "Password must be at least 6 characters")
     String password;
 
     @Enumerated(EnumType.STRING)
     Role role;
+
+    boolean status;
 
     @CreationTimestamp
     @Column(updatable = false)

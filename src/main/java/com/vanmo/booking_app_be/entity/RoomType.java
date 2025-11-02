@@ -3,10 +3,7 @@ package com.vanmo.booking_app_be.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.util.Date;
 import java.util.Set;
 
 @Entity
@@ -28,11 +25,4 @@ public class RoomType {
 
     @OneToMany(mappedBy = "roomType", cascade = CascadeType.ALL)
     Set<Room> rooms;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    Date onCreate;
-
-    @UpdateTimestamp
-    Date onUpdate;
 }

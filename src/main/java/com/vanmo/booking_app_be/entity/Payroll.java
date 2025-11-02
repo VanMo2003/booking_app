@@ -1,7 +1,6 @@
 package com.vanmo.booking_app_be.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -19,27 +18,21 @@ import java.util.Date;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "branch_reports")
-public class BranchReport {
+@Table(name = "payrolls")
+public class Payroll {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "hotel_id")
-    Hotel hotel;
+    LocalDate month;
 
-    LocalDate reportDate;
+    @NotNull(message = "Total Salary cannot be left blank")
+    @Column(nullable = false, precision = 12)
+    BigDecimal totalSalary;
 
-    @NotNull(message = "Total revenue cannot be left blank")
-    @Column(nullable = false, precision = 15)
-    BigDecimal totalRevenue;
-
-    @Min(value = 1)
-    Integer totalBooking;
-
-    @Min(value = 1)
-    Integer totalService;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "employee_id", nullable = false)
+    Employee employees;
 
     @CreationTimestamp
     @Column(updatable = false)

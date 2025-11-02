@@ -36,7 +36,7 @@ public class Customer {
             message = "Phone number is not in correct format"
     )
     @NotNull
-    String phoneNumber;
+    String phone;
 
     String gender;
 

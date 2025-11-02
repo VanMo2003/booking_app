@@ -27,7 +27,6 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    LocalDate bookingDate;
     LocalDate checkinDate;
     LocalDate checkoutDate;
 

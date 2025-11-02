@@ -5,11 +5,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.util.Date;
 
 @Entity
 @Getter
@@ -38,11 +35,4 @@ public class BookingService {
     @NotNull(message = "Total price cannot be left blank")
     @Column(nullable = false, precision = 12)
     BigDecimal total;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    Date onCreate;
-
-    @UpdateTimestamp
-    Date onUpdate;
 }

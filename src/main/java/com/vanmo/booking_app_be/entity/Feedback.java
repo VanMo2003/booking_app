@@ -5,11 +5,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
-import java.util.Date;
 
 @Entity
 @Getter
@@ -42,11 +39,4 @@ public class Feedback {
 
     @Column(nullable = false)
     LocalDate reviewDate;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    Date onCreate;
-
-    @UpdateTimestamp
-    Date onUpdate;
 }

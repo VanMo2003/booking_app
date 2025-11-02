@@ -32,6 +32,7 @@ public class Room {
     @Column(nullable = false, precision = 12)
     BigDecimal price;
     String description;
+    Integer capacity;
 
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<RoomImage> roomImages;
