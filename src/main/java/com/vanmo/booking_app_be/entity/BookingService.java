@@ -22,17 +22,19 @@ public class BookingService {
     Long id;
 
     @ManyToOne
-    @JoinColumn(name = "booking_id")
+    @JoinColumn(name = "booking_id", nullable = false)
     Booking booking;
 
     @ManyToOne
-    @JoinColumn(name = "service_id")
+    @JoinColumn(name = "service_id", nullable = false)
     Service service;
 
+    @NotNull
     @Min(value = 1)
     Integer quantity;
 
-    @NotNull(message = "Total price cannot be left blank")
-    @Column(nullable = false, precision = 12)
+    @NotNull
+    @Column(precision = 12)
     BigDecimal total;
 }
+

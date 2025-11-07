@@ -27,14 +27,15 @@ public class Payroll {
 
     LocalDate month;
 
-    @NotNull(message = "Total Salary cannot be left blank")
-    @Column(nullable = false, precision = 12)
+    @NotNull
+    @Column(precision = 12)
     BigDecimal totalSalary;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "employee_id", nullable = false)
     Employee employee;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     PayrollStatus status;
 

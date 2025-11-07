@@ -1,8 +1,13 @@
 package com.vanmo.booking_app_be.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.util.Date;
 
 @Entity
 @Getter
@@ -17,6 +22,7 @@ public class Amenity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
+    @NotNull
     String name;
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
@@ -27,4 +33,11 @@ public class Amenity {
     Hotel hotel;
 
     boolean active;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    Date onCreate;
+
+    @UpdateTimestamp
+    Date onUpdate;
 }

@@ -18,10 +18,10 @@ public class BookingRoom {
     Long id;
 
     @ManyToOne
-    @JoinColumn(name = "booking_id")
+    @JoinColumn(name = "booking_id", nullable = false)
     Booking booking;
 
     @ManyToOne
-    @JoinColumn(name = "room_id")
+    @JoinColumn(name = "room_id", nullable = false)
     Room room;
 }

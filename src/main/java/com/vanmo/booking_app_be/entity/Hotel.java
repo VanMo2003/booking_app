@@ -7,6 +7,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.validator.constraints.Length;
 
 import java.util.Date;
 import java.util.Set;
@@ -33,15 +34,17 @@ public class Hotel {
             regexp = "0\\d{9}",
             message = "Phone number is not in correct format"
     )
+    @Length(min = 10, max = 10, message = "Phone number must have exactly 10 digits")
     @NotNull
     String phone;
-    @Column(length = 5000)
+    @Column(length = 5000, columnDefinition = "TEXT")
     String description;
+    @NotNull
     String category; // Luxury, Grand, Holiday, Standard
     double rating;
 
     @OneToOne
-    @JoinColumn(name = "account_id")
+    @JoinColumn(name = "account_id", nullable = false)
     Account account;
 
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)

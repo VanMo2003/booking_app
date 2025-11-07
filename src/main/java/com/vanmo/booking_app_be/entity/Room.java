@@ -19,9 +19,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "rooms", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"hotel_id", "name"})
-})
+@Table(name = "rooms")
 public class Room {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,11 +28,12 @@ public class Room {
     @Column(length = 20, columnDefinition = "TEXT")
     @NotNull
     String roomNumber;
-    @NotNull(message = "Price cannot be left blank")
-    @Column(nullable = false, precision = 12)
+    @NotNull
+    @Column(precision = 12)
     BigDecimal price;
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
+    @NotNull
     Integer capacity;
 
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -48,9 +47,10 @@ public class Room {
     Hotel hotel;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "room_type_id")
+    @JoinColumn(name = "room_type_id", nullable = false)
     RoomType roomType;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     RoomStatus status;
 

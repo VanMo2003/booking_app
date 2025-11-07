@@ -25,20 +25,24 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
+    @NotNull
     @ManyToOne
     @JoinColumn(name = "hotel_id")
     Hotel hotel;
 
+    @NotNull
     LocalDate reportingMonth;
 
-    @NotNull(message = "Total revenue cannot be left blank")
-    @Column(nullable = false, precision = 15)
+    @NotNull
+    @Column(precision = 15)
     BigDecimal totalRevenue;
 
-    @Min(value = 1)
+    @NotNull
+    @Min(value = 0)
     Integer totalBooking;
 
-    @Min(value = 1)
+    @NotNull
+    @Min(value = 0)
     Integer totalService;
 
     @CreationTimestamp

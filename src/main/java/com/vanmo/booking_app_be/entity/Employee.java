@@ -7,6 +7,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.validator.constraints.Length;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,7 +27,6 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @NotNull
     String pathImage;
 
     @OneToOne
@@ -37,23 +37,27 @@ public class Employee {
     @JoinColumn(name = "hotel_id", nullable = false)
     Hotel hotel;
 
+    @NotNull
     String fullName;
 
     @Pattern(
             regexp = "0\\d{9}",
             message = "Phone number is not in correct format"
     )
-
+    @Length(min = 10, max = 10, message = "Phone number must have exactly 10 digits")
     @NotNull
     String phoneNumber;
 
+    @NotNull
     String gender;
 
+    @NotNull
     LocalDate dateOfBirth;
 
+    @NotNull
     String hometown;
 
-    @NotNull(message = "Salary cannot be left blank")
+    @NotNull
     @Column(nullable = false, precision = 12)
     BigDecimal salary;
 

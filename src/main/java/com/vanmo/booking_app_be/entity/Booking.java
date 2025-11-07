@@ -27,12 +27,16 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
+    @NotNull
     LocalDate checkinDate;
+    @NotNull
     LocalDate checkoutDate;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     BookingStatus bookingStatus;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     PaymentMethod paymentMethod;
 

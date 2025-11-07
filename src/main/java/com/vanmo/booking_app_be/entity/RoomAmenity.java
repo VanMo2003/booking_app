@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -27,6 +28,7 @@ public class RoomAmenity {
     @ManyToOne(fetch = FetchType.EAGER)
     Amenity amenity;
 
+    @NotNull
     @Min(value = 0)
     Integer quantity;
 }
