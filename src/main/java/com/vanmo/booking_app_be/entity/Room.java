@@ -27,15 +27,21 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    String name;
+    @Column(length = 20, columnDefinition = "TEXT")
+    @NotNull
+    String roomNumber;
     @NotNull(message = "Price cannot be left blank")
     @Column(nullable = false, precision = 12)
     BigDecimal price;
+    @Column(length = 5000, columnDefinition = "TEXT")
     String description;
     Integer capacity;
 
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<RoomImage> roomImages;
+
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<RoomAmenity> roomAmenities;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id", nullable = false)

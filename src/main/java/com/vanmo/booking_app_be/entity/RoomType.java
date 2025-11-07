@@ -19,7 +19,7 @@ public class RoomType {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    String name;
+    String name; // Standard, Deluxe, Suite
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
 

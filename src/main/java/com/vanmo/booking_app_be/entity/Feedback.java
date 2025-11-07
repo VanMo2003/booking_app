@@ -15,7 +15,9 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "feedbacks")
+@Table(name = "feedbacks", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"booking_id", "customer_id"})
+})
 public class Feedback {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

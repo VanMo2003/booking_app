@@ -1,6 +1,7 @@
 package com.vanmo.booking_app_be.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -17,6 +18,7 @@ public class HotelImage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
+    @Column(unique = true, nullable = false)
     String pathImage;
 
     @ManyToOne(fetch = FetchType.LAZY)

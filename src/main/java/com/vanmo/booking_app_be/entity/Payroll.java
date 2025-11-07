@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.entity;
 
+import com.vanmo.booking_app_be.entity.enums.PayrollStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -32,7 +33,10 @@ public class Payroll {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "employee_id", nullable = false)
-    Employee employees;
+    Employee employee;
+
+    @Enumerated(EnumType.STRING)
+    PayrollStatus status;
 
     @CreationTimestamp
     @Column(updatable = false)

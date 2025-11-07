@@ -11,6 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -29,11 +30,11 @@ public class Employee {
     String pathImage;
 
     @OneToOne
-    @JoinColumn(name = "account_id")
+    @JoinColumn(name = "account_id", nullable = false)
     Account account;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hotel_id")
+    @JoinColumn(name = "hotel_id", nullable = false)
     Hotel hotel;
 
     String fullName;
@@ -55,6 +56,9 @@ public class Employee {
     @NotNull(message = "Salary cannot be left blank")
     @Column(nullable = false, precision = 12)
     BigDecimal salary;
+
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<Payroll> payrolls;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "position_id", nullable = false)

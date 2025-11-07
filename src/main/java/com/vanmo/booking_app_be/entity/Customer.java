@@ -1,12 +1,14 @@
 package com.vanmo.booking_app_be.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.validator.constraints.Length;
 
 import java.util.Date;
 
@@ -26,7 +28,7 @@ public class Customer {
     String pathImage;
     
     @OneToOne
-    @JoinColumn(name = "account_id")
+    @JoinColumn(name = "account_id", nullable = false)
     Account account;
 
     String fullName;
@@ -35,8 +37,9 @@ public class Customer {
             regexp = "0\\d{9}",
             message = "Phone number is not in correct format"
     )
+    @Length(min = 10, max = 10, message = "Phone number must have exactly 10 digits")
     @NotNull
-    String phone;
+    String phoneNumber;
 
     String gender;
 

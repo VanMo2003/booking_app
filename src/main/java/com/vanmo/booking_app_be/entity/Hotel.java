@@ -25,7 +25,9 @@ public class Hotel {
     Long id;
 
     String pathImage;
+    @NotNull
     String name;
+    @NotNull
     String address;
     @Pattern(
             regexp = "0\\d{9}",
@@ -35,7 +37,7 @@ public class Hotel {
     String phone;
     @Column(length = 5000)
     String description;
-    String category;
+    String category; // Luxury, Grand, Holiday, Standard
     double rating;
 
     @OneToOne
@@ -51,6 +53,8 @@ public class Hotel {
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL)
     Set<Service> services;
 
+    @OneToMany(mappedBy = "hotel",cascade = CascadeType.ALL)
+    Set<Amenity> amenities;
     boolean active;
     
     @CreationTimestamp
