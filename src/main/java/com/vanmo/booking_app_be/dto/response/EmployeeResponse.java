@@ -1,0 +1,30 @@
+package com.vanmo.booking_app_be.dto.response;
+
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.hibernate.validator.constraints.Length;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Date;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class EmployeeResponse {
+    Long id;
+    String pathImage;
+    String fullName;
+    String phoneNumber;
+    String gender;
+    LocalDate dateOfBirth;
+    String hometown;
+    BigDecimal salary;
+    Date onCreate;
+    Date onUpdate;
+}
