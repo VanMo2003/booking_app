@@ -36,11 +36,12 @@ public class RoomController {
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<RoomResponse>> getAll(
+    public ApiResponse<PageResponse<RoomResponse>> getAllByHotel(
+            @RequestParam(name = "hotelId") Long hotelId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return ApiResponse.ok(roomService.getAll(page, size));
+        return ApiResponse.ok(roomService.getAllByHotel(hotelId, page, size));
     }
 
     @DeleteMapping("/{id}")

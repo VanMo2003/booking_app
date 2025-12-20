@@ -9,6 +9,6 @@ public interface RoomService {
     RoomResponse create(RoomCreateRequest req);
     RoomResponse update(Long id, RoomUpdateRequest req);
     RoomResponse getById(Long id);
-    PageResponse<RoomResponse> getAll(int page, int size);
+    PageResponse<RoomResponse> getAllByHotel(Long hotelId, int page, int size);
     void delete(Long id);
 }

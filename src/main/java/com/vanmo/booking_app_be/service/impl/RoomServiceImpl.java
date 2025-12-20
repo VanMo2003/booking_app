@@ -68,9 +68,9 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public PageResponse<RoomResponse> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("onCreate").descending());
-        Page<RoomResponse> data = roomRepository.findAll(pageable).map(roomMapper::toResponse);
+    public PageResponse<RoomResponse> getAllByHotel(Long hotelId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("onCreate"));
+        Page<RoomResponse> data = roomRepository.findByHotelId(hotelId, pageable).map(roomMapper::toResponse);
         return PageResponse.from(data);
     }
 
