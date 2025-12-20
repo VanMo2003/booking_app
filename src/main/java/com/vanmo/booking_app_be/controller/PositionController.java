@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/positions")
 @RequiredArgsConstructor
@@ -19,30 +21,28 @@ public class PositionController {
 
     @PostMapping
     public ApiResponse<PositionResponse> create(@Valid @RequestBody PositionCreateRequest req) {
-        return ApiResponse.ok(positionService.create(req), "Create position success");
+        return ApiResponse.ok(positionService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<PositionResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody PositionUpdateRequest req) {
-        return ApiResponse.ok(positionService.update(id, req), "Update position success");
+        return ApiResponse.ok(positionService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<PositionResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(positionService.getById(id), "Get position success");
+        return ApiResponse.ok(positionService.getById(id));
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<PositionResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(positionService.getAll(page, size), "Get positions success");
+    public ApiResponse<List<PositionResponse>> getAll() {
+        return ApiResponse.ok(positionService.getAll());
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         positionService.delete(id);
-        return ApiResponse.ok(null, "Delete position success");
+        return ApiResponse.ok(null);
     }
 }

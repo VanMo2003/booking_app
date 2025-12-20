@@ -12,5 +12,5 @@ import lombok.experimental.FieldDefaults;
 public class AmenityUpdateRequest {
     String name;
     String description;
-    Boolean common;
+    boolean common;
 }

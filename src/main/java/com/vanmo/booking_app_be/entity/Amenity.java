@@ -6,6 +6,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.lang.Nullable;
 
 import java.util.Date;
 
@@ -26,11 +27,16 @@ public class Amenity {
     String name;
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
-    boolean isCommon;
+    boolean common;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id")
     Hotel hotel;
+
+    @Nullable
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id")
+    Room room;
 
     boolean active;
 

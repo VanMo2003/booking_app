@@ -31,6 +31,11 @@ public class RoomServiceImpl implements RoomService {
         Hotel hotel = hotelRepository.findById(req.getHotelId())
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found id=" + req.getHotelId()));
 
+        boolean checkRoomNumber = roomRepository.existsByHotelAndRoomNumber(hotel, req.getRoomNumber());
+        if (checkRoomNumber) {
+            throw new ResourceNotFoundException("Room number already exists");
+        }
+
         RoomType roomType = roomTypeRepository.findById(req.getRoomTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("RoomType not found id=" + req.getRoomTypeId()));
 

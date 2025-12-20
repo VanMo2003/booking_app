@@ -19,30 +19,30 @@ public class RoomAmenityController {
 
     @PostMapping
     public ApiResponse<RoomAmenityResponse> create(@Valid @RequestBody RoomAmenityCreateRequest req) {
-        return ApiResponse.ok(roomAmenityService.create(req), "Create roomAmenity success");
+        return ApiResponse.ok(roomAmenityService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<RoomAmenityResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody RoomAmenityUpdateRequest req) {
-        return ApiResponse.ok(roomAmenityService.update(id, req), "Update roomAmenity success");
+        return ApiResponse.ok(roomAmenityService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<RoomAmenityResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(roomAmenityService.getById(id), "Get roomAmenity success");
+        return ApiResponse.ok(roomAmenityService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<RoomAmenityResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(roomAmenityService.getAll(page, size), "Get roomAmenitys success");
+        return ApiResponse.ok(roomAmenityService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         roomAmenityService.delete(id);
-        return ApiResponse.ok(null, "Delete roomAmenity success");
+        return ApiResponse.ok(null);
     }
 }

@@ -19,30 +19,30 @@ public class FeedbackController {
 
     @PostMapping
     public ApiResponse<FeedbackResponse> create(@Valid @RequestBody FeedbackCreateRequest req) {
-        return ApiResponse.ok(feedbackService.create(req), "Create feedback success");
+        return ApiResponse.ok(feedbackService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<FeedbackResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody FeedbackUpdateRequest req) {
-        return ApiResponse.ok(feedbackService.update(id, req), "Update feedback success");
+        return ApiResponse.ok(feedbackService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<FeedbackResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(feedbackService.getById(id), "Get feedback success");
+        return ApiResponse.ok(feedbackService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<FeedbackResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(feedbackService.getAll(page, size), "Get feedbacks success");
+        return ApiResponse.ok(feedbackService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         feedbackService.delete(id);
-        return ApiResponse.ok(null, "Delete feedback success");
+        return ApiResponse.ok(null);
     }
 }

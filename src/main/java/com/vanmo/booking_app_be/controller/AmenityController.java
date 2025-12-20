@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/amenities")
 @RequiredArgsConstructor
@@ -19,30 +21,43 @@ public class AmenityController {
 
     @PostMapping
     public ApiResponse<AmenityResponse> create(@Valid @RequestBody AmenityCreateRequest req) {
-        return ApiResponse.ok(amenityService.create(req), "Create amenity success");
+        return ApiResponse.ok(amenityService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<AmenityResponse> update(@PathVariable Long id,
                                                @Valid @RequestBody AmenityUpdateRequest req) {
-        return ApiResponse.ok(amenityService.update(id, req), "Update amenity success");
+        return ApiResponse.ok(amenityService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<AmenityResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(amenityService.getById(id), "Get amenity success");
+        return ApiResponse.ok(amenityService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<AmenityResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(amenityService.getAll(page, size), "Get amenities success");
+        return ApiResponse.ok(amenityService.getAll(page, size));
+    }
+
+    @GetMapping("/hotel/{hotelId}")
+    public ApiResponse<List<AmenityResponse>> getAllByHotel(@PathVariable Long hotelId) {
+        return ApiResponse.ok(amenityService.getAllByHotel(hotelId));
+    }
+
+    @GetMapping("/room")
+    public ApiResponse<List<AmenityResponse>> getAllByRoom(
+            @RequestParam(defaultValue = "0") Long hotelId,
+            @RequestParam(defaultValue = "0") Long roomId
+    ) {
+        return ApiResponse.ok(amenityService.getAllByRoom(hotelId, roomId));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         amenityService.delete(id);
-        return ApiResponse.ok(null, "Delete amenity success");
+        return ApiResponse.ok(null);
     }
 }

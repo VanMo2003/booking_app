@@ -19,30 +19,30 @@ public class AccountController {
 
     @PostMapping
     public ApiResponse<AccountResponse> create(@Valid @RequestBody AccountCreateRequest req) {
-        return ApiResponse.ok(accountService.create(req), "Create account success");
+        return ApiResponse.ok(accountService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<AccountResponse> update(@PathVariable String id,
                                               @Valid @RequestBody AccountUpdateRequest req) {
-        return ApiResponse.ok(accountService.update(id, req), "Update account success");
+        return ApiResponse.ok(accountService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<AccountResponse> getById(@PathVariable String id) {
-        return ApiResponse.ok(accountService.getById(id), "Get account success");
+        return ApiResponse.ok(accountService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<AccountResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(accountService.getAll(page, size), "Get accounts success");
+        return ApiResponse.ok(accountService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable String id) {
         accountService.delete(id);
-        return ApiResponse.ok(null, "Delete account success");
+        return ApiResponse.ok(null);
     }
 }

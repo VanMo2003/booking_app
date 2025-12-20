@@ -19,30 +19,30 @@ public class RoomImageController {
 
     @PostMapping
     public ApiResponse<RoomImageResponse> create(@Valid @RequestBody RoomImageCreateRequest req) {
-        return ApiResponse.ok(roomImageService.create(req), "Create roomImage success");
+        return ApiResponse.ok(roomImageService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<RoomImageResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody RoomImageUpdateRequest req) {
-        return ApiResponse.ok(roomImageService.update(id, req), "Update roomImage success");
+        return ApiResponse.ok(roomImageService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<RoomImageResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(roomImageService.getById(id), "Get roomImage success");
+        return ApiResponse.ok(roomImageService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<RoomImageResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(roomImageService.getAll(page, size), "Get roomImages success");
+        return ApiResponse.ok(roomImageService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         roomImageService.delete(id);
-        return ApiResponse.ok(null, "Delete roomImage success");
+        return ApiResponse.ok(null);
     }
 }

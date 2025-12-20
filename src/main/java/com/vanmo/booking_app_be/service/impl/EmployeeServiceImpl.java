@@ -10,7 +10,6 @@ import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Position;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.EmployeeMapper;
-import com.vanmo.booking_app_be.mapper.HotelMapper;
 import com.vanmo.booking_app_be.repository.AccountRepository;
 import com.vanmo.booking_app_be.repository.EmployeeRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
@@ -19,6 +18,8 @@ import com.vanmo.booking_app_be.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 
 @Service
@@ -42,8 +43,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         entity.setPosition(position);
 
         employeeRepository.save(entity);
-        EmployeeResponse employeeResponse = employeeMapper.toResponse(entity);
-        return employeeResponse;
+        return employeeMapper.toResponse(entity);
     }
 
     @Override
@@ -59,6 +59,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee entity = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found id=" + id));
         return employeeMapper.toResponse(entity);
+    }
+
+    @Override
+    public List<EmployeeResponse> getAllByHotelId(Long hotelId) {
+        List<EmployeeResponse> data = employeeRepository.findAllByHotelId(hotelId).stream().map(employee -> {
+            EmployeeResponse employeeResponse = employeeMapper.toResponse(employee);
+            employeeResponse.setPositionName(employee.getPosition().getName());
+
+            return employeeResponse;
+        }).toList();
+        return data;
     }
 
     @Override

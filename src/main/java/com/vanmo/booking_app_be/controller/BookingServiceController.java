@@ -19,30 +19,30 @@ public class BookingServiceController {
 
     @PostMapping
     public ApiResponse<BookingServiceResponse> create(@Valid @RequestBody BookingServiceCreateRequest req) {
-        return ApiResponse.ok(bookingServiceService.create(req), "Create bookingService success");
+        return ApiResponse.ok(bookingServiceService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<BookingServiceResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody BookingServiceUpdateRequest req) {
-        return ApiResponse.ok(bookingServiceService.update(id, req), "Update bookingService success");
+        return ApiResponse.ok(bookingServiceService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<BookingServiceResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(bookingServiceService.getById(id), "Get bookingService success");
+        return ApiResponse.ok(bookingServiceService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<BookingServiceResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(bookingServiceService.getAll(page, size), "Get bookingServices success");
+        return ApiResponse.ok(bookingServiceService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         bookingServiceService.delete(id);
-        return ApiResponse.ok(null, "Delete bookingService success");
+        return ApiResponse.ok(null);
     }
 }

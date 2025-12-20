@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -43,10 +45,9 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     }
 
     @Override
-    public PageResponse<RoomTypeResponse> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<RoomTypeResponse> data = roomTypeRepository.findAll(pageable).map(roomTypeMapper::toResponse);
-        return PageResponse.from(data);
+    public List<RoomTypeResponse> getAll() {
+        List<RoomTypeResponse> romRoomTypeResponses = roomTypeRepository.findAll().stream().map(roomTypeMapper::toResponse).toList();
+        return romRoomTypeResponses;
     }
 
     @Override

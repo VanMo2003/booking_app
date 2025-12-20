@@ -18,6 +18,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoomAmenityCreateRequest {
     Room room;
-    Long amenityId;
+    Amenity amenity;
     Integer quantity;
 }

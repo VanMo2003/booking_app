@@ -19,30 +19,30 @@ public class ServiceController {
 
     @PostMapping
     public ApiResponse<ServiceResponse> create(@Valid @RequestBody ServiceCreateRequest req) {
-        return ApiResponse.ok(serviceService.create(req), "Create service success");
+        return ApiResponse.ok(serviceService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<ServiceResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody ServiceUpdateRequest req) {
-        return ApiResponse.ok(serviceService.update(id, req), "Update service success");
+        return ApiResponse.ok(serviceService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<ServiceResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(serviceService.getById(id), "Get service success");
+        return ApiResponse.ok(serviceService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<ServiceResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(serviceService.getAll(page, size), "Get services success");
+        return ApiResponse.ok(serviceService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         serviceService.delete(id);
-        return ApiResponse.ok(null, "Delete service success");
+        return ApiResponse.ok(null);
     }
 }

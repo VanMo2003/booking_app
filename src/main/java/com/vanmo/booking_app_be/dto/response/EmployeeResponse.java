@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
@@ -16,6 +17,7 @@ import java.util.Date;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class EmployeeResponse {
     Long id;
     String pathImage;
@@ -25,6 +27,8 @@ public class EmployeeResponse {
     LocalDate dateOfBirth;
     String hometown;
     BigDecimal salary;
+    String hotelName;
+    String positionName;
     Date onCreate;
     Date onUpdate;
 }

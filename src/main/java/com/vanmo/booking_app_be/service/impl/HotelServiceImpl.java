@@ -15,6 +15,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
@@ -53,6 +57,12 @@ public class HotelServiceImpl implements HotelService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("onCreate").descending());
         Page<HotelResponse> data = hotelRepository.findAll(pageable).map(hotelMapper::toResponse);
         return PageResponse.from(data);
+    }
+
+    @Override
+    public List<HotelResponse> getAllByCategory(String name) {
+        List<Hotel> hotels = hotelRepository.findAllByCategory(name);
+        return hotels.stream().map(hotelMapper::toResponse).toList();
     }
 
     @Override

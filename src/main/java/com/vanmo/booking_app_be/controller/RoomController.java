@@ -19,7 +19,7 @@ public class RoomController {
 
     @PostMapping
     public ApiResponse<RoomResponse> create(@Valid @RequestBody RoomCreateRequest req) {
-        return ApiResponse.ok(roomService.create(req), "Create room success");
+        return ApiResponse.ok(roomService.create(req));
     }
 
     @PutMapping("/{id}")
@@ -27,12 +27,12 @@ public class RoomController {
             @PathVariable Long id,
             @Valid @RequestBody RoomUpdateRequest req
     ) {
-        return ApiResponse.ok(roomService.update(id, req), "Update room success");
+        return ApiResponse.ok(roomService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<RoomResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(roomService.getById(id), "Get room success");
+        return ApiResponse.ok(roomService.getById(id));
     }
 
     @GetMapping
@@ -40,12 +40,12 @@ public class RoomController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return ApiResponse.ok(roomService.getAll(page, size), "Get rooms success");
+        return ApiResponse.ok(roomService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         roomService.delete(id);
-        return ApiResponse.ok(null, "Delete room success");
+        return ApiResponse.ok(null);
     }
 }

@@ -12,7 +12,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleAppException(AppException ex) {
         return ResponseEntity
                 .status(ex.getErrorCode().getStatus())
-                .body(ApiResponse.fail(ex.getMessage()));
+                .body(ApiResponse.fail(ex.getMessage(), 401));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -21,13 +21,13 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(err -> err.getField() + ": " + err.getDefaultMessage())
                 .orElse("Validation error");
-        return ResponseEntity.badRequest().body(ApiResponse.fail(msg));
+        return ResponseEntity.badRequest().body(ApiResponse.fail(msg, 402));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleOther(Exception ex) {
         ex.printStackTrace();
         return ResponseEntity.internalServerError()
-                .body(ApiResponse.fail("Unexpected error: " + ex.getMessage()));
+                .body(ApiResponse.fail("Unexpected error: " + ex.getMessage(), 403));
     }
 }

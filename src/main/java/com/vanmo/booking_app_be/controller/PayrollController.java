@@ -19,30 +19,30 @@ public class PayrollController {
 
     @PostMapping
     public ApiResponse<PayrollResponse> create(@Valid @RequestBody PayrollCreateRequest req) {
-        return ApiResponse.ok(payrollService.create(req), "Create payroll success");
+        return ApiResponse.ok(payrollService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<PayrollResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody PayrollUpdateRequest req) {
-        return ApiResponse.ok(payrollService.update(id, req), "Update payroll success");
+        return ApiResponse.ok(payrollService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<PayrollResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(payrollService.getById(id), "Get payroll success");
+        return ApiResponse.ok(payrollService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<PayrollResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(payrollService.getAll(page, size), "Get payrolls success");
+        return ApiResponse.ok(payrollService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         payrollService.delete(id);
-        return ApiResponse.ok(null, "Delete payroll success");
+        return ApiResponse.ok(null);
     }
 }

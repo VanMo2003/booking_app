@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/roomTypes")
 @RequiredArgsConstructor
@@ -19,30 +21,28 @@ public class RoomTypeController {
 
     @PostMapping
     public ApiResponse<RoomTypeResponse> create(@Valid @RequestBody RoomTypeCreateRequest req) {
-        return ApiResponse.ok(roomTypeService.create(req), "Create roomType success");
+        return ApiResponse.ok(roomTypeService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<RoomTypeResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody RoomTypeUpdateRequest req) {
-        return ApiResponse.ok(roomTypeService.update(id, req), "Update roomType success");
+        return ApiResponse.ok(roomTypeService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<RoomTypeResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(roomTypeService.getById(id), "Get roomType success");
+        return ApiResponse.ok(roomTypeService.getById(id));
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<RoomTypeResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(roomTypeService.getAll(page, size), "Get roomTypes success");
+    public ApiResponse<List<RoomTypeResponse>> getAll() {
+        return ApiResponse.ok(roomTypeService.getAll());
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         roomTypeService.delete(id);
-        return ApiResponse.ok(null, "Delete roomType success");
+        return ApiResponse.ok(null);
     }
 }

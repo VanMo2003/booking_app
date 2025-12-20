@@ -19,30 +19,30 @@ public class CustomerController {
 
     @PostMapping
     public ApiResponse<CustomerResponse> create(@Valid @RequestBody CustomerCreateRequest req) {
-        return ApiResponse.ok(customerService.create(req), "Create customer success");
+        return ApiResponse.ok(customerService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<CustomerResponse> update(@PathVariable Long id,
                                                 @Valid @RequestBody CustomerUpdateRequest req) {
-        return ApiResponse.ok(customerService.update(id, req), "Update customer success");
+        return ApiResponse.ok(customerService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<CustomerResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(customerService.getById(id), "Get customer success");
+        return ApiResponse.ok(customerService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<CustomerResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(customerService.getAll(page, size), "Get customers success");
+        return ApiResponse.ok(customerService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         customerService.delete(id);
-        return ApiResponse.ok(null, "Delete customer success");
+        return ApiResponse.ok(null);
     }
 }

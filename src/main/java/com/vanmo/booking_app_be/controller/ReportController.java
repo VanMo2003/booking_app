@@ -19,30 +19,30 @@ public class ReportController {
 
     @PostMapping
     public ApiResponse<ReportResponse> create(@Valid @RequestBody ReportCreateRequest req) {
-        return ApiResponse.ok(reportService.create(req), "Create report success");
+        return ApiResponse.ok(reportService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<ReportResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody ReportUpdateRequest req) {
-        return ApiResponse.ok(reportService.update(id, req), "Update report success");
+        return ApiResponse.ok(reportService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<ReportResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(reportService.getById(id), "Get report success");
+        return ApiResponse.ok(reportService.getById(id));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<ReportResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(reportService.getAll(page, size), "Get reports success");
+        return ApiResponse.ok(reportService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         reportService.delete(id);
-        return ApiResponse.ok(null, "Delete report success");
+        return ApiResponse.ok(null);
     }
 }

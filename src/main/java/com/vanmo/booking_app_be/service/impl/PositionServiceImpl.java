@@ -3,15 +3,15 @@ package com.vanmo.booking_app_be.service.impl;
 import com.vanmo.booking_app_be.dto.request.PositionCreateRequest;
 import com.vanmo.booking_app_be.dto.request.PositionUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.PositionResponse;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.entity.Position;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.PositionMapper;
 import com.vanmo.booking_app_be.repository.PositionRepository;
 import com.vanmo.booking_app_be.service.PositionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 
 @Service
@@ -45,10 +45,9 @@ public class PositionServiceImpl implements PositionService {
     }
 
     @Override
-    public PageResponse<PositionResponse> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<PositionResponse> data = positionRepository.findAll(pageable).map(positionMapper::toResponse);
-        return PageResponse.from(data);
+    public List<PositionResponse> getAll() {
+        List<PositionResponse> positionResponses = positionRepository.findAll().stream().map(positionMapper::toResponse).toList();
+        return positionResponses;
     }
 
     @Override

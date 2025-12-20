@@ -10,14 +10,15 @@ import org.mapstruct.*;
 public interface AmenityMapper {
 
     @Mapping(target = "hotel", ignore = true)
+    @Mapping(target = "room", ignore = true)
     Amenity toEntity(AmenityCreateRequest req);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "hotel", ignore = true)
+    @Mapping(target = "room", ignore = true)
     void updateEntity(@MappingTarget Amenity entity, AmenityUpdateRequest req);
 
-    @Mapping(source = "hotel.id", target = "hotelId")
-    @Mapping(target = "common", ignore = true)
-//    @Mapping(source = "isCommon", target = "common")
+    @Mapping(target = "hotelName", ignore = true)
+    @Mapping(target = "roomName", ignore = true)
     AmenityResponse toResponse(Amenity entity);
 }

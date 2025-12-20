@@ -13,7 +13,8 @@ import lombok.experimental.FieldDefaults;
 public class AmenityCreateRequest {
     @NotNull String name;
     String description;
-    boolean isCommon;
+    boolean common = true;
     Long hotelId;
+    Long roomId;
     boolean active = true;
 }

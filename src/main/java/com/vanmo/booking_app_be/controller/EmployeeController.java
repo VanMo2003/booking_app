@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/employees")
 @RequiredArgsConstructor
@@ -19,30 +21,35 @@ public class EmployeeController {
 
     @PostMapping
     public ApiResponse<EmployeeResponse> create(@Valid @RequestBody EmployeeCreateRequest req) {
-        return ApiResponse.ok(employeeService.create(req), "Create employee success");
+        return ApiResponse.ok(employeeService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<EmployeeResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody EmployeeUpdateRequest req) {
-        return ApiResponse.ok(employeeService.update(id, req), "Update employee success");
+        return ApiResponse.ok(employeeService.update(id, req));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<EmployeeResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(employeeService.getById(id), "Get employee success");
+        return ApiResponse.ok(employeeService.getById(id));
+    }
+
+    @GetMapping("/by-hotel")
+    public ApiResponse<List<EmployeeResponse>> getAllEmployeeByHotel(@RequestParam(name = "hotelId") Long hotelId) {
+        return ApiResponse.ok(employeeService.getAllByHotelId(hotelId));
     }
 
     @GetMapping
     public ApiResponse<PageResponse<EmployeeResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(employeeService.getAll(page, size), "Get employees success");
+        return ApiResponse.ok(employeeService.getAll(page, size));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         employeeService.delete(id);
-        return ApiResponse.ok(null, "Delete employee success");
+        return ApiResponse.ok(null);
     }
 }
