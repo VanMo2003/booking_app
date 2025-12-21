@@ -6,16 +6,20 @@ import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.RoomResponse;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Room;
+import com.vanmo.booking_app_be.entity.RoomAmenity;
 import com.vanmo.booking_app_be.entity.RoomType;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.RoomMapper;
 import com.vanmo.booking_app_be.repository.HotelRepository;
+import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.RoomTypeRepository;
 import com.vanmo.booking_app_be.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final HotelRepository hotelRepository;
     private final RoomTypeRepository roomTypeRepository;
+    private final RoomAmenityRepository roomAmenityRepository;
     private final RoomMapper roomMapper;
 
     @Override
@@ -78,6 +83,8 @@ public class RoomServiceImpl implements RoomService {
     public void delete(Long id) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found id=" + id));
+//        List<RoomAmenity> roomAmenities = roomAmenityRepository.findAllByRoom(room);
+//        roomAmenityRepository.deleteAll(roomAmenities);
         roomRepository.delete(room);
     }
 }

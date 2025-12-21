@@ -4,10 +4,14 @@ import com.vanmo.booking_app_be.dto.request.RoomAmenityCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomAmenityUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.RoomAmenityResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.entity.Amenity;
+import com.vanmo.booking_app_be.entity.Room;
 import com.vanmo.booking_app_be.entity.RoomAmenity;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.RoomAmenityMapper;
+import com.vanmo.booking_app_be.repository.AmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
+import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.service.RoomAmenityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -19,12 +23,22 @@ import org.springframework.stereotype.Service;
 public class RoomAmenityServiceImpl implements RoomAmenityService {
 
     private final RoomAmenityRepository roomAmenityRepository;
+    private final RoomRepository roomRepository;
+    private final AmenityRepository amenityRepository;
     private final RoomAmenityMapper roomAmenityMapper;
 
+
     @Override
-    public RoomAmenityResponse create(RoomAmenityCreateRequest req) {
+    public boolean create(RoomAmenityCreateRequest req) {
         RoomAmenity entity = roomAmenityMapper.toEntity(req);
-        return roomAmenityMapper.toResponse(roomAmenityRepository.save(entity));
+
+        Room room = roomRepository.findById(req.getRoomId()).orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+        Amenity amenity = amenityRepository.findById(req.getAmenityId()).orElseThrow(() -> new ResourceNotFoundException("Amenity not found"));
+
+        entity.setRoom(room);
+        entity.setAmenity(amenity);
+        roomAmenityRepository.save(entity);
+        return true;
     }
 
     @Override

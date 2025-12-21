@@ -9,10 +9,12 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface RoomAmenityMapper {
 
-     RoomAmenity toEntity(RoomAmenityCreateRequest req);
+    @Mapping(target = "room", ignore = true)
+    @Mapping(target = "amenity", ignore = true)
+    RoomAmenity toEntity(RoomAmenityCreateRequest req);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-     void updateEntity(@MappingTarget RoomAmenity entity, RoomAmenityUpdateRequest req);
+    void updateEntity(@MappingTarget RoomAmenity entity, RoomAmenityUpdateRequest req);
 
     RoomAmenityResponse toResponse(RoomAmenity entity);
 }

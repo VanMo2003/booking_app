@@ -17,7 +17,7 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoomAmenityCreateRequest {
-    Room room;
-    Amenity amenity;
+    Long roomId;
+    Long amenityId;
     Integer quantity;
 }

@@ -23,12 +23,10 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AmenityServiceImpl implements AmenityService {
-
     private final AmenityRepository amenityRepository;
     private final RoomAmenityRepository roomAmenityRepository;
     private final HotelRepository hotelRepository;
@@ -39,36 +37,38 @@ public class AmenityServiceImpl implements AmenityService {
     @Override
     @Transactional
     public AmenityResponse create(AmenityCreateRequest req) {
-        Amenity entity = amenityMapper.toEntity(req);
-        Hotel hotel = new Hotel();
+        Amenity amenity = amenityRepository.findByHotelIdAndName(req.getHotelId(), req.getName());
+        if (amenity != null) throw new ResourceNotFoundException("Amenity with this name already exists");
+        amenity = amenityMapper.toEntity(req);
+        Hotel hotel;
         if (req.getHotelId() != null) {
              hotel = hotelRepository.findById(req.getHotelId())
                     .orElseThrow(() -> new ResourceNotFoundException("Hotel not found id=" + req.getHotelId()));
-            entity.setHotel(hotel);
-        } else{
+            amenity.setHotel(hotel);
+        } else {
             throw new ResourceNotFoundException("Id hotel not found");
         }
         if (!req.isCommon() && req.getRoomId() != null) {
             Room room = roomRepository.findById(req.getRoomId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Hotel not found id=" + req.getHotelId()));
-            amenityRepository.save(entity);
+                    .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+            amenityRepository.save(amenity);
 
             RoomAmenityCreateRequest roomAmenityCreateRequest = new RoomAmenityCreateRequest();
             roomAmenityCreateRequest.setQuantity(1);
-            roomAmenityCreateRequest.setRoom(room);
-            roomAmenityCreateRequest.setAmenity(entity);
+            roomAmenityCreateRequest.setRoomId(room.getId());
+            roomAmenityCreateRequest.setAmenityId(amenity.getId());
 
             roomAmenityService.create(roomAmenityCreateRequest);
 
-            AmenityResponse amenityResponse = amenityMapper.toResponse(entity);
+            AmenityResponse amenityResponse = amenityMapper.toResponse(amenity);
             amenityResponse.setHotelName(hotel.getName());
             amenityResponse.setRoomName(room.getRoomNumber());
 
             return amenityResponse;
         }
 
-        amenityRepository.save(entity);
-        AmenityResponse amenityResponse = amenityMapper.toResponse(entity);
+        amenityRepository.save(amenity);
+        AmenityResponse amenityResponse = amenityMapper.toResponse(amenity);
         amenityResponse.setHotelName(hotel.getName());
 
         return amenityResponse;

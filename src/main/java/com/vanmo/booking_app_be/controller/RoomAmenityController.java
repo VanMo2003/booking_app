@@ -18,7 +18,7 @@ public class RoomAmenityController {
     private final RoomAmenityService roomAmenityService;
 
     @PostMapping
-    public ApiResponse<RoomAmenityResponse> create(@Valid @RequestBody RoomAmenityCreateRequest req) {
+    public ApiResponse<Boolean> create(@Valid @RequestBody RoomAmenityCreateRequest req) {
         return ApiResponse.ok(roomAmenityService.create(req));
     }
 

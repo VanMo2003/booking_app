@@ -12,7 +12,4 @@ import java.util.Date;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoomAmenityResponse {
     Long id;
-    Date onCreate;
-    Date onUpdate;
-
 }
