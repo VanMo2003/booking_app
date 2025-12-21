@@ -2,15 +2,20 @@ package com.vanmo.booking_app_be.service.impl;
 
 import com.vanmo.booking_app_be.dto.request.HotelCreateRequest;
 import com.vanmo.booking_app_be.dto.request.HotelUpdateRequest;
+import com.vanmo.booking_app_be.dto.response.AmenityResponse;
 import com.vanmo.booking_app_be.dto.response.HotelResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.ServiceResponse;
 import com.vanmo.booking_app_be.entity.Account;
+import com.vanmo.booking_app_be.entity.Amenity;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.HotelMapper;
 import com.vanmo.booking_app_be.repository.AccountRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
+import com.vanmo.booking_app_be.service.AmenityService;
 import com.vanmo.booking_app_be.service.HotelService;
+import com.vanmo.booking_app_be.service.ServiceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -26,6 +31,8 @@ public class HotelServiceImpl implements HotelService {
     private final HotelRepository hotelRepository;
     private final AccountRepository accountRepository;
     private final HotelMapper hotelMapper;
+    private final ServiceService serviceService;
+    private final AmenityService amenityService;
 
     @Override
     public HotelResponse create(HotelCreateRequest req) {
@@ -54,15 +61,15 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public PageResponse<HotelResponse> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("onCreate").descending());
-        Page<HotelResponse> data = hotelRepository.findAll(pageable).map(hotelMapper::toResponse);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("onCreate"));
+        Page<HotelResponse> data = hotelRepository.findAll(pageable).map(this::toResponseFull);
         return PageResponse.from(data);
     }
 
     @Override
     public List<HotelResponse> getAllByCategory(String name) {
         List<Hotel> hotels = hotelRepository.findAllByCategory(name);
-        return hotels.stream().map(hotelMapper::toResponse).toList();
+        return hotels.stream().map(this::toResponseFull).toList();
     }
 
     @Override
@@ -70,5 +77,16 @@ public class HotelServiceImpl implements HotelService {
         Hotel hotel = hotelRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + id));
         hotelRepository.delete(hotel);
+    }
+
+    private HotelResponse toResponseFull(Hotel hotel) {
+        HotelResponse hotelResponse = hotelMapper.toResponse(hotel);
+        List<AmenityResponse> amenityResponses = amenityService.getAllByHotel(hotel.getId());
+        hotelResponse.setAmenities(amenityResponses);
+
+        List<ServiceResponse> serviceResponses = serviceService.getAllByHotel(hotel.getId());
+        hotelResponse.setServices(serviceResponses);
+
+        return hotelResponse;
     }
 }

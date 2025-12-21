@@ -33,11 +33,6 @@ public class Amenity {
     @JoinColumn(name = "hotel_id")
     Hotel hotel;
 
-    @Nullable
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id")
-    Room room;
-
     boolean active;
 
     @CreationTimestamp

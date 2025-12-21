@@ -4,6 +4,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.util.Date;
+import java.util.List;
 
 @Getter
 @Setter
@@ -22,6 +23,8 @@ public class HotelResponse {
     String pathImage;
     boolean active;
     String accountId;
+    List<AmenityResponse> amenities;
+    List<ServiceResponse> services;
     Date onCreate;
     Date onUpdate;
 }

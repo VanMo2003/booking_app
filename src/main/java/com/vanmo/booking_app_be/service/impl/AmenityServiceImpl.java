@@ -8,10 +8,12 @@ import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.entity.Amenity;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Room;
+import com.vanmo.booking_app_be.entity.RoomAmenity;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.AmenityMapper;
 import com.vanmo.booking_app_be.repository.AmenityRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
+import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.service.AmenityService;
 import com.vanmo.booking_app_be.service.RoomAmenityService;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 public class AmenityServiceImpl implements AmenityService {
 
     private final AmenityRepository amenityRepository;
+    private final RoomAmenityRepository roomAmenityRepository;
     private final HotelRepository hotelRepository;
     private final AmenityMapper amenityMapper;
     private final RoomRepository roomRepository;
@@ -48,7 +51,6 @@ public class AmenityServiceImpl implements AmenityService {
         if (!req.isCommon() && req.getRoomId() != null) {
             Room room = roomRepository.findById(req.getRoomId())
                     .orElseThrow(() -> new ResourceNotFoundException("Hotel not found id=" + req.getHotelId()));
-            entity.setRoom(room);
             amenityRepository.save(entity);
 
             RoomAmenityCreateRequest roomAmenityCreateRequest = new RoomAmenityCreateRequest();
@@ -78,8 +80,7 @@ public class AmenityServiceImpl implements AmenityService {
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found id=" + id));
         amenityMapper.updateEntity(entity, req);
         amenityRepository.save(entity);
-        AmenityResponse amenityResponse = amenityMapper.toResponse(entity);
-        return amenityResponse;
+        return amenityMapper.toResponse(entity);
     }
 
     @Override
@@ -104,7 +105,7 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     public List<AmenityResponse> getAllByRoom(Long hotelId, Long roomId) {
-        List<Amenity> amenities = amenityRepository.getAllAmenityByRoom(roomId, hotelId);
+        List<Amenity> amenities = roomAmenityRepository.findAllByRoomId(roomId).stream().map(RoomAmenity::getAmenity).toList();
         return amenities.stream().map(amenityMapper::toResponse).toList();
     }
 
@@ -112,6 +113,11 @@ public class AmenityServiceImpl implements AmenityService {
     public void delete(Long id) {
         Amenity entity = amenityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found id=" + id));
+        if (!entity.isCommon()){
+            List<RoomAmenity> roomAmenities = roomAmenityRepository.findAllByAmenity(entity);
+            roomAmenityRepository.deleteAll(roomAmenities);
+        }
         amenityRepository.delete(entity);
+
     }
 }
