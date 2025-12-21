@@ -14,6 +14,10 @@ import com.vanmo.booking_app_be.service.ServiceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
@@ -47,10 +51,10 @@ public class ServiceServiceImpl implements ServiceService {
     }
 
     @Override
-    public PageResponse<ServiceResponse> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<ServiceResponse> data = serviceRepository.findAll(pageable).map(serviceMapper::toResponse);
-        return PageResponse.from(data);
+    public List<ServiceResponse> getAllByHotel(Long hotelId) {
+        List<Service> services = serviceRepository.findByHotelId(hotelId);
+        List<ServiceResponse> responses = services.stream().map(serviceMapper::toResponse).toList();
+        return responses;
     }
 
     @Override
