@@ -11,6 +11,7 @@ import com.vanmo.booking_app_be.repository.AccountRepository;
 import com.vanmo.booking_app_be.service.AccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 
@@ -20,6 +21,7 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public AccountResponse create(AccountCreateRequest req) {
@@ -28,6 +30,7 @@ public class AccountServiceImpl implements AccountService {
             throw new ResourceNotFoundException("Account exists with username: " + req.getUsername());
         }
         Account entity = accountMapper.toEntity(req);
+        entity.setPassword(passwordEncoder.encode(req.getPassword()));
         accountRepository.save(entity);
         AccountResponse accountResponse = accountMapper.toResponse(entity);
         return accountResponse;

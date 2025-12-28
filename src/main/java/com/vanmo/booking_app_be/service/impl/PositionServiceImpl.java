@@ -24,8 +24,8 @@ public class PositionServiceImpl implements PositionService {
     @Override
     public PositionResponse create(PositionCreateRequest req) {
         Position entity = positionMapper.toEntity(req);
-        PositionResponse positionResponse = positionMapper.toResponse(entity);
         positionRepository.save(entity);
+        PositionResponse positionResponse = positionMapper.toResponse(entity);
         return positionResponse;
     }
 

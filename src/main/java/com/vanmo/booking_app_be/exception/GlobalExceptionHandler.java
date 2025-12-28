@@ -11,7 +11,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Object>> handleAppException(AppException ex) {
         return ResponseEntity
-                .status(ex.getErrorCode().getStatus())
+                .status(ex.getErrorCode().getHttpStatusCode())
                 .body(ApiResponse.fail(ex.getMessage(), 401));
     }
 

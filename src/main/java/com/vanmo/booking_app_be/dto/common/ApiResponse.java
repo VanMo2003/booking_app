@@ -21,7 +21,7 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(true)
                 .message(null)
-                .code(200)
+                .code(1000)
                 .data(data)
                 .build();
     }

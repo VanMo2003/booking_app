@@ -20,5 +20,5 @@ public class PayrollCreateRequest {
     LocalDate month;
     BigDecimal totalSalary;
     Long employeeId;
-    String status; // enum PayrollStatus
+    String status;
 }
