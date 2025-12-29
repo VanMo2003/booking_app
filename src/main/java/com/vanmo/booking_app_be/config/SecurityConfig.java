@@ -29,7 +29,7 @@ public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINT_GET = {"/user/checkExistUser/{}", "/storage/{}"};
     private final String[] PUBLIC_ENDPOINT_POST = {
-        "/accounts", "/auth/login", "/auth/introspect", "/storage/upload"
+        "/accounts", "/auth/login", "/auth/introspect", "/auth/refreshToken", "/storage/upload"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

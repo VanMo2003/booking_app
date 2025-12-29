@@ -15,8 +15,8 @@ import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.InvalidatedToken;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
-import com.vanmo.booking_app_be.repository.AccountRepository;
-import com.vanmo.booking_app_be.repository.InvalidatedRepository;
+import com.vanmo.booking_app_be.repository.*;
+import com.vanmo.booking_app_be.service.AccountService;
 import com.vanmo.booking_app_be.service.AuthenticationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +55,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     static Logger log = LoggerFactory.getLogger(AuthenticationService.class);
     AccountRepository accountRepository;
     InvalidatedRepository invalidatedRepository;
+    HotelRepository hotelRepository;
+    CustomerRepository customerRepository;
+    EmployeeRepository employeeRepository;
+    AccountService accountService;
 
     @NonFinal
     @Value("${jwt.signer-key}")
@@ -65,7 +69,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         boolean isValid = true;
         try {
-            verifyToken(token, false);
+            verifyToken(token);
         } catch (AppException e) {
             isValid = false;
         }
@@ -83,28 +87,47 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         if (!authenticated) throw new AppException(ErrorCode.INCORRECT_ACCOUNT_OR_PASSWORD);
 
-        var token = generateToken(account);
+        String jit = UUID.randomUUID().toString();
+        var accessToken  = generateToken(account, "ACCESS", jit);
+        var refreshToken  = generateToken(account, "REFRESH", jit);
 
-        return AuthenticationResponse.builder().token(token).authenticated(true).build();
+        return AuthenticationResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .authenticated(true)
+                .build();
     }
 
     @Override
     public AuthenticationResponse refreshToken(RefreshTokenRequest request)throws ParseException, JOSEException {
-        var signJWT = verifyToken(request.getToken(), true);
+        SignedJWT signJWT = verifyToken(request.getToken());
 
-        var jit = signJWT.getJWTClaimsSet().getJWTID();
-        var expiryTime = signJWT.getJWTClaimsSet().getExpirationTime();
+        var claims = signJWT.getJWTClaimsSet();
+
+        if (!"REFRESH".equals(claims.getStringClaim("token_type"))) {
+            throw new AppException(ErrorCode.UN_AUTHENTICATED);
+        }
+
+        var jit = claims.getJWTID();
+        var expiryTime = claims.getExpirationTime();
 
         invalidatedRepository.save(
                 InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build());
 
-        var username = signJWT.getJWTClaimsSet().getSubject();
+        String username = claims.getSubject();
 
-        var account =
+        Account account =
                 accountRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.UN_AUTHENTICATED));
-        var token = generateToken(account);
 
-        return AuthenticationResponse.builder().token(token).authenticated(true).build();
+        String jitNew = UUID.randomUUID().toString();
+        var accessToken  = generateToken(account, "ACCESS", jitNew);
+        var refreshToken  = generateToken(account, "REFRESH", jitNew);
+
+        return AuthenticationResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .authenticated(true)
+                .build();
     }
 
     @Override
@@ -118,10 +141,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Jwt jwt = jwtAuth.getToken();
         String tokenValue = jwt.getTokenValue();
 
-        var signToken = verifyToken(tokenValue, true);
+        SignedJWT  signedJWT  = verifyToken(tokenValue);
 
-        String jti = signToken.getJWTClaimsSet().getJWTID();
-        Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
+        String jti = signedJWT .getJWTClaimsSet().getJWTID();
+        Date expiryTime = signedJWT .getJWTClaimsSet().getExpirationTime();
 
         InvalidatedToken invalidatedToken =
                 InvalidatedToken.builder().id(jti).expiryTime(expiryTime).build();
@@ -129,45 +152,46 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         invalidatedRepository.save(invalidatedToken);
     }
 
-    private SignedJWT verifyToken(String token, boolean isRefresh) throws ParseException, JOSEException {
+    private SignedJWT verifyToken(String token) throws ParseException, JOSEException {
+        SignedJWT signedJWT = SignedJWT.parse(token);
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
 
-        SignedJWT signedJWT = SignedJWT.parse(token);
-
-        Date expiryTime = isRefresh
-                ? new Date(signedJWT
-                .getJWTClaimsSet()
-                .getIssueTime()
-                .toInstant()
-                .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)
-                .toEpochMilli())
-                : signedJWT.getJWTClaimsSet().getExpirationTime();
-
         var verified = signedJWT.verify(verifier);
+        if (!verified) throw new AppException(ErrorCode.UN_AUTHENTICATED);
 
-        if (!(verified && expiryTime.after(new Date()))) throw new AppException(ErrorCode.UN_AUTHENTICATED);
+        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+
+        if (expiryTime.before(new Date())) throw new AppException(ErrorCode.UN_AUTHENTICATED);
 
         if (invalidatedRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
             throw new AppException(ErrorCode.UN_AUTHENTICATED);
         return signedJWT;
     }
 
-    private String generateToken(Account account) {
-        JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
+    private String generateToken(Account account, String tokenType, String jit) {
+        long duration = tokenType.equals("ACCESS")
+                ? VALID_DURATION
+                : REFRESHABLE_DURATION;
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(account.getUsername())
                 .issuer("vanmo.com") // domain
                 .issueTime(new Date())
                 .expirationTime(new Date(
-                        Instant.now().plus(VALID_DURATION, ChronoUnit.SECONDS).toEpochMilli())) // thời gian hết hạn
-                .jwtID(UUID.randomUUID().toString())
+                        Instant.now().plus(duration, ChronoUnit.SECONDS).toEpochMilli())) // thời gian hết hạn
+                .jwtID(jit)
                 .claim("scope", buildScope(account))
+                .claim("token_type", tokenType)
                 .build();
 
-        Payload payload = new Payload(jwtClaimsSet.toJSONObject());
 
-        JWSObject jwsObject = new JWSObject(header, payload);
         try {
+            JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
+
+            Payload payload = new Payload(jwtClaimsSet.toJSONObject());
+
+            JWSObject jwsObject = new JWSObject(header, payload);
+
             jwsObject.sign(new MACSigner(SIGNER_KEY.getBytes()));
             return jwsObject.serialize();
         } catch (JOSEException e) {
