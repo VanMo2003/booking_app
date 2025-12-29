@@ -11,10 +11,13 @@ import com.vanmo.booking_app_be.dto.request.LogoutRequest;
 import com.vanmo.booking_app_be.dto.request.RefreshTokenRequest;
 import com.vanmo.booking_app_be.dto.response.AuthenticationResponse;
 import com.vanmo.booking_app_be.dto.response.IntrospectResponse;
-import com.vanmo.booking_app_be.entity.Account;
-import com.vanmo.booking_app_be.entity.InvalidatedToken;
+import com.vanmo.booking_app_be.entity.*;
+import com.vanmo.booking_app_be.entity.enums.Role;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
+import com.vanmo.booking_app_be.mapper.CustomerMapper;
+import com.vanmo.booking_app_be.mapper.EmployeeMapper;
+import com.vanmo.booking_app_be.mapper.HotelMapper;
 import com.vanmo.booking_app_be.repository.*;
 import com.vanmo.booking_app_be.service.AccountService;
 import com.vanmo.booking_app_be.service.AuthenticationService;
@@ -58,7 +61,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     HotelRepository hotelRepository;
     CustomerRepository customerRepository;
     EmployeeRepository employeeRepository;
-    AccountService accountService;
+    HotelMapper hotelMapper;
+    CustomerMapper customerMapper;
+    EmployeeMapper employeeMapper;
 
     @NonFinal
     @Value("${jwt.signer-key}")
@@ -79,7 +84,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public AuthenticationResponse authenticated(AuthenticationRequest request) {
-        var account = accountRepository
+        Account account = accountRepository
                 .findByUsername(request.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.INCORRECT_ACCOUNT_OR_PASSWORD));
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
@@ -91,11 +96,31 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         var accessToken  = generateToken(account, "ACCESS", jit);
         var refreshToken  = generateToken(account, "REFRESH", jit);
 
-        return AuthenticationResponse.builder()
+        AuthenticationResponse authenticationResponse = AuthenticationResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .authenticated(true)
+                .role(account.getRole())
                 .build();
+
+        switch (account.getRole()){
+            case Role.CUSTOMER:
+                Customer customer = customerRepository.findByAccount_Id(account.getId());
+                authenticationResponse.setCustomer(customerMapper.toResponse(customer));
+                break;
+            case Role.HOTEL_MANAGER:
+                Hotel hotel = hotelRepository.findByAccount_Id(account.getId());
+                authenticationResponse.setHotel(hotelMapper.toResponse(hotel));
+                break;
+            case Role.STAFF:
+                Employee employee = employeeRepository.findByAccount_Id(account.getId());
+                authenticationResponse.setEmployee(employeeMapper.toResponse(employee));
+                break;
+            default:
+                throw new RuntimeException("Role not supported: " + account.getRole());
+        }
+
+        return authenticationResponse;
     }
 
     @Override

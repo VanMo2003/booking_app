@@ -27,7 +27,7 @@ public class AccountServiceImpl implements AccountService {
     public AccountResponse create(AccountCreateRequest req) {
         boolean checkUsername = accountRepository.existsByUsername(req.getUsername());
         if (checkUsername) {
-            throw new ResourceNotFoundException("Account exists with username: " + req.getUsername());
+            throw new ResourceNotFoundException("Account existed with username: " + req.getUsername());
         }
         Account entity = accountMapper.toEntity(req);
         entity.setPassword(passwordEncoder.encode(req.getPassword()));
