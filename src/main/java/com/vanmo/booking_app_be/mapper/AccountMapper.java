@@ -8,8 +8,6 @@ import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
 public interface AccountMapper {
-
-
     @Mapping(target = "onCreate", ignore = true)
     @Mapping(target = "onUpdate", ignore = true)
  Account toEntity(AccountCreateRequest req);

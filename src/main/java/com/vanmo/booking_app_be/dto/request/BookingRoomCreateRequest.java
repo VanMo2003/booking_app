@@ -1,5 +1,7 @@
 package com.vanmo.booking_app_be.dto.request;
 
+import com.vanmo.booking_app_be.entity.Booking;
+import com.vanmo.booking_app_be.entity.Room;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -11,6 +13,6 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingRoomCreateRequest {
-    Long bookingId;
-    Long roomId;
+    Booking booking;
+    Room room;
 }

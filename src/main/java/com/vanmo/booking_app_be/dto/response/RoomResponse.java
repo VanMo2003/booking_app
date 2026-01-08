@@ -20,13 +20,10 @@ public class RoomResponse {
     String description;
     Integer capacity;
     RoomStatus status;
-
     Long hotelId;
     String hotelName;
-
     Long roomTypeId;
     String roomTypeName;
-
     Date onCreate;
     Date onUpdate;
 }

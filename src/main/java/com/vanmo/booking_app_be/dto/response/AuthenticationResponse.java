@@ -1,9 +1,6 @@
 package com.vanmo.booking_app_be.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.vanmo.booking_app_be.entity.Customer;
-import com.vanmo.booking_app_be.entity.Employee;
-import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.enums.Role;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -19,7 +16,8 @@ public class AuthenticationResponse {
     String accessToken;
     String refreshToken;
     Role role;
-    HotelResponse hotel;
+    String accountId;
+    ListHotelResponse hotel;
     CustomerResponse customer;
     EmployeeResponse employee;
 }

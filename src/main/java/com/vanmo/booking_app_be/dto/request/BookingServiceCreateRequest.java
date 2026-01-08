@@ -1,5 +1,7 @@
 package com.vanmo.booking_app_be.dto.request;
 
+import com.vanmo.booking_app_be.entity.Booking;
+import com.vanmo.booking_app_be.entity.Service;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -13,8 +15,8 @@ import java.math.BigDecimal;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingServiceCreateRequest {
-    Long bookingId;
-    Long serviceId;
+    Booking booking;
+    Service service;
     Long quantity;
     BigDecimal total;
 }

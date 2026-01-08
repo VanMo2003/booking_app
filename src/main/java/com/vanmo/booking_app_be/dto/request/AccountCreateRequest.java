@@ -14,10 +14,8 @@ import static com.vanmo.booking_app_be.entity.enums.Role.CUSTOMER;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AccountCreateRequest {
-
     @NotNull String username;
     @NotNull String password;
-    @NotNull String role = CUSTOMER.name(); // enum Role
+    @NotNull String role = CUSTOMER.name();
     boolean status = true;
-
 }

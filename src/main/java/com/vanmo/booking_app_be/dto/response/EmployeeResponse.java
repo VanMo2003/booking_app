@@ -21,6 +21,7 @@ import java.util.Date;
 public class EmployeeResponse {
     Long id;
     String pathImage;
+    String accountId;
     String fullName;
     String phoneNumber;
     String gender;

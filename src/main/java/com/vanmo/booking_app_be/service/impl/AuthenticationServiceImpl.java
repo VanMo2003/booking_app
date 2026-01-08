@@ -106,14 +106,23 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         switch (account.getRole()){
             case Role.CUSTOMER:
                 Customer customer = customerRepository.findByAccount_Id(account.getId());
+                if (customer == null) {
+                    authenticationResponse.setAccountId(account.getId());
+                }
                 authenticationResponse.setCustomer(customerMapper.toResponse(customer));
                 break;
             case Role.HOTEL_MANAGER:
                 Hotel hotel = hotelRepository.findByAccount_Id(account.getId());
+                if (hotel == null) {
+                    authenticationResponse.setAccountId(account.getId());
+                }
                 authenticationResponse.setHotel(hotelMapper.toResponse(hotel));
                 break;
             case Role.STAFF:
                 Employee employee = employeeRepository.findByAccount_Id(account.getId());
+                if (employee == null) {
+                    authenticationResponse.setAccountId(account.getId());
+                }
                 authenticationResponse.setEmployee(employeeMapper.toResponse(employee));
                 break;
             default:

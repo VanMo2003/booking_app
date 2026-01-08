@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.repository;
 
+import com.vanmo.booking_app_be.dto.response.AmenityResponse;
 import com.vanmo.booking_app_be.entity.Amenity;
 import com.vanmo.booking_app_be.entity.Hotel;
 import jakarta.validation.constraints.NotNull;
@@ -22,4 +23,6 @@ public interface AmenityRepository extends JpaRepository<Amenity, Long> {
     List<Amenity> getAllAmenityByRoom(@Param("roomId") Long roomId,@Param("hotelId") Long hotelId);
 
     Amenity findByHotelIdAndName(Long hotelId, @NotNull String name);
+
+    List<Amenity> findAllByHotel_Id(Long hotelId);
 }

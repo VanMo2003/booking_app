@@ -3,7 +3,8 @@ package com.vanmo.booking_app_be.controller;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.HotelCreateRequest;
 import com.vanmo.booking_app_be.dto.request.HotelUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.HotelResponse;
+import com.vanmo.booking_app_be.dto.response.HotelDetailResponse;
+import com.vanmo.booking_app_be.dto.response.ListHotelResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.HotelService;
 import jakarta.validation.Valid;
@@ -20,12 +21,12 @@ public class HotelController {
     private final HotelService hotelService;
 
     @PostMapping
-    public ApiResponse<HotelResponse> create(@Valid @RequestBody HotelCreateRequest req) {
+    public ApiResponse<ListHotelResponse> create(@Valid @RequestBody HotelCreateRequest req) {
         return ApiResponse.ok(hotelService.create(req));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<HotelResponse> update(
+    public ApiResponse<ListHotelResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody HotelUpdateRequest req
     ) {
@@ -33,12 +34,12 @@ public class HotelController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<HotelResponse> getById(@PathVariable Long id) {
+    public ApiResponse<HotelDetailResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(hotelService.getById(id));
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<HotelResponse>> getAll(
+    public ApiResponse<PageResponse<ListHotelResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
@@ -46,7 +47,7 @@ public class HotelController {
     }
 
     @GetMapping("/category")
-    public ApiResponse<List<HotelResponse>> getAllByCategory(
+    public ApiResponse<List<ListHotelResponse>> getAllByCategory(
             @RequestParam(name = "name") String name
     ) {
         return ApiResponse.ok(hotelService.getAllByCategory(name));

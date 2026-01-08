@@ -16,8 +16,9 @@ import java.time.LocalDate;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class EmployeeCreateRequest {
+    String username;
+    String password;
     String pathImage;
-    @NotNull String accountId;
     Long hotelId;
     String fullName;
     @Pattern(regexp = "0\\d{9}")

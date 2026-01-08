@@ -4,6 +4,7 @@ import com.vanmo.booking_app_be.dto.request.BookingRoomCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingRoomUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.BookingRoomResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.entity.Booking;
 import com.vanmo.booking_app_be.entity.BookingRoom;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.BookingRoomMapper;
@@ -23,8 +24,13 @@ public class BookingRoomServiceImpl implements BookingRoomService {
 
     @Override
     public BookingRoomResponse create(BookingRoomCreateRequest req) {
+        BookingRoom entity = createBookingRoom(req);
+        return bookingRoomMapper.toResponse(entity);
+    }
+
+    public BookingRoom createBookingRoom(BookingRoomCreateRequest req) {
         BookingRoom entity = bookingRoomMapper.toEntity(req);
-        return bookingRoomMapper.toResponse(bookingRoomRepository.save(entity));
+        return bookingRoomRepository.save(entity);
     }
 
     @Override

@@ -25,15 +25,19 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public AccountResponse create(AccountCreateRequest req) {
+        Account entity = createAccount(req);
+        AccountResponse accountResponse = accountMapper.toResponse(entity);
+        return accountResponse;
+    }
+
+    Account createAccount(AccountCreateRequest req) {
         boolean checkUsername = accountRepository.existsByUsername(req.getUsername());
         if (checkUsername) {
             throw new ResourceNotFoundException("Account existed with username: " + req.getUsername());
         }
         Account entity = accountMapper.toEntity(req);
         entity.setPassword(passwordEncoder.encode(req.getPassword()));
-        accountRepository.save(entity);
-        AccountResponse accountResponse = accountMapper.toResponse(entity);
-        return accountResponse;
+        return accountRepository.save(entity);
     }
 
     @Override

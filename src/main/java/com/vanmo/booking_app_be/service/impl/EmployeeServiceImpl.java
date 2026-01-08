@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import com.vanmo.booking_app_be.dto.request.AccountCreateRequest;
 import com.vanmo.booking_app_be.dto.request.EmployeeCreateRequest;
 import com.vanmo.booking_app_be.dto.request.EmployeeUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.EmployeeResponse;
@@ -8,13 +9,18 @@ import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Employee;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Position;
+import com.vanmo.booking_app_be.entity.enums.Role;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
+import com.vanmo.booking_app_be.mapper.AccountMapper;
 import com.vanmo.booking_app_be.mapper.EmployeeMapper;
+import com.vanmo.booking_app_be.mapper.PositionMapper;
 import com.vanmo.booking_app_be.repository.AccountRepository;
 import com.vanmo.booking_app_be.repository.EmployeeRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.PositionRepository;
+import com.vanmo.booking_app_be.service.AccountService;
 import com.vanmo.booking_app_be.service.EmployeeService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -30,9 +36,20 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final AccountRepository accountRepository;
     private final HotelRepository hotelRepository;
     private final PositionRepository positionRepository;
+    private final AccountService accountService;
+    private final AccountServiceImpl accountServiceImpl;
+
+    @Transactional
     @Override
     public EmployeeResponse create(EmployeeCreateRequest req) {
-        Account account = accountRepository.findById(req.getAccountId()).orElseThrow(() -> new ResourceNotFoundException("Account not found id"));
+        AccountCreateRequest accountCreateRequest = AccountCreateRequest.builder()
+                .username(req.getUsername())
+                .password(req.getPassword())
+                .role(Role.STAFF.name())
+                .build();
+
+        Account account = accountServiceImpl.createAccount(accountCreateRequest);
+
         Hotel hotel = hotelRepository.findById(req.getHotelId()).orElseThrow(() -> new ResourceNotFoundException("Hotel not found id"));
         Position position = positionRepository.findById(req.getPositionId()).orElseThrow(() -> new ResourceNotFoundException("Position not found id"));
 

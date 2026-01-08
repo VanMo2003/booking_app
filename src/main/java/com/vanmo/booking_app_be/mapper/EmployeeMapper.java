@@ -14,5 +14,7 @@ public interface EmployeeMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateEntity(@MappingTarget Employee entity, EmployeeUpdateRequest req);
 
+    @Mapping(source = "account.id", target = "accountId")
+    @Mapping(source = "position.name", target = "positionName")
     EmployeeResponse toResponse(Employee entity);
 }

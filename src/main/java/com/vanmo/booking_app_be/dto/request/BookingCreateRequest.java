@@ -9,6 +9,8 @@ import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
+import static com.vanmo.booking_app_be.entity.enums.BookingStatus.PENDING;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,12 +20,12 @@ import java.util.Set;
 public class BookingCreateRequest {
     @NotNull LocalDate checkinDate;
     @NotNull LocalDate checkoutDate;
-    String bookingStatus; // enum BookingStatus
-    String paymentMethod; // enum PaymentMethod
+    String bookingStatus = PENDING.name();
+    String paymentMethod;
     Long hotelId;
     Long customerId;
-    Set<Long> bookingRooms;
-    Set<Long> bookingServices;
+    Set<Long> rooms;
+    Set<Long> services;
     BigDecimal totalAmount;
     String note;
 }
