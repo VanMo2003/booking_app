@@ -10,6 +10,7 @@ import com.vanmo.booking_app_be.service.HotelService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -57,5 +58,13 @@ public class HotelController {
     public ApiResponse<Void> delete(@PathVariable Long id) {
         hotelService.delete(id);
         return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/{id}/images")
+    public ApiResponse<List<String>> uploadImages(
+            @PathVariable Long id,
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        return ApiResponse.ok(hotelService.uploadImages(id, files));
     }
 }

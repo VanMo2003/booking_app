@@ -25,5 +25,6 @@ public interface HotelMapper {
     @Mapping(target = "amenities", ignore = true)
     @Mapping(target = "services", ignore = true)
     @Mapping(target = "rooms", ignore = true)
+    @Mapping(target = "images", ignore = true)
     HotelDetailResponse toDetailResponse(Hotel hotel);
 }

@@ -4,6 +4,7 @@ import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -29,5 +30,14 @@ public class GlobalExceptionHandler {
         ex.printStackTrace();
         return ResponseEntity.internalServerError()
                 .body(ApiResponse.fail("Unexpected error: " + ex.getMessage(), 403));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxSizeException(MaxUploadSizeExceededException ex) {
+        ApiResponse<Void> res = ApiResponse.fail(
+                "File quá lớn. Vui lòng upload file nhỏ hơn.",
+                413
+        );
+        return ResponseEntity.status(413).body(res);
     }
 }

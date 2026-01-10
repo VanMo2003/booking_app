@@ -5,19 +5,19 @@ import com.vanmo.booking_app_be.dto.request.HotelUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Hotel;
+import com.vanmo.booking_app_be.entity.HotelImage;
 import com.vanmo.booking_app_be.entity.Room;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
-import com.vanmo.booking_app_be.mapper.AmenityMapper;
-import com.vanmo.booking_app_be.mapper.HotelMapper;
-import com.vanmo.booking_app_be.mapper.RoomMapper;
-import com.vanmo.booking_app_be.mapper.ServiceMapper;
+import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
 import com.vanmo.booking_app_be.service.AmenityService;
+import com.vanmo.booking_app_be.service.FileStorageService;
 import com.vanmo.booking_app_be.service.HotelService;
 import com.vanmo.booking_app_be.service.ServiceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -36,6 +36,8 @@ public class HotelServiceImpl implements HotelService {
     private final AmenityRepository amenityRepository;
     private final ServiceMapper serviceMapper;
     private final AmenityMapper amenityMapper;
+    private final FileStorageService fileStorageService;
+    private final HotelImageRepository hotelImageRepository;
 
     @Override
     public ListHotelResponse create(HotelCreateRequest req) {
@@ -57,11 +59,13 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public HotelDetailResponse getById(Long id) {
-
         List<RoomResponse> roomResponses = roomRepository.findAllByHotel_Id(id).stream().map(roomMapper::toResponse).toList();
         List<ServiceResponse> serviceResponses = serviceRepository.findAllByHotel_Id(id).stream().map(serviceMapper::toResponse).toList();
         List<AmenityResponse> amenityResponses = amenityRepository.findAllByHotel_Id(id).stream().map(amenityMapper::toResponse).toList();
-
+        List<String> hotelImages = hotelImageRepository.findAllByHotel_Id(id)
+                .stream()
+                .map(HotelImage::getPathImage)
+                .toList();
 
         Hotel hotel = hotelRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + id));
@@ -70,6 +74,7 @@ public class HotelServiceImpl implements HotelService {
         hotelDetailResponse.setRooms(roomResponses);
         hotelDetailResponse.setServices(serviceResponses);
         hotelDetailResponse.setAmenities(amenityResponses);
+        hotelDetailResponse.setImages(hotelImages);
 
         return hotelDetailResponse;
     }
@@ -85,6 +90,25 @@ public class HotelServiceImpl implements HotelService {
     public List<ListHotelResponse> getAllByCategory(String name) {
         List<Hotel> hotels = hotelRepository.findAllByCategory(name);
         return hotels.stream().map(this::toResponseFull).toList();
+    }
+
+    @Override
+    public List<String> uploadImages(Long hotelId, List<MultipartFile> files) {
+        Hotel hotel = hotelRepository.findById(hotelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + hotelId));
+
+        List<String> urls = files.stream().map(fileStorageService::uploadHotelImage).toList();
+
+        List<HotelImage> images = urls.stream().map(url ->
+                HotelImage.builder()
+                        .pathImage(url)
+                        .hotel(hotel)
+                        .build()
+        ).toList();
+
+        hotelImageRepository.saveAll(images);
+
+        return urls;
     }
 
     @Override

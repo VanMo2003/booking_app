@@ -4,6 +4,7 @@ import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.RoomCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.RoomDetailResponse;
 import com.vanmo.booking_app_be.dto.response.RoomResponse;
 import com.vanmo.booking_app_be.service.RoomService;
 import jakarta.validation.Valid;
@@ -31,7 +32,7 @@ public class RoomController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<RoomResponse> getById(@PathVariable Long id) {
+    public ApiResponse<RoomDetailResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(roomService.getById(id));
     }
 

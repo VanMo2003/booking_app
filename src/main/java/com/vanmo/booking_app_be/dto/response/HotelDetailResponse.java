@@ -24,6 +24,7 @@ public class HotelDetailResponse {
     String pathImage;
     boolean active;
     String accountId;
+    List<String> images = new ArrayList<>();
     List<RoomResponse> rooms = new ArrayList<>();
     List<AmenityResponse> amenities = new ArrayList<>();
     List<ServiceResponse> services = new ArrayList<>();

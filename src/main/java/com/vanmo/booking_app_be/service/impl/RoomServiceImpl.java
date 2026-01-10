@@ -2,18 +2,15 @@ package com.vanmo.booking_app_be.service.impl;
 
 import com.vanmo.booking_app_be.dto.request.RoomCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomUpdateRequest;
+import com.vanmo.booking_app_be.dto.response.AmenityResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.RoomDetailResponse;
 import com.vanmo.booking_app_be.dto.response.RoomResponse;
-import com.vanmo.booking_app_be.entity.Hotel;
-import com.vanmo.booking_app_be.entity.Room;
-import com.vanmo.booking_app_be.entity.RoomAmenity;
-import com.vanmo.booking_app_be.entity.RoomType;
+import com.vanmo.booking_app_be.entity.*;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
+import com.vanmo.booking_app_be.mapper.AmenityMapper;
 import com.vanmo.booking_app_be.mapper.RoomMapper;
-import com.vanmo.booking_app_be.repository.HotelRepository;
-import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
-import com.vanmo.booking_app_be.repository.RoomRepository;
-import com.vanmo.booking_app_be.repository.RoomTypeRepository;
+import com.vanmo.booking_app_be.repository.*;
 import com.vanmo.booking_app_be.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -28,8 +25,10 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final HotelRepository hotelRepository;
     private final RoomTypeRepository roomTypeRepository;
-    private final RoomAmenityRepository roomAmenityRepository;
     private final RoomMapper roomMapper;
+    private final AmenityRepository amenityRepository;
+    private final RoomAmenityRepository roomAmenityRepository;
+    private final AmenityMapper amenityMapper;
 
     @Override
     public RoomResponse create(RoomCreateRequest req) {
@@ -66,10 +65,16 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public RoomResponse getById(Long id) {
+    public RoomDetailResponse getById(Long id) {
+        List<AmenityResponse> amenityResponses = roomAmenityRepository.findAllByRoomId(id).stream().map(roomAmenity -> amenityMapper.toResponse(roomAmenity.getAmenity())).toList();
+
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found id=" + id));
-        return roomMapper.toResponse(room);
+
+        RoomDetailResponse roomDetailResponse = roomMapper.toDetailResponse(room);
+        roomDetailResponse.setAmenities(amenityResponses);
+
+        return roomDetailResponse;
     }
 
     @Override
