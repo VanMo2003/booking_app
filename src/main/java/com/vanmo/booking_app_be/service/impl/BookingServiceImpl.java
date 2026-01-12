@@ -4,8 +4,7 @@ import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingRoomCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingServiceCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.BookingResponse;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.*;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.*;
@@ -37,6 +36,9 @@ public class BookingServiceImpl implements BookingService {
     private final CustomerMapper customerMapper;
     private final RoomMapper roomMapper;
     private final ServiceMapper serviceMapper;
+    private final BookingRoomRepository bookingRoomRepository;
+    private final BookingRoomMapper bookingRoomMapper;
+    private final BookingServiceMapper bookingServiceMapper;
 
     @Override
     @Transactional
@@ -47,12 +49,20 @@ public class BookingServiceImpl implements BookingService {
         booking.setHotel(hotel);
         booking.setCustomer(customer);
         bookingRepository.save(booking);
+        BookingResponse bookingResponse = bookingMapper.toResponse(booking);
+        List<BookingRoomResponse> bookingRoomResponses = new ArrayList<>();
+        List<BookingServiceResponse> bookingServiceResponses = new ArrayList<>();
 
         for (Long room : req.getRooms()){
             BookingRoomCreateRequest roomCreateRequest = new BookingRoomCreateRequest();
             roomCreateRequest.setBooking(booking);
             roomCreateRequest.setRoom(roomRepository.findById(room).orElse(null));
-            bookingRoomServiceImpl.createBookingRoom(roomCreateRequest);
+            BookingRoom bookingRoom = bookingRoomServiceImpl.createBookingRoom(roomCreateRequest);
+
+            BookingRoomResponse bookingRoomResponse = bookingRoomMapper.toResponse(bookingRoom);
+            RoomInfoResponse roomInfoResponse = roomMapper.toInfoResponse(bookingRoom.getRoom());
+            bookingRoomResponse.setRoomInfo(roomInfoResponse);
+            bookingRoomResponses.add(bookingRoomResponse);
         }
 
         for (Long service : req.getServices()){
@@ -61,18 +71,16 @@ public class BookingServiceImpl implements BookingService {
             serviceCreateRequest.setService(serviceRepository.findById(service).orElse(null));
             serviceCreateRequest.setQuantity(1L);
             serviceCreateRequest.setTotal(BigDecimal.valueOf(0));
-            bookingServiceServiceImpl.createBookingService(serviceCreateRequest);
+            com.vanmo.booking_app_be.entity.BookingService bookingService = bookingServiceServiceImpl.createBookingService(serviceCreateRequest);
+
+            BookingServiceResponse bookingServiceResponse = bookingServiceMapper.toResponse(bookingService);
+            ServiceInfoResponse serviceInfoResponse = serviceMapper.toInfoResponse(bookingService.getService());
+            bookingServiceResponse.setServiceInfo(serviceInfoResponse);
+            bookingServiceResponses.add(bookingServiceResponse);
         }
 
-
-        List<Room> rooms = roomRepository.findAllById(req.getRooms());
-        List<Service> services = serviceRepository.findAllById(req.getServices());
-
-        BookingResponse bookingResponse = bookingMapper.toResponse(booking);
-        bookingResponse.setHotel(hotelMapper.toResponse(hotel));
-        bookingResponse.setCustomer(customerMapper.toResponse(customer));
-        bookingResponse.setRooms(rooms.stream().map(roomMapper::toResponse).toList());
-        bookingResponse.setServices(services.stream().map(serviceMapper::toResponse).toList());
+        bookingResponse.setRooms(bookingRoomResponses);
+        bookingResponse.setServices(bookingServiceResponses);
 
         return bookingResponse;
     }
@@ -93,10 +101,33 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public PageResponse<BookingResponse> getAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<BookingResponse> data = bookingRepository.findAll(pageable).map(bookingMapper::toResponse);
-        return PageResponse.from(data);
+    public List<ListBookingResponse> getAll(Long hotelId) {
+        List<ListBookingResponse> bookingResponses = bookingRepository.findAllByHotel_Id(hotelId).stream().map(booking -> {
+            ListBookingResponse bookingResponse = bookingMapper.toListResponse(booking);
+            List<BookingRoomResponse> bookingRoomResponses = booking.getBookingRooms().stream().map(bookingRoom -> {
+                BookingRoomResponse bookingRoomResponse = bookingRoomMapper.toResponse(bookingRoom);
+                RoomInfoResponse roomInfoResponse = roomMapper.toInfoResponse(bookingRoom.getRoom());
+
+                bookingRoomResponse.setRoomInfo(roomInfoResponse);
+
+                return bookingRoomResponse;
+            }).toList();
+
+            List<BookingServiceResponse> bookingServiceResponses = booking.getBookingServices().stream().map(bookingService -> {
+                BookingServiceResponse bookingServiceResponse = bookingServiceMapper.toResponse(bookingService);
+
+                ServiceInfoResponse serviceInfoResponse = serviceMapper.toInfoResponse(bookingService.getService());
+                bookingServiceResponse.setServiceInfo(serviceInfoResponse);
+
+                return  bookingServiceResponse;
+            }).toList();
+
+            bookingResponse.setRooms(bookingRoomResponses);
+            bookingResponse.setServices(bookingServiceResponses);
+
+            return bookingResponse;
+        }).toList();
+        return bookingResponses;
     }
 
     @Override

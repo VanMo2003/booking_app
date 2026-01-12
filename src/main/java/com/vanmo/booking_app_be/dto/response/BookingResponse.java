@@ -22,13 +22,12 @@ public class BookingResponse {
     String checkoutDate;
     String bookingStatus;
     String paymentMethod;
-    ListHotelResponse hotel;
-    CustomerResponse customer;
-    List<RoomResponse> rooms;
-    List<ServiceResponse> services;
+    HotelInfoResponse hotel;
+    CustomerInfoResponse customer;
+    List<BookingRoomResponse> rooms;
+    List<BookingServiceResponse> services;
     BigDecimal totalAmount;
     String note;
     Date onCreate;
     Date onUpdate;
-
 }

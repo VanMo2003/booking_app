@@ -3,12 +3,15 @@ package com.vanmo.booking_app_be.controller;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
+import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
 import com.vanmo.booking_app_be.service.BookingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/bookings")
@@ -34,10 +37,10 @@ public class BookingController {
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<BookingResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(bookingService.getAll(page, size));
+    public ApiResponse<List<ListBookingResponse>> getAllByHotelOrUser(
+            @RequestParam(defaultValue = "0") Long hotelId,
+            @RequestParam(defaultValue = "0") Long userId) {
+        return ApiResponse.ok(bookingService.getAll(hotelId));
     }
 
     @DeleteMapping("/{id}")

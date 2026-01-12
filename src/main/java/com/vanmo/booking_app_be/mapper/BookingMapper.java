@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.mapper;
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
+import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
 import com.vanmo.booking_app_be.entity.Booking;
 import org.mapstruct.*;
 
@@ -21,4 +22,6 @@ public interface BookingMapper {
     void updateEntity(@MappingTarget Booking entity, BookingUpdateRequest req);
 
     BookingResponse toResponse(Booking entity);
+
+    ListBookingResponse toListResponse(Booking entity);
 }

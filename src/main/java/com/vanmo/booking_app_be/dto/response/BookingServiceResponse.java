@@ -15,8 +15,6 @@ import java.util.Date;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class BookingServiceResponse {
     Long id;
-    ServiceResponse service;
-    Date onCreate;
-    Date onUpdate;
+    ServiceInfoResponse serviceInfo;
 
 }

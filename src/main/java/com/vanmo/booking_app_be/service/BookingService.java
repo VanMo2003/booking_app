@@ -3,12 +3,15 @@ package com.vanmo.booking_app_be.service;
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
+import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+
+import java.util.List;
 
 public interface BookingService {
     BookingResponse create(BookingCreateRequest req);
     BookingResponse update(Long id, BookingUpdateRequest req);
     BookingResponse getById(Long id);
-    PageResponse<BookingResponse> getAll(int page, int size);
+    List<ListBookingResponse> getAll(Long hotelId);
     void delete(Long id);
 }
