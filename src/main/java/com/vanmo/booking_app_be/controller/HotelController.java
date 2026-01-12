@@ -63,7 +63,7 @@ public class HotelController {
     @PostMapping("/{id}/images")
     public ApiResponse<List<String>> uploadImages(
             @PathVariable Long id,
-            @RequestParam("files") List<MultipartFile> files
+            @RequestPart("files") List<MultipartFile> files
     ) {
         return ApiResponse.ok(hotelService.uploadImages(id, files));
     }

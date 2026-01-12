@@ -9,7 +9,11 @@ import com.vanmo.booking_app_be.dto.response.RoomResponse;
 import com.vanmo.booking_app_be.service.RoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/rooms")
@@ -49,5 +53,13 @@ public class RoomController {
     public ApiResponse<Void> delete(@PathVariable Long id) {
         roomService.delete(id);
         return ApiResponse.ok(null);
+    }
+
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<List<String>> uploadImages(
+            @PathVariable Long id,
+            @RequestPart("files") List<MultipartFile> files
+    ) {
+        return ApiResponse.ok(roomService.uploadImages(id, files));
     }
 }

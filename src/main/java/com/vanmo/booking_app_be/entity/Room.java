@@ -25,6 +25,8 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
+    String pathImage;
+
     @Column(length = 20, columnDefinition = "TEXT")
     @NotNull
     String roomNumber;
