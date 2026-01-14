@@ -4,7 +4,6 @@ import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
 import com.vanmo.booking_app_be.service.BookingService;
 import jakarta.validation.Valid;
@@ -39,8 +38,13 @@ public class BookingController {
     @GetMapping
     public ApiResponse<List<ListBookingResponse>> getAllByHotelOrUser(
             @RequestParam(defaultValue = "0") Long hotelId,
-            @RequestParam(defaultValue = "0") Long userId) {
-        return ApiResponse.ok(bookingService.getAll(hotelId));
+            @RequestParam(defaultValue = "0") Long customerId,
+            @RequestParam(defaultValue = "") String bookingStatus) {
+        if (hotelId != 0) {
+            return ApiResponse.ok(bookingService.getAllByHotel(hotelId, bookingStatus));
+        }else{
+            return ApiResponse.ok(bookingService.getAllByCustomer(customerId, bookingStatus));
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -48,4 +52,20 @@ public class BookingController {
         bookingService.delete(id);
         return ApiResponse.ok(null);
     }
+
+    @PutMapping("/{id}/confirm")
+    public ApiResponse<BookingResponse> confirmBooking(@PathVariable Long id) {
+        return ApiResponse.ok(bookingService.confirmBooking(id));
+    }
+
+    @PutMapping("/{id}/cancel")
+    public ApiResponse<BookingResponse> cancelBooking(@PathVariable Long id) {
+        return ApiResponse.ok(bookingService.cancelBooking(id));
+    }
+
+    @PutMapping("/{id}/complete")
+    public ApiResponse<BookingResponse> completeBooking(@PathVariable Long id) {
+        return ApiResponse.ok(bookingService.completeBooking(id));
+    }
+
 }
