@@ -24,8 +24,8 @@ public class BookingResponse {
     String paymentMethod;
     HotelInfoResponse hotel;
     CustomerInfoResponse customer;
-    List<BookingRoomResponse> rooms;
-    List<BookingServiceResponse> services;
+    List<BookingRoomResponse> bookingRooms;
+    List<BookingServiceResponse> bookingServices;
     BigDecimal totalAmount;
     String note;
     Date onCreate;

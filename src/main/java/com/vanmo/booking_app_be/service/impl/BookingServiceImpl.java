@@ -33,11 +33,8 @@ public class BookingServiceImpl implements BookingService {
     private final CustomerRepository customerRepository;
     private final RoomRepository roomRepository;
     private final ServiceRepository serviceRepository;
-    private final HotelMapper hotelMapper;
-    private final CustomerMapper customerMapper;
     private final RoomMapper roomMapper;
     private final ServiceMapper serviceMapper;
-    private final BookingRoomRepository bookingRoomRepository;
     private final BookingRoomMapper bookingRoomMapper;
     private final BookingServiceMapper bookingServiceMapper;
 
@@ -80,8 +77,8 @@ public class BookingServiceImpl implements BookingService {
             bookingServiceResponses.add(bookingServiceResponse);
         }
 
-        bookingResponse.setRooms(bookingRoomResponses);
-        bookingResponse.setServices(bookingServiceResponses);
+        bookingResponse.setBookingRooms(bookingRoomResponses);
+        bookingResponse.setBookingServices(bookingServiceResponses);
 
         return bookingResponse;
     }
@@ -96,9 +93,10 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse getById(Long id) {
-        Booking entity = bookingRepository.findById(id)
+        Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + id));
-        return bookingMapper.toResponse(entity);
+
+        return convertToBookingResponse(booking);
     }
 
     @Override
@@ -120,8 +118,8 @@ public class BookingServiceImpl implements BookingService {
 
         List<BookingServiceResponse> bookingServiceResponses = booking.getBookingServices().stream().map(this::convertToBookingServiceResponse).toList();
 
-        listBookingResponse.setRooms(bookingRoomResponses);
-        listBookingResponse.setServices(bookingServiceResponses);
+        listBookingResponse.setBookingRooms(bookingRoomResponses);
+        listBookingResponse.setBookingServices(bookingServiceResponses);
 
         return listBookingResponse;
     }
@@ -185,8 +183,8 @@ public class BookingServiceImpl implements BookingService {
 
         List<BookingServiceResponse> bookingServiceResponses = booking.getBookingServices().stream().map(this::convertToBookingServiceResponse).toList();
 
-        bookingResponse.setRooms(bookingRoomResponses);
-        bookingResponse.setServices(bookingServiceResponses);
+        bookingResponse.setBookingRooms(bookingRoomResponses);
+        bookingResponse.setBookingServices(bookingServiceResponses);
 
         return bookingResponse;
     }
