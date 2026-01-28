@@ -8,6 +8,7 @@ import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.HotelImage;
 import com.vanmo.booking_app_be.entity.Room;
 import com.vanmo.booking_app_be.entity.enums.HotelStatus;
+import com.vanmo.booking_app_be.entity.enums.RoomStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
@@ -61,17 +62,44 @@ public class HotelServiceImpl implements HotelService {
     }
 
     @Override
-    public HotelDetailResponse getById(Long id) {
-        List<RoomResponse> roomResponses = roomRepository.findAllByHotel_Id(id).stream().map(roomMapper::toResponse).toList();
-        List<ServiceResponse> serviceResponses = serviceRepository.findAllByHotel_Id(id).stream().map(serviceMapper::toResponse).toList();
-        List<AmenityResponse> amenityResponses = amenityRepository.findAllByHotel_Id(id).stream().map(amenityMapper::toResponse).toList();
-        List<String> hotelImages = hotelImageRepository.findAllByHotel_Id(id)
-                .stream()
-                .map(HotelImage::getPathImage)
-                .toList();
+    public HotelDetailResponse getById(Long id, LocalDate checkinDate, LocalDate checkoutDate) {
 
         Hotel hotel = hotelRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + id));
+
+
+        List<ServiceResponse> serviceResponses = serviceRepository.findAllByHotel_Id(id)
+                .stream().map(serviceMapper::toResponse).toList();
+
+        List<AmenityResponse> amenityResponses = amenityRepository.findAllByHotel_Id(id)
+                .stream().map(amenityMapper::toResponse).toList();
+
+        List<String> hotelImages = hotelImageRepository.findAllByHotel_Id(id)
+                .stream().map(HotelImage::getPathImage).toList();
+
+
+        List<Room> rooms = roomRepository.findAllByHotel_Id(id);
+
+        List<Long> bookedRoomIds = List.of();
+        boolean hasDateFilter = (checkinDate != null && checkoutDate != null);
+
+        if (hasDateFilter) {
+            bookedRoomIds = bookingRoomRepository.findBookedRoomIds(checkinDate, checkoutDate);
+        } else if (checkinDate != null || checkoutDate != null) {
+            throw new IllegalArgumentException("checkinDate và checkoutDate phải đi cùng nhau");
+        }
+
+        List<Long> finalBookedRoomIds = bookedRoomIds;
+
+        List<RoomResponse> roomResponses = rooms.stream().map(room -> {
+            RoomResponse resp = roomMapper.toResponse(room);
+
+            if (hasDateFilter) {
+                resp.setStatus(calcRoomStatus(room, finalBookedRoomIds));
+            }
+
+            return resp;
+        }).toList();
 
         HotelDetailResponse hotelDetailResponse = hotelMapper.toDetailResponse(hotel);
         hotelDetailResponse.setRooms(roomResponses);
@@ -80,6 +108,17 @@ public class HotelServiceImpl implements HotelService {
         hotelDetailResponse.setImages(hotelImages);
 
         return hotelDetailResponse;
+    }
+
+    private RoomStatus calcRoomStatus(Room room, List<Long> bookedRoomIds) {
+        RoomStatus current = room.getStatus();
+
+        if (current == RoomStatus.MAINTENANCE) return RoomStatus.MAINTENANCE;
+        if (current == RoomStatus.OCCUPIED) return RoomStatus.OCCUPIED;
+
+        if (bookedRoomIds.contains(room.getId())) return RoomStatus.BOOKED;
+
+        return RoomStatus.AVAILABLE;
     }
 
     @Override

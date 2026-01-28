@@ -13,7 +13,10 @@ import java.util.List;
 public interface HotelService {
     ListHotelResponse create(HotelCreateRequest req);
     ListHotelResponse update(Long id, HotelUpdateRequest req);
-    HotelDetailResponse getById(Long id);
+    HotelDetailResponse getById(Long id, LocalDate checkinDate,LocalDate checkoutDate);
+    default HotelDetailResponse getById(Long id) {
+        return getById(id, null, null);
+    }
     PageResponse<ListHotelResponse> getAll(int page, int size);
     List<ListHotelResponse> getAllByCategory(String name);
     List<String> uploadImages(Long hotelId, List<MultipartFile> files);

@@ -36,9 +36,13 @@ public class HotelController {
         return ApiResponse.ok(hotelService.update(id, req));
     }
 
-    @GetMapping("/{id}")
-    public ApiResponse<HotelDetailResponse> getById(@PathVariable Long id) {
-        return ApiResponse.ok(hotelService.getById(id));
+    @GetMapping("/detail/{id}")
+    public ApiResponse<HotelDetailResponse> getHotelDetail(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkinDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkoutDate
+    ) {
+        return ApiResponse.ok(hotelService.getById(id, checkinDate, checkoutDate));
     }
 
     @GetMapping
