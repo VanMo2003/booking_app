@@ -9,10 +9,12 @@ import com.vanmo.booking_app_be.dto.response.RoomResponse;
 import com.vanmo.booking_app_be.service.RoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -62,4 +64,14 @@ public class RoomController {
     ) {
         return ApiResponse.ok(roomService.uploadImages(id, files));
     }
+
+    @GetMapping("/available")
+    public ApiResponse<List<RoomResponse>> getRoomsByDate(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkinDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkoutDate
+    ) {
+        return ApiResponse.ok(roomService.getRoomsByDate(hotelId, checkinDate, checkoutDate));
+    }
+
 }

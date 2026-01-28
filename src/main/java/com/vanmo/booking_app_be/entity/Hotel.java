@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.entity;
 
+import com.vanmo.booking_app_be.entity.enums.HotelStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -59,6 +60,8 @@ public class Hotel {
     @OneToMany(mappedBy = "hotel",cascade = CascadeType.ALL)
     Set<Amenity> amenities;
     boolean active;
+
+    HotelStatus status;
     
     @CreationTimestamp
     @Column(updatable = false)

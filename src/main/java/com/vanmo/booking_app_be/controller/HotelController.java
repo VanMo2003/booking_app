@@ -9,9 +9,11 @@ import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.HotelService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -67,4 +69,15 @@ public class HotelController {
     ) {
         return ApiResponse.ok(hotelService.uploadImages(id, files));
     }
+
+    @GetMapping("/search")
+    public ApiResponse<List<ListHotelResponse>> searchHotel(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkinDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkoutDate
+    ) {
+        return ApiResponse.ok(
+                hotelService.searchByDate(checkinDate, checkoutDate)
+        );
+    }
+
 }

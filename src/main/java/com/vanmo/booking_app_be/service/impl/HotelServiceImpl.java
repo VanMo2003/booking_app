@@ -7,6 +7,7 @@ import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.HotelImage;
 import com.vanmo.booking_app_be.entity.Room;
+import com.vanmo.booking_app_be.entity.enums.HotelStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -38,6 +40,7 @@ public class HotelServiceImpl implements HotelService {
     private final AmenityMapper amenityMapper;
     private final FileStorageService fileStorageService;
     private final HotelImageRepository hotelImageRepository;
+    private final BookingRoomRepository bookingRoomRepository;
 
     @Override
     public ListHotelResponse create(HotelCreateRequest req) {
@@ -118,8 +121,46 @@ public class HotelServiceImpl implements HotelService {
         hotelRepository.delete(hotel);
     }
 
+    @Override
+    public List<ListHotelResponse> searchByDate(LocalDate checkinDate, LocalDate checkoutDate) {
+        List<Hotel> hotels = hotelRepository.findAll();
+        List<Long> bookedRoomIds =
+                bookingRoomRepository.findBookedRoomIds(checkinDate, checkoutDate);
+
+        return hotels.stream().map(hotel -> {
+
+            List<Room> rooms = roomRepository.findAllByHotel_Id(hotel.getId());
+
+            boolean hasAvailableRoom = rooms.stream()
+                    .anyMatch(room -> !bookedRoomIds.contains(room.getId()));
+
+            return toResponseFullHasStatus(hotel, hasAvailableRoom);
+        }).toList();
+
+    }
+
     private ListHotelResponse toResponseFull(Hotel hotel) {
         ListHotelResponse listHotelResponse = hotelMapper.toResponse(hotel);
+        List<AmenityResponse> amenityResponses = amenityService.getAllByHotel(hotel.getId());
+        listHotelResponse.setAmenities(amenityResponses);
+
+        List<ServiceResponse> serviceResponses = serviceService.getAllByHotel(hotel.getId());
+        listHotelResponse.setServices(serviceResponses);
+
+        return listHotelResponse;
+    }
+
+    private ListHotelResponse toResponseFullHasStatus(Hotel hotel, boolean hasAvailableRoom) {
+        ListHotelResponse listHotelResponse = hotelMapper.toResponse(hotel);
+
+        if (!hotel.isActive()) {
+            listHotelResponse.setStatus(HotelStatus.INACTIVE);
+        } else if (!hasAvailableRoom) {
+            listHotelResponse.setStatus(HotelStatus.FULL);
+        } else {
+            listHotelResponse.setStatus(HotelStatus.AVAILABLE);
+        }
+
         List<AmenityResponse> amenityResponses = amenityService.getAllByHotel(hotel.getId());
         listHotelResponse.setAmenities(amenityResponses);
 

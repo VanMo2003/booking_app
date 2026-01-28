@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import com.vanmo.booking_app_be.entity.enums.HotelStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -26,6 +27,7 @@ public class ListHotelResponse {
     int rating;
     String pathImage;
     boolean active;
+    HotelStatus status;
     String accountId;
     List<AmenityResponse> amenities = new ArrayList<>();
     List<ServiceResponse> services = new ArrayList<>();

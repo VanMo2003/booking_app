@@ -7,6 +7,7 @@ import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.RoomDetailResponse;
 import com.vanmo.booking_app_be.dto.response.RoomResponse;
 import com.vanmo.booking_app_be.entity.*;
+import com.vanmo.booking_app_be.entity.enums.RoomStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.AmenityMapper;
 import com.vanmo.booking_app_be.mapper.RoomMapper;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,6 +35,7 @@ public class RoomServiceImpl implements RoomService {
     private final AmenityMapper amenityMapper;
     private final FileStorageService fileStorageService;
     private final RoomImageRepository roomImageRepository;
+    private final BookingRoomRepository bookingRoomRepository;
 
     @Override
     public RoomResponse create(RoomCreateRequest req) {
@@ -116,5 +119,30 @@ public class RoomServiceImpl implements RoomService {
 //        List<RoomAmenity> roomAmenities = roomAmenityRepository.findAllByRoom(room);
 //        roomAmenityRepository.deleteAll(roomAmenities);
         roomRepository.delete(room);
+    }
+
+    @Override
+    public List<RoomResponse> getRoomsByDate(Long hotelId, LocalDate checkinDate, LocalDate checkoutDate) {
+        List<Room> rooms = roomRepository.findAllByHotel_Id(hotelId);
+
+        List<Long> bookedRoomIds =
+                bookingRoomRepository.findBookedRoomIds(checkinDate, checkoutDate);
+
+        return rooms.stream().map(room -> {
+            RoomStatus status = room.getStatus();
+
+            if (status == RoomStatus.MAINTENANCE) {
+                room.setStatus(RoomStatus.MAINTENANCE);
+            }
+
+            else if (bookedRoomIds.contains(room.getId())) {
+                room.setStatus(RoomStatus.BOOKED);
+            }
+            else {
+                room.setStatus(RoomStatus.AVAILABLE);
+            }
+
+            return roomMapper.toResponse(room);
+        }).toList();
     }
 }

@@ -37,10 +37,31 @@ public class BookingServiceImpl implements BookingService {
     private final ServiceMapper serviceMapper;
     private final BookingRoomMapper bookingRoomMapper;
     private final BookingServiceMapper bookingServiceMapper;
+    private final BookingRoomRepository bookingRoomRepository;
 
     @Override
     @Transactional
     public BookingResponse create(BookingCreateRequest req) {
+
+        if (req.getCheckinDate().isAfter(req.getCheckoutDate())
+                || req.getCheckinDate().isEqual(req.getCheckoutDate())) {
+            throw new IllegalArgumentException("Checkout date must be after checkin date");
+        }
+
+        for (Long roomId : req.getRooms()) {
+            boolean isBooked = bookingRoomRepository.existsRoomBooked(
+                    roomId,
+                    req.getCheckinDate(),
+                    req.getCheckoutDate()
+            );
+
+            if (isBooked) {
+                throw new IllegalStateException(
+                        "Room " + roomId + " is already booked in selected date range"
+                );
+            }
+        }
+
         Hotel hotel = hotelRepository.findById(req.getHotelId()).orElse(null);
         Customer customer = customerRepository.findById(req.getCustomerId()).orElse(null);
         Booking booking = bookingMapper.toEntity(req);
