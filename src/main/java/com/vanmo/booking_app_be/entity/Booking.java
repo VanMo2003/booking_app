@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.entity;
 
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -39,6 +40,10 @@ public class Booking {
     @NotNull
     @Enumerated(EnumType.STRING)
     PaymentMethod paymentMethod;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    PaymentStatus paymentStatus;
 
     @ManyToOne
     @JoinColumn(name = "hotel_id", nullable = false)

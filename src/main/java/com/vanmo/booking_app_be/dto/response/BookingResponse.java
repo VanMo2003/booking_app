@@ -22,6 +22,7 @@ public class BookingResponse {
     String checkoutDate;
     String bookingStatus;
     String paymentMethod;
+    String paymentStatus;
     HotelInfoResponse hotel;
     CustomerInfoResponse customer;
     List<BookingRoomResponse> bookingRooms;
