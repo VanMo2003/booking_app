@@ -50,53 +50,53 @@ public class ReportController {
     }
 
     @GetMapping("/daily")
-    public List<RevenueByDateDTO> revenueByDate(
+    public ApiResponse<List<RevenueByDateDTO>> revenueByDate(
             @RequestParam Long hotelId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        return reportService.getRevenueByDate(hotelId, from, to);
+        return ApiResponse.ok(reportService.getRevenueByDate(hotelId, from, to));
     }
 
     @GetMapping("/monthly")
-    public List<RevenueByMonthDTO> revenueByMonth(
+    public ApiResponse<List<RevenueByMonthDTO>> revenueByMonth(
             @RequestParam Long hotelId,
             @RequestParam Integer year
     ) {
-        return reportService.getRevenueByMonth(hotelId, year);
+        return ApiResponse.ok(reportService.getRevenueByMonth(hotelId, year));
     }
 
     @GetMapping("/yearly")
-    public List<RevenueByYearDTO> revenueByYear(
+    public ApiResponse<List<RevenueByYearDTO>> revenueByYear(
             @RequestParam Long hotelId
     ) {
-        return reportService.getRevenueByYear(hotelId);
+        return ApiResponse.ok(reportService.getRevenueByYear(hotelId));
     }
 
     @GetMapping("/monthly/last-5-months")
-    public List<RevenueByMonthDTO> revenueLast5Months(
+    public ApiResponse<List<RevenueByMonthDTO>> revenueLast5Months(
             @RequestParam Long hotelId
     ) {
-        return reportService.getRevenueLast5Months(hotelId);
+        return ApiResponse.ok(reportService.getRevenueLast5Months(hotelId));
     }
 
     // API 1: doanh thu theo tuần (range)
     @GetMapping("/weekly")
-    public List<RevenueByWeekDTO> revenueByWeek(
+    public ApiResponse<List<RevenueByWeekDTO>> revenueByWeek(
             @RequestParam Long hotelId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        return reportService.getRevenueByWeek(hotelId, from, to);
+        return ApiResponse.ok(reportService.getRevenueByWeek(hotelId, from, to));
     }
 
     // API 2: doanh thu từng tuần trong tháng
     @GetMapping("/weekly-in-month")
-    public List<RevenueByWeekDTO> revenueByWeekInMonth(
+    public ApiResponse<List<RevenueByWeekDTO>> revenueByWeekInMonth(
             @RequestParam Long hotelId,
             @RequestParam Integer year,
             @RequestParam Integer month
     ) {
-        return reportService.getRevenueByWeekInMonth(hotelId, year, month);
+        return ApiResponse.ok(reportService.getRevenueByWeekInMonth(hotelId, year, month));
     }
 }
