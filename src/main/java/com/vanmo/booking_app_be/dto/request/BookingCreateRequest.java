@@ -22,7 +22,7 @@ public class BookingCreateRequest {
     @NotNull LocalDate checkoutDate;
     String bookingStatus = PENDING.name();
     String paymentMethod;
-    String paymentStatus;
+//    String paymentStatus;
     Long hotelId;
     Long customerId;
     Set<Long> rooms;
