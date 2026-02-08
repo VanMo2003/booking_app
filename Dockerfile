@@ -19,6 +19,9 @@ WORKDIR /app
 # Tạo thư mục uploads (để tránh lỗi nếu code tự động lưu file)
 RUN mkdir -p uploads
 
+# Copy toàn bộ ảnh từ máy local vào thư mục uploads trong container
+COPY uploads ./uploads
+
 # Copy file .jar từ giai đoạn build
 COPY --from=build /app/target/*.jar app.jar
 
