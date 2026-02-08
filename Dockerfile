@@ -16,6 +16,10 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# Cài đặt múi giờ Việt Nam
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Ho_Chi_Minh
+
 # Tạo thư mục uploads (để tránh lỗi nếu code tự động lưu file)
 RUN mkdir -p uploads
 
