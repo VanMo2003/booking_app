@@ -1,10 +1,26 @@
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# --- Giai đoạn 1: Build bằng Maven & JDK 21 ---
+# Quan trọng: Phải dùng image có tag '21' để hỗ trợ Java 21
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY . .
+
+# Copy pom.xml trước để cache dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline
+
+# Copy source code và build
+COPY src ./src
 RUN mvn clean package -DskipTests
 
-FROM eclipse-temurin:17-jre
+# --- Giai đoạn 2: Chạy ứng dụng bằng JRE 21 ---
+# Quan trọng: Môi trường chạy cũng phải là Java 21
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+
+# Tạo thư mục uploads (để tránh lỗi nếu code tự động lưu file)
+RUN mkdir -p uploads
+
+# Copy file .jar từ giai đoạn build
 COPY --from=build /app/target/*.jar app.jar
+
 EXPOSE 8080
-CMD ["java","-jar","app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

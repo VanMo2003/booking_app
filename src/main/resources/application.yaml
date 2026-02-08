@@ -1,0 +1,38 @@
+server:
+  address: 0.0.0.0
+  port: ${PORT:8080}
+  servlet:
+    context-path: /booking-app/api/v1
+
+spring:
+  application:
+    name: booking_app
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/booking_app_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:03092003}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 100MB
+      enabled: true
+
+jwt:
+  signer-key: "6lhXE9HRxzm7EyIVWdl0XPx9eoGdgXm8VNfpaBQ1dUDpZF6NcF8z4fDAO15JFAdF"
+  valid-duration: 36000 # 10 tiếng
+  refreshable-duration: 604800 # 7 ngày
+
+file:
+  upload-dir: uploads/
+
+vnpay:
+  tmnCode : "KUHZ6TQJ"
+  secretKey : "K20SB7Q7577Q70YWF5I512BL3IX95TP4"
+  url : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+  returnUrl : "${VNPAY_RETURN_URL:http://localhost:8080/booking-app/api/v1/payment/vn-pay-callback}"
+  version : "2.1.0"
+  command : "pay"
+  orderType : "other"
