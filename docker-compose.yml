@@ -1,0 +1,49 @@
+services:
+  booking-db:
+    image: mysql:8.4
+    container_name: booking-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-booking_app_db}
+      MYSQL_USER: ${MYSQL_USER:-booking_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-booking_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    command: --default-authentication-plugin=caching_sha2_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - booking-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  booking-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: booking-app
+    restart: unless-stopped
+    depends_on:
+      booking-db:
+        condition: service_healthy
+    ports:
+      - "80:8080"
+    environment:
+      PORT: ${PORT:-8080}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://booking-db:3306/booking_app_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-booking_user}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-booking_password}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      JWT_SIGNER_KEY: ${JWT_SIGNER_KEY:-please_change_this_jwt_signer_key_in_production}
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-KUHZ6TQJ}
+      VNPAY_SECRET_KEY: ${VNPAY_SECRET_KEY:-K20SB7Q7577Q70YWF5I512BL3IX95TP4}
+      VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-http://localhost/booking-app/api/v1/payment/vn-pay-callback}
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  booking-db-data:

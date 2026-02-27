@@ -21,7 +21,7 @@ spring:
       enabled: true
 
 jwt:
-  signer-key: "6lhXE9HRxzm7EyIVWdl0XPx9eoGdgXm8VNfpaBQ1dUDpZF6NcF8z4fDAO15JFAdF"
+  signer-key: ${JWT_SIGNER_KEY:6lhXE9HRxzm7EyIVWdl0XPx9eoGdgXm8VNfpaBQ1dUDpZF6NcF8z4fDAO15JFAdF}
   valid-duration: 36000 # 10 tiếng
   refreshable-duration: 604800 # 7 ngày
 
@@ -29,9 +29,9 @@ file:
   upload-dir: uploads/
 
 vnpay:
-  tmnCode : "KUHZ6TQJ"
-  secretKey : "K20SB7Q7577Q70YWF5I512BL3IX95TP4"
-  url : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+  tmnCode : ${VNPAY_TMN_CODE:KUHZ6TQJ}
+  secretKey : ${VNPAY_SECRET_KEY:K20SB7Q7577Q70YWF5I512BL3IX95TP4}
+  url : ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
   returnUrl : "${VNPAY_RETURN_URL:http://localhost:8080/booking-app/api/v1/payment/vn-pay-callback}"
   version : "2.1.0"
   command : "pay"
