@@ -10,6 +10,7 @@ import com.vanmo.booking_app_be.service.HotelService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,9 +24,12 @@ public class HotelController {
 
     private final HotelService hotelService;
 
-    @PostMapping
-    public ApiResponse<ListHotelResponse> create(@Valid @RequestBody HotelCreateRequest req) {
-        return ApiResponse.ok(hotelService.create(req));
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ListHotelResponse> create(
+            @Valid @RequestPart("data") HotelCreateRequest req,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files
+    ) {
+        return ApiResponse.ok(hotelService.create(req, files));
     }
 
     @PutMapping("/{id}")
