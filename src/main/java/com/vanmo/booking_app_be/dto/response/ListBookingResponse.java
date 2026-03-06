@@ -6,6 +6,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -23,6 +24,8 @@ public class ListBookingResponse {
     String bookingStatus;
     String paymentMethod;
     String paymentStatus;
+    LocalDateTime paymentExpireAt;
+    LocalDateTime paidAt;
     HotelInfoResponse hotel;
     CustomerInfoResponse customer;
     List<BookingRoomResponse> bookingRooms;

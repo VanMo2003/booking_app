@@ -20,8 +20,7 @@ import org.springframework.data.domain.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-
+import java.time.LocalDateTime;
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
@@ -73,8 +72,10 @@ public class BookingServiceImpl implements BookingService {
 
         if (booking.getPaymentMethod() == PaymentMethod.VN_PAY) {
             booking.setPaymentStatus(PaymentStatus.PENDING);
+            booking.setPaymentExpireAt(LocalDateTime.now().plusMinutes(15));
         } else {
             booking.setPaymentStatus(PaymentStatus.UNPAID);
+            booking.setPaymentExpireAt(null);
         }
 
         bookingRepository.save(booking);
@@ -214,9 +215,30 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
 
         booking.setPaymentStatus(paymentStatus);
+
+        if (paymentStatus == PaymentStatus.PAID) {
+            booking.setPaidAt(java.time.LocalDateTime.now());
+        }
+
         bookingRepository.saveAndFlush(booking);
 
         return convertToBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public void markExpiredPendingPaymentsAsFailed() {
+        List<Booking> expiredBookings = bookingRepository
+                .findByPaymentStatusAndPaymentExpireAtBefore(
+                        PaymentStatus.PENDING,
+                        java.time.LocalDateTime.now()
+                );
+
+        for (Booking booking : expiredBookings) {
+            booking.setPaymentStatus(PaymentStatus.FAILED);
+        }
+
+        bookingRepository.saveAll(expiredBookings);
     }
 
     BookingResponse convertToBookingResponse(Booking booking){

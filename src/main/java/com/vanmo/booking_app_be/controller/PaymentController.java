@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.controller;
 
 import com.vanmo.booking_app_be.config.VNPayConfig;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
+import com.vanmo.booking_app_be.dto.response.BookingResponse;
 import com.vanmo.booking_app_be.dto.response.PaymentResponse;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.service.BookingService;
@@ -52,8 +53,8 @@ public class PaymentController {
 
         // Gán vào request parameter để PaymentServiceImpl lấy y như code hiện tại
         // (vì bạn đang dùng request.getParameter("amount") / ("bankCode"))
-        request.setAttribute("amount", String.valueOf(amount));
-        if (bankCode != null) request.setAttribute("bankCode", bankCode);
+//        request.setAttribute("amount", String.valueOf(amount));
+//        if (bankCode != null) request.setAttribute("bankCode", bankCode);
 
         // ✅ (khuyến nghị) bạn nên cập nhật PaymentServiceImpl để nhận amount/bankCode trực tiếp
         // Nhưng với code hiện tại, bạn có 2 lựa chọn:
@@ -67,7 +68,7 @@ public class PaymentController {
         // (optional) check booking tồn tại (tuỳ BookingService của bạn có method check không)
         // bookingService.getById(bookingId);
 
-        return ApiResponse.ok(paymentService.createVnPayPayment(request, bookingId));
+        return ApiResponse.ok(paymentService.createVnPayPayment(request, bookingId, amount, bankCode));
     }
 
     @GetMapping("/vn-pay-callback")
@@ -84,6 +85,15 @@ public class PaymentController {
 
         String txnRef = request.getParameter("vnp_TxnRef"); // bookingId_random
         Long bookingId = Long.parseLong(txnRef.split("_")[0]);
+
+        BookingResponse bookingResponse = bookingService.getById(bookingId);
+
+        // nếu đã quá hạn thì đánh failed luôn
+        if (bookingResponse.getPaymentExpireAt() != null
+                && bookingResponse.getPaymentExpireAt().isBefore(java.time.LocalDateTime.now())) {
+            bookingService.updatePaymentStatus(bookingId, PaymentStatus.FAILED);
+            return ApiResponse.ok("PAYMENT_EXPIRED");
+        }
 
         String responseCode = request.getParameter("vnp_ResponseCode");          // "00" ok
         String transactionStatus = request.getParameter("vnp_TransactionStatus"); // "00" success

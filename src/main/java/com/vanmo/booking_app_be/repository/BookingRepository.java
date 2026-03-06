@@ -5,12 +5,14 @@ import com.vanmo.booking_app_be.dto.response.RevenueByMonthDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByYearDTO;
 import com.vanmo.booking_app_be.entity.Booking;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -19,6 +21,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findAllByCustomer_Id(Long customerId);
 
     List<Booking> findAllByCustomer_IdAndBookingStatus(Long customerId, @NotNull BookingStatus bookingStatus);
+
+    List<Booking> findByPaymentStatusAndPaymentExpireAtBefore(
+            PaymentStatus paymentStatus,
+            LocalDateTime time
+    );
 
     @Query(value = """
         SELECT new com.vanmo.booking_app_be.dto.response.RevenueByDateDTO(

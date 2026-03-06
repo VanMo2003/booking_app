@@ -12,6 +12,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Set;
 
@@ -44,6 +45,12 @@ public class Booking {
     @NotNull
     @Enumerated(EnumType.STRING)
     PaymentStatus paymentStatus;
+
+    @Column
+    LocalDateTime paymentExpireAt;
+
+    @Column
+    LocalDateTime paidAt;
 
     @ManyToOne
     @JoinColumn(name = "hotel_id", nullable = false)

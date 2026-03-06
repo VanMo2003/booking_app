@@ -22,9 +22,9 @@ public class PaymentServiceImpl implements PaymentService {
     VNPayConfig vnPayConfig;
 
     @Override
-    public PaymentResponse createVnPayPayment(HttpServletRequest request, Long bookingId) {
-        long amount = Long.parseLong(request.getParameter("amount")) * 100L;
-        String bankCode = request.getParameter("bankCode");
+    public PaymentResponse createVnPayPayment(HttpServletRequest request, Long bookingId, Long amount, String bankCode) {
+//        long amount = Long.parseLong(request.getParameter("amount")) * 100L;
+//        String bankCode = request.getParameter("bankCode");
 
         Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
 
@@ -38,7 +38,7 @@ public class PaymentServiceImpl implements PaymentService {
         String txnRef = bookingId + "_" + VNPayUtil.getRandomNumber(8);
         vnpParamsMap.put("vnp_TxnRef", txnRef);
 
-        vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
+        vnpParamsMap.put("vnp_Amount", String.valueOf(amount * 100L));
 
         if (bankCode != null && !bankCode.isEmpty()) vnpParamsMap.put("vnp_BankCode", bankCode);
 

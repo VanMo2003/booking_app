@@ -2,10 +2,12 @@ package com.vanmo.booking_app_be.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import jakarta.persistence.Column;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -23,6 +25,8 @@ public class BookingResponse {
     String bookingStatus;
     String paymentMethod;
     String paymentStatus;
+    LocalDateTime paymentExpireAt;
+    LocalDateTime paidAt;
     HotelInfoResponse hotel;
     CustomerInfoResponse customer;
     List<BookingRoomResponse> bookingRooms;
