@@ -14,7 +14,6 @@ public class PaymentExpireScheduler {
 
     BookingService bookingService;
 
-    // mỗi 1 phút chạy 1 lần
     @Scheduled(fixedDelay = 60000)
     public void markExpiredPendingPayments() {
         bookingService.markExpiredPendingPaymentsAsFailed();

@@ -51,23 +51,6 @@ public class PaymentController {
             return ApiResponse.fail("amount must be > 0", 400);
         }
 
-        // Gán vào request parameter để PaymentServiceImpl lấy y như code hiện tại
-        // (vì bạn đang dùng request.getParameter("amount") / ("bankCode"))
-//        request.setAttribute("amount", String.valueOf(amount));
-//        if (bankCode != null) request.setAttribute("bankCode", bankCode);
-
-        // ✅ (khuyến nghị) bạn nên cập nhật PaymentServiceImpl để nhận amount/bankCode trực tiếp
-        // Nhưng với code hiện tại, bạn có 2 lựa chọn:
-        // 1) đổi PaymentServiceImpl để nhận amount/bankCode param
-        // 2) giữ nguyên và FE truyền amount/bankCode trong query như dưới
-
-        // Nếu bạn giữ nguyên PaymentServiceImpl: chỉ cần FE truyền amount/bankCode vào query string,
-        // thì request.getParameter vẫn đọc được => không cần setAttribute.
-        // Mình vẫn để setAttribute cho rõ ý, nhưng bạn có thể xóa 2 dòng setAttribute ở trên.
-
-        // (optional) check booking tồn tại (tuỳ BookingService của bạn có method check không)
-        // bookingService.getById(bookingId);
-
         return ApiResponse.ok(paymentService.createVnPayPayment(request, bookingId, amount, bankCode));
     }
 
@@ -88,7 +71,6 @@ public class PaymentController {
 
         BookingResponse bookingResponse = bookingService.getById(bookingId);
 
-        // nếu đã quá hạn thì đánh failed luôn
         if (bookingResponse.getPaymentExpireAt() != null
                 && bookingResponse.getPaymentExpireAt().isBefore(java.time.LocalDateTime.now())) {
             bookingService.updatePaymentStatus(bookingId, PaymentStatus.FAILED);

@@ -50,7 +50,6 @@ public class HotelServiceImpl implements HotelService {
         Hotel hotel = hotelMapper.toEntity(req);
         hotel.setRating(0.0);
 
-        // save trước để lấy ID
         hotel = hotelRepository.save(hotel);
 
         if (files != null && !files.isEmpty()) {

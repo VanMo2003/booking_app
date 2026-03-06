@@ -241,6 +241,36 @@ public class BookingServiceImpl implements BookingService {
         bookingRepository.saveAll(expiredBookings);
     }
 
+    @Override
+    @Transactional
+    public BookingResponse resetPendingPayment(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+
+        if (booking.getPaymentMethod() != PaymentMethod.VN_PAY) {
+            throw new IllegalStateException("This booking does not use VN_PAY");
+        }
+
+        if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new IllegalStateException("Booking already paid");
+        }
+
+        if (booking.getBookingStatus() == BookingStatus.CANCELED) {
+            throw new IllegalStateException("Booking is cancelled, cannot retry payment");
+        }
+
+        if (booking.getBookingStatus() == BookingStatus.COMPLETED) {
+            throw new IllegalStateException("Booking is completed, cannot retry payment");
+        }
+
+        booking.setPaymentStatus(PaymentStatus.PENDING);
+        booking.setPaymentExpireAt(java.time.LocalDateTime.now().plusMinutes(15));
+        booking.setPaidAt(null);
+
+        bookingRepository.saveAndFlush(booking);
+        return convertToBookingResponse(booking);
+    }
+
     BookingResponse convertToBookingResponse(Booking booking){
         BookingResponse bookingResponse = bookingMapper.toResponse(booking);
 

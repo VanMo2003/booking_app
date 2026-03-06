@@ -20,4 +20,5 @@ public interface BookingService {
     BookingResponse completeBooking(Long id);
     BookingResponse updatePaymentStatus(Long bookingId, PaymentStatus paymentStatus);
     void markExpiredPendingPaymentsAsFailed();
+    BookingResponse resetPendingPayment(Long bookingId);
 }
