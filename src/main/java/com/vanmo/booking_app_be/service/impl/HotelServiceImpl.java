@@ -16,6 +16,7 @@ import com.vanmo.booking_app_be.service.AmenityService;
 import com.vanmo.booking_app_be.service.FileStorageService;
 import com.vanmo.booking_app_be.service.HotelService;
 import com.vanmo.booking_app_be.service.ServiceService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -43,14 +44,36 @@ public class HotelServiceImpl implements HotelService {
     private final HotelImageRepository hotelImageRepository;
     private final BookingRoomRepository bookingRoomRepository;
 
+    @Transactional
     @Override
-    public ListHotelResponse create(HotelCreateRequest req) {
+    public ListHotelResponse create(HotelCreateRequest req, List<MultipartFile> files) {
         Hotel hotel = hotelMapper.toEntity(req);
-        Account acc = accountRepository.findById(req.getAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found id=" + req.getAccountId()));
-        hotel.setAccount(acc);
         hotel.setRating(0.0);
-        return hotelMapper.toResponse(hotelRepository.save(hotel));
+
+        hotel = hotelRepository.save(hotel);
+
+        if (files != null && !files.isEmpty()) {
+            List<String> urls = files.stream()
+                    .map(fileStorageService::uploadHotelImage)
+                    .toList();
+
+            Hotel finalHotel = hotel;
+            List<HotelImage> images = urls.stream()
+                    .map(url -> HotelImage.builder()
+                            .pathImage(url)
+                            .hotel(finalHotel)
+                            .build())
+                    .toList();
+
+            hotelImageRepository.saveAll(images);
+
+            if (hotel.getPathImage() == null || hotel.getPathImage().isBlank()) {
+                hotel.setPathImage(urls.getFirst());
+                hotelRepository.save(hotel);
+            }
+        }
+
+        return hotelMapper.toResponse(hotel);
     }
 
     @Override

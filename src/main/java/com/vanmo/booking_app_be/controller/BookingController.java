@@ -5,6 +5,7 @@ import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.service.BookingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -68,4 +69,9 @@ public class BookingController {
         return ApiResponse.ok(bookingService.completeBooking(id));
     }
 
+    @PutMapping("/{id}/payment-status")
+    public BookingResponse updatePaymentStatus(@PathVariable Long id,
+                                               @RequestParam PaymentStatus status) {
+        return bookingService.updatePaymentStatus(id, status);
+    }
 }

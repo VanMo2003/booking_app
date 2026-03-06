@@ -4,6 +4,7 @@ import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
 import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 
 import java.util.List;
 
@@ -17,4 +18,7 @@ public interface BookingService {
     BookingResponse confirmBooking(Long id);
     BookingResponse cancelBooking(Long id);
     BookingResponse completeBooking(Long id);
+    BookingResponse updatePaymentStatus(Long bookingId, PaymentStatus paymentStatus);
+    void markExpiredPendingPaymentsAsFailed();
+    BookingResponse resetPendingPayment(Long bookingId);
 }

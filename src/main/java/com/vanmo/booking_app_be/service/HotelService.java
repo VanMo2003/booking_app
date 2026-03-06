@@ -11,7 +11,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface HotelService {
-    ListHotelResponse create(HotelCreateRequest req);
+    ListHotelResponse create(HotelCreateRequest req, List<MultipartFile> files);
     ListHotelResponse update(Long id, HotelUpdateRequest req);
     HotelDetailResponse getById(Long id, LocalDate checkinDate,LocalDate checkoutDate);
     default HotelDetailResponse getById(Long id) {

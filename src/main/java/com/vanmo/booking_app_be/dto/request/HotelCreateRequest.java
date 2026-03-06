@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -11,12 +12,12 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class HotelCreateRequest {
-    @NotNull String name;
-    @NotNull String address;
-    @NotNull String phone;
+    @NotBlank String name;
+    @NotBlank String address;
+    @NotBlank String phone;
+    @NotBlank String category;
     String description;
-    @NotNull String category;
     String pathImage;
     boolean active = true;
-    @NotNull String accountId;
+    String accountId;
 }

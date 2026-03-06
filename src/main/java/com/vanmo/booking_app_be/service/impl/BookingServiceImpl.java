@@ -7,6 +7,8 @@ import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.*;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
@@ -18,8 +20,7 @@ import org.springframework.data.domain.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-
+import java.time.LocalDateTime;
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
@@ -64,9 +65,19 @@ public class BookingServiceImpl implements BookingService {
 
         Hotel hotel = hotelRepository.findById(req.getHotelId()).orElse(null);
         Customer customer = customerRepository.findById(req.getCustomerId()).orElse(null);
+
         Booking booking = bookingMapper.toEntity(req);
         booking.setHotel(hotel);
         booking.setCustomer(customer);
+
+        if (booking.getPaymentMethod() == PaymentMethod.VN_PAY) {
+            booking.setPaymentStatus(PaymentStatus.PENDING);
+            booking.setPaymentExpireAt(LocalDateTime.now().plusMinutes(15));
+        } else {
+            booking.setPaymentStatus(PaymentStatus.UNPAID);
+            booking.setPaymentExpireAt(null);
+        }
+
         bookingRepository.save(booking);
         BookingResponse bookingResponse = bookingMapper.toResponse(booking);
         List<BookingRoomResponse> bookingRoomResponses = new ArrayList<>();
@@ -194,6 +205,69 @@ public class BookingServiceImpl implements BookingService {
 
         bookingRepository.saveAndFlush(booking);
 
+        return convertToBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse updatePaymentStatus(Long bookingId, PaymentStatus paymentStatus) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+
+        booking.setPaymentStatus(paymentStatus);
+
+        if (paymentStatus == PaymentStatus.PAID) {
+            booking.setPaidAt(java.time.LocalDateTime.now());
+        }
+
+        bookingRepository.saveAndFlush(booking);
+
+        return convertToBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public void markExpiredPendingPaymentsAsFailed() {
+        List<Booking> expiredBookings = bookingRepository
+                .findByPaymentStatusAndPaymentExpireAtBefore(
+                        PaymentStatus.PENDING,
+                        java.time.LocalDateTime.now()
+                );
+
+        for (Booking booking : expiredBookings) {
+            booking.setPaymentStatus(PaymentStatus.FAILED);
+        }
+
+        bookingRepository.saveAll(expiredBookings);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse resetPendingPayment(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+
+        if (booking.getPaymentMethod() != PaymentMethod.VN_PAY) {
+            throw new IllegalStateException("This booking does not use VN_PAY");
+        }
+
+        if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new IllegalStateException("Booking already paid");
+        }
+
+        if (booking.getBookingStatus() == BookingStatus.CANCELED) {
+            throw new IllegalStateException("Booking is cancelled, cannot retry payment");
+        }
+
+        if (booking.getBookingStatus() == BookingStatus.COMPLETED) {
+            throw new IllegalStateException("Booking is completed, cannot retry payment");
+        }
+
+        booking.setPaymentStatus(PaymentStatus.PENDING);
+        booking.setPaymentExpireAt(java.time.LocalDateTime.now().plusMinutes(15));
+        booking.setPaidAt(null);
+
+        bookingRepository.saveAndFlush(booking);
         return convertToBookingResponse(booking);
     }
 
