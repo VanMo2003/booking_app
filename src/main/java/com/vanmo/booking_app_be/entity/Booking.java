@@ -41,9 +41,9 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     PaymentMethod paymentMethod;
 
-//    @NotNull
-//    @Enumerated(EnumType.STRING)
-//    PaymentStatus paymentStatus;
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    PaymentStatus paymentStatus;
 
     @ManyToOne
     @JoinColumn(name = "hotel_id", nullable = false)

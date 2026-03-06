@@ -22,8 +22,8 @@ public class PaymentServiceImpl implements PaymentService {
     VNPayConfig vnPayConfig;
 
     @Override
-    public PaymentResponse createVnPayPayment(HttpServletRequest request) {
-        long amount = Integer.parseInt(request.getParameter("amount")) * 100L;
+    public PaymentResponse createVnPayPayment(HttpServletRequest request, Long bookingId) {
+        long amount = Long.parseLong(request.getParameter("amount")) * 100L;
         String bankCode = request.getParameter("bankCode");
 
         Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
@@ -32,20 +32,15 @@ public class PaymentServiceImpl implements PaymentService {
         ZonedDateTime now = ZonedDateTime.now(vietnamZone);
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-        String vnp_CreateDate = now.format(formatter);
+        vnpParamsMap.put("vnp_CreateDate", now.format(formatter));
+        vnpParamsMap.put("vnp_ExpireDate", now.plusMinutes(15).format(formatter));
 
-        String vnp_ExpireDate = now.plusMinutes(15).format(formatter);
-
-        vnpParamsMap.put("vnp_CreateDate", vnp_CreateDate);
-        vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
-
-        vnpParamsMap.put("vnp_TxnRef", VNPayUtil.getRandomNumber(8));
+        String txnRef = bookingId + "_" + VNPayUtil.getRandomNumber(8);
+        vnpParamsMap.put("vnp_TxnRef", txnRef);
 
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
 
-        if (bankCode != null && !bankCode.isEmpty()) {
-            vnpParamsMap.put("vnp_BankCode", bankCode);
-        }
+        if (bankCode != null && !bankCode.isEmpty()) vnpParamsMap.put("vnp_BankCode", bankCode);
 
         vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(request));
 

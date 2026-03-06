@@ -7,6 +7,8 @@ import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.*;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
@@ -64,9 +66,17 @@ public class BookingServiceImpl implements BookingService {
 
         Hotel hotel = hotelRepository.findById(req.getHotelId()).orElse(null);
         Customer customer = customerRepository.findById(req.getCustomerId()).orElse(null);
+
         Booking booking = bookingMapper.toEntity(req);
         booking.setHotel(hotel);
         booking.setCustomer(customer);
+
+        if (booking.getPaymentMethod() == PaymentMethod.VN_PAY) {
+            booking.setPaymentStatus(PaymentStatus.PENDING);
+        } else {
+            booking.setPaymentStatus(PaymentStatus.UNPAID);
+        }
+
         bookingRepository.save(booking);
         BookingResponse bookingResponse = bookingMapper.toResponse(booking);
         List<BookingRoomResponse> bookingRoomResponses = new ArrayList<>();
@@ -192,6 +202,18 @@ public class BookingServiceImpl implements BookingService {
             booking.setBookingStatus(BookingStatus.COMPLETED);
         }
 
+        bookingRepository.saveAndFlush(booking);
+
+        return convertToBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse updatePaymentStatus(Long bookingId, PaymentStatus paymentStatus) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+
+        booking.setPaymentStatus(paymentStatus);
         bookingRepository.saveAndFlush(booking);
 
         return convertToBookingResponse(booking);
