@@ -1,29 +1,37 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import jakarta.transaction.Transactional;
+
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.vanmo.booking_app_be.dto.request.HotelCreateRequest;
 import com.vanmo.booking_app_be.dto.request.HotelUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Hotel;
+import com.vanmo.booking_app_be.entity.HotelChain;
 import com.vanmo.booking_app_be.entity.HotelImage;
 import com.vanmo.booking_app_be.entity.Room;
 import com.vanmo.booking_app_be.entity.enums.HotelStatus;
+import com.vanmo.booking_app_be.entity.enums.Role;
 import com.vanmo.booking_app_be.entity.enums.RoomStatus;
+import com.vanmo.booking_app_be.exception.AppException;
+import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
+import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.AmenityService;
 import com.vanmo.booking_app_be.service.FileStorageService;
 import com.vanmo.booking_app_be.service.HotelService;
 import com.vanmo.booking_app_be.service.ServiceService;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +39,7 @@ public class HotelServiceImpl implements HotelService {
 
     private final HotelRepository hotelRepository;
     private final AccountRepository accountRepository;
+    private final HotelChainRepository hotelChainRepository;
     private final HotelMapper hotelMapper;
     private final ServiceService serviceService;
     private final AmenityService amenityService;
@@ -43,19 +52,35 @@ public class HotelServiceImpl implements HotelService {
     private final FileStorageService fileStorageService;
     private final HotelImageRepository hotelImageRepository;
     private final BookingRoomRepository bookingRoomRepository;
+    private final AccessGuard accessGuard;
 
     @Transactional
     @Override
     public ListHotelResponse create(HotelCreateRequest req, List<MultipartFile> files) {
+        accessGuard.requireChainOwner(req.getHotelChainId());
+
+        Account account = accountRepository
+                .findById(req.getAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found id=" + req.getAccountId()));
+        if (account.getRole() != Role.HOTEL_MANAGER) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Account must have role HOTEL_MANAGER");
+        }
+
+        HotelChain hotelChain = hotelChainRepository
+                .findById(req.getHotelChainId())
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Hotel chain not found with id=" + req.getHotelChainId()));
+
         Hotel hotel = hotelMapper.toEntity(req);
         hotel.setRating(0.0);
+        hotel.setAccount(account);
+        hotel.setHotelChain(hotelChain);
 
         hotel = hotelRepository.save(hotel);
 
         if (files != null && !files.isEmpty()) {
-            List<String> urls = files.stream()
-                    .map(fileStorageService::uploadHotelImage)
-                    .toList();
+            List<String> urls =
+                    files.stream().map(fileStorageService::uploadHotelImage).toList();
 
             Hotel finalHotel = hotel;
             List<HotelImage> images = urls.stream()
@@ -78,8 +103,7 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public ListHotelResponse update(Long id, HotelUpdateRequest req) {
-        Hotel hotel = hotelRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + id));
+        Hotel hotel = accessGuard.requireBranchManagerOrAbove(id);
         hotelMapper.updateEntity(hotel, req);
         return hotelMapper.toResponse(hotelRepository.save(hotel));
     }
@@ -87,19 +111,21 @@ public class HotelServiceImpl implements HotelService {
     @Override
     public HotelDetailResponse getById(Long id, LocalDate checkinDate, LocalDate checkoutDate) {
 
-        Hotel hotel = hotelRepository.findById(id)
+        Hotel hotel = hotelRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + id));
 
+        List<ServiceResponse> serviceResponses = serviceRepository.findAllByHotel_Id(id).stream()
+                .map(serviceMapper::toResponse)
+                .toList();
 
-        List<ServiceResponse> serviceResponses = serviceRepository.findAllByHotel_Id(id)
-                .stream().map(serviceMapper::toResponse).toList();
+        List<AmenityResponse> amenityResponses = amenityRepository.findAllByHotel_Id(id).stream()
+                .map(amenityMapper::toResponse)
+                .toList();
 
-        List<AmenityResponse> amenityResponses = amenityRepository.findAllByHotel_Id(id)
-                .stream().map(amenityMapper::toResponse).toList();
-
-        List<String> hotelImages = hotelImageRepository.findAllByHotel_Id(id)
-                .stream().map(HotelImage::getPathImage).toList();
-
+        List<String> hotelImages = hotelImageRepository.findAllByHotel_Id(id).stream()
+                .map(HotelImage::getPathImage)
+                .toList();
 
         List<Room> rooms = roomRepository.findAllByHotel_Id(id);
 
@@ -114,15 +140,17 @@ public class HotelServiceImpl implements HotelService {
 
         List<Long> finalBookedRoomIds = bookedRoomIds;
 
-        List<RoomResponse> roomResponses = rooms.stream().map(room -> {
-            RoomResponse resp = roomMapper.toResponse(room);
+        List<RoomResponse> roomResponses = rooms.stream()
+                .map(room -> {
+                    RoomResponse resp = roomMapper.toResponse(room);
 
-            if (hasDateFilter) {
-                resp.setStatus(calcRoomStatus(room, finalBookedRoomIds));
-            }
+                    if (hasDateFilter) {
+                        resp.setStatus(calcRoomStatus(room, finalBookedRoomIds));
+                    }
 
-            return resp;
-        }).toList();
+                    return resp;
+                })
+                .toList();
 
         HotelDetailResponse hotelDetailResponse = hotelMapper.toDetailResponse(hotel);
         hotelDetailResponse.setRooms(roomResponses);
@@ -159,17 +187,14 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public List<String> uploadImages(Long hotelId, List<MultipartFile> files) {
-        Hotel hotel = hotelRepository.findById(hotelId)
-                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + hotelId));
+        Hotel hotel = accessGuard.requireBranchManagerOrAbove(hotelId);
 
-        List<String> urls = files.stream().map(fileStorageService::uploadHotelImage).toList();
+        List<String> urls =
+                files.stream().map(fileStorageService::uploadHotelImage).toList();
 
-        List<HotelImage> images = urls.stream().map(url ->
-                HotelImage.builder()
-                        .pathImage(url)
-                        .hotel(hotel)
-                        .build()
-        ).toList();
+        List<HotelImage> images = urls.stream()
+                .map(url -> HotelImage.builder().pathImage(url).hotel(hotel).build())
+                .toList();
 
         hotelImageRepository.saveAll(images);
 
@@ -178,27 +203,27 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     public void delete(Long id) {
-        Hotel hotel = hotelRepository.findById(id)
+        Hotel hotel = hotelRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + id));
+        accessGuard.requireChainOwner(hotel.getHotelChain().getId());
         hotelRepository.delete(hotel);
     }
 
     @Override
     public List<ListHotelResponse> searchByDate(LocalDate checkinDate, LocalDate checkoutDate) {
         List<Hotel> hotels = hotelRepository.findAll();
-        List<Long> bookedRoomIds =
-                bookingRoomRepository.findBookedRoomIds(checkinDate, checkoutDate);
+        List<Long> bookedRoomIds = bookingRoomRepository.findBookedRoomIds(checkinDate, checkoutDate);
 
-        return hotels.stream().map(hotel -> {
+        return hotels.stream()
+                .map(hotel -> {
+                    List<Room> rooms = roomRepository.findAllByHotel_Id(hotel.getId());
 
-            List<Room> rooms = roomRepository.findAllByHotel_Id(hotel.getId());
+                    boolean hasAvailableRoom = rooms.stream().anyMatch(room -> !bookedRoomIds.contains(room.getId()));
 
-            boolean hasAvailableRoom = rooms.stream()
-                    .anyMatch(room -> !bookedRoomIds.contains(room.getId()));
-
-            return toResponseFullHasStatus(hotel, hasAvailableRoom);
-        }).toList();
-
+                    return toResponseFullHasStatus(hotel, hasAvailableRoom);
+                })
+                .toList();
     }
 
     private ListHotelResponse toResponseFull(Hotel hotel) {

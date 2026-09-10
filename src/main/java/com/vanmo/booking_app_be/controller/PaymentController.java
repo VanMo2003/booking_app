@@ -1,5 +1,14 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.util.Map;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.vanmo.booking_app_be.config.VNPayConfig;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
@@ -8,16 +17,10 @@ import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.service.BookingService;
 import com.vanmo.booking_app_be.service.PaymentService;
 import com.vanmo.booking_app_be.utils.VNPayUtil;
-import jakarta.servlet.http.HttpServletRequest;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/payment")
@@ -42,8 +45,7 @@ public class PaymentController {
             @RequestParam Long bookingId,
             @RequestParam Long amount,
             @RequestParam(required = false) String bankCode,
-            HttpServletRequest request
-    ) {
+            HttpServletRequest request) {
         if (bookingId == null || bookingId <= 0) {
             return ApiResponse.fail("bookingId is required", 400);
         }
@@ -77,7 +79,7 @@ public class PaymentController {
             return ApiResponse.ok("PAYMENT_EXPIRED");
         }
 
-        String responseCode = request.getParameter("vnp_ResponseCode");          // "00" ok
+        String responseCode = request.getParameter("vnp_ResponseCode"); // "00" ok
         String transactionStatus = request.getParameter("vnp_TransactionStatus"); // "00" success
 
         boolean success = "00".equals(responseCode) && "00".equals(transactionStatus);

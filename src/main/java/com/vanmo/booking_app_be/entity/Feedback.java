@@ -1,13 +1,14 @@
 package com.vanmo.booking_app_be.entity;
 
+import java.time.LocalDate;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.time.LocalDate;
 
 @Entity
 @Getter
@@ -16,9 +17,9 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "feedbacks", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"booking_id", "customer_id"})
-})
+@Table(
+        name = "feedbacks",
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"booking_id", "customer_id"})})
 public class Feedback {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

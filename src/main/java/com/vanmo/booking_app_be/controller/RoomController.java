@@ -1,5 +1,16 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.RoomCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomUpdateRequest;
@@ -7,15 +18,8 @@ import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.RoomDetailResponse;
 import com.vanmo.booking_app_be.dto.response.RoomResponse;
 import com.vanmo.booking_app_be.service.RoomService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/rooms")
@@ -30,10 +34,7 @@ public class RoomController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<RoomResponse> update(
-            @PathVariable Long id,
-            @Valid @RequestBody RoomUpdateRequest req
-    ) {
+    public ApiResponse<RoomResponse> update(@PathVariable Long id, @Valid @RequestBody RoomUpdateRequest req) {
         return ApiResponse.ok(roomService.update(id, req));
     }
 
@@ -46,12 +47,12 @@ public class RoomController {
     public ApiResponse<PageResponse<RoomResponse>> getAllByHotel(
             @RequestParam(name = "hotelId") Long hotelId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(roomService.getAllByHotel(hotelId, page, size));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("!hasAuthority('ROLE_STAFF')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         roomService.delete(id);
         return ApiResponse.ok(null);
@@ -59,9 +60,7 @@ public class RoomController {
 
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<List<String>> uploadImages(
-            @PathVariable Long id,
-            @RequestPart("files") List<MultipartFile> files
-    ) {
+            @PathVariable Long id, @RequestPart("files") List<MultipartFile> files) {
         return ApiResponse.ok(roomService.uploadImages(id, files));
     }
 
@@ -69,9 +68,7 @@ public class RoomController {
     public ApiResponse<List<RoomResponse>> getRoomsByDate(
             @RequestParam Long hotelId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkinDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkoutDate
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkoutDate) {
         return ApiResponse.ok(roomService.getRoomsByDate(hotelId, checkinDate, checkoutDate));
     }
-
 }

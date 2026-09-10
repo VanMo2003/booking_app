@@ -1,14 +1,19 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.CustomerCreateRequest;
 import com.vanmo.booking_app_be.dto.request.CustomerUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.CustomerResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.CustomerService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/customers")
@@ -17,14 +22,18 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
+    @GetMapping("/by-hotel")
+    public ApiResponse<List<CustomerResponse>> getAllByHotel(@RequestParam Long hotelId) {
+        return ApiResponse.ok(customerService.getAllByHotel(hotelId));
+    }
+
     @PostMapping
     public ApiResponse<CustomerResponse> create(@Valid @RequestBody CustomerCreateRequest req) {
         return ApiResponse.ok(customerService.create(req));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<CustomerResponse> update(@PathVariable Long id,
-                                                @Valid @RequestBody CustomerUpdateRequest req) {
+    public ApiResponse<CustomerResponse> update(@PathVariable Long id, @Valid @RequestBody CustomerUpdateRequest req) {
         return ApiResponse.ok(customerService.update(id, req));
     }
 
@@ -35,8 +44,7 @@ public class CustomerController {
 
     @GetMapping
     public ApiResponse<PageResponse<CustomerResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(customerService.getAll(page, size));
     }
 

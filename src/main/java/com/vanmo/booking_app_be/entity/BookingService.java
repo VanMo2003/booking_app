@@ -1,12 +1,13 @@
 package com.vanmo.booking_app_be.entity;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.math.BigDecimal;
 
 @Entity
 @Getter
@@ -37,4 +38,3 @@ public class BookingService {
     @Column(precision = 12)
     BigDecimal total;
 }
-

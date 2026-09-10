@@ -1,5 +1,12 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import java.util.List;
+
+import jakarta.transaction.Transactional;
+
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+
 import com.vanmo.booking_app_be.dto.request.AmenityCreateRequest;
 import com.vanmo.booking_app_be.dto.request.AmenityUpdateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomAmenityCreateRequest;
@@ -15,14 +22,11 @@ import com.vanmo.booking_app_be.repository.AmenityRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
+import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.AmenityService;
 import com.vanmo.booking_app_be.service.RoomAmenityService;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -33,23 +37,22 @@ public class AmenityServiceImpl implements AmenityService {
     private final AmenityMapper amenityMapper;
     private final RoomRepository roomRepository;
     private final RoomAmenityService roomAmenityService;
+    private final AccessGuard accessGuard;
 
     @Override
     @Transactional
     public AmenityResponse create(AmenityCreateRequest req) {
+        if (req.getHotelId() == null) {
+            throw new ResourceNotFoundException("Id hotel not found");
+        }
         Amenity amenity = amenityRepository.findByHotelIdAndName(req.getHotelId(), req.getName());
         if (amenity != null) throw new ResourceNotFoundException("Amenity with this name already exists");
         amenity = amenityMapper.toEntity(req);
-        Hotel hotel;
-        if (req.getHotelId() != null) {
-             hotel = hotelRepository.findById(req.getHotelId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Hotel not found id=" + req.getHotelId()));
-            amenity.setHotel(hotel);
-        } else {
-            throw new ResourceNotFoundException("Id hotel not found");
-        }
+        Hotel hotel = accessGuard.requireBranchStaffOrAbove(req.getHotelId());
+        amenity.setHotel(hotel);
         if (!req.isCommon() && req.getRoomId() != null) {
-            Room room = roomRepository.findById(req.getRoomId())
+            Room room = roomRepository
+                    .findById(req.getRoomId())
                     .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
             amenityRepository.save(amenity);
 
@@ -76,8 +79,10 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     public AmenityResponse update(Long id, AmenityUpdateRequest req) {
-        Amenity entity = amenityRepository.findById(id)
+        Amenity entity = amenityRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found id=" + id));
+        accessGuard.requireBranchStaffOrAbove(entity.getHotel().getId());
         amenityMapper.updateEntity(entity, req);
         amenityRepository.save(entity);
         return amenityMapper.toResponse(entity);
@@ -85,7 +90,8 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     public AmenityResponse getById(Long id) {
-        Amenity entity = amenityRepository.findById(id)
+        Amenity entity = amenityRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found id=" + id));
         return amenityMapper.toResponse(entity);
     }
@@ -105,19 +111,22 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     public List<AmenityResponse> getAllByRoom(Long hotelId, Long roomId) {
-        List<Amenity> amenities = roomAmenityRepository.findAllByRoomId(roomId).stream().map(RoomAmenity::getAmenity).toList();
+        List<Amenity> amenities = roomAmenityRepository.findAllByRoomId(roomId).stream()
+                .map(RoomAmenity::getAmenity)
+                .toList();
         return amenities.stream().map(amenityMapper::toResponse).toList();
     }
 
     @Override
     public void delete(Long id) {
-        Amenity entity = amenityRepository.findById(id)
+        Amenity entity = amenityRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found id=" + id));
-        if (!entity.isCommon()){
+        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
+        if (!entity.isCommon()) {
             List<RoomAmenity> roomAmenities = roomAmenityRepository.findAllByAmenity(entity);
             roomAmenityRepository.deleteAll(roomAmenities);
         }
         amenityRepository.delete(entity);
-
     }
 }

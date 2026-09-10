@@ -1,11 +1,10 @@
 package com.vanmo.booking_app_be.repository;
 
-import com.vanmo.booking_app_be.dto.response.ServiceResponse;
-import com.vanmo.booking_app_be.entity.Hotel;
-import com.vanmo.booking_app_be.entity.Service;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
+import com.vanmo.booking_app_be.entity.Service;
 
 public interface ServiceRepository extends JpaRepository<Service, Long> {
     List<Service> findByHotelId(Long hotelId);

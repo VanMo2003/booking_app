@@ -1,16 +1,18 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.RoomTypeCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomTypeUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.RoomTypeResponse;
 import com.vanmo.booking_app_be.service.RoomTypeService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/roomTypes")
@@ -25,8 +27,7 @@ public class RoomTypeController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<RoomTypeResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody RoomTypeUpdateRequest req) {
+    public ApiResponse<RoomTypeResponse> update(@PathVariable Long id, @Valid @RequestBody RoomTypeUpdateRequest req) {
         return ApiResponse.ok(roomTypeService.update(id, req));
     }
 

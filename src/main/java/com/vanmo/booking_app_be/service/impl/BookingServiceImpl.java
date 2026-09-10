@@ -1,5 +1,14 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import jakarta.transaction.Transactional;
+
+import org.springframework.data.domain.*;
+
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingRoomCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingServiceCreateRequest;
@@ -9,18 +18,16 @@ import com.vanmo.booking_app_be.entity.*;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
+import com.vanmo.booking_app_be.entity.enums.Role;
+import com.vanmo.booking_app_be.exception.AppException;
+import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
+import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.BookingService;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
@@ -39,6 +46,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRoomMapper bookingRoomMapper;
     private final BookingServiceMapper bookingServiceMapper;
     private final BookingRoomRepository bookingRoomRepository;
+    private final AccessGuard accessGuard;
 
     @Override
     @Transactional
@@ -50,21 +58,27 @@ public class BookingServiceImpl implements BookingService {
         }
 
         for (Long roomId : req.getRooms()) {
-            boolean isBooked = bookingRoomRepository.existsRoomBooked(
-                    roomId,
-                    req.getCheckinDate(),
-                    req.getCheckoutDate()
-            );
+            boolean isBooked =
+                    bookingRoomRepository.existsRoomBooked(roomId, req.getCheckinDate(), req.getCheckoutDate());
 
             if (isBooked) {
-                throw new IllegalStateException(
-                        "Room " + roomId + " is already booked in selected date range"
-                );
+                throw new IllegalStateException("Room " + roomId + " is already booked in selected date range");
             }
         }
 
         Hotel hotel = hotelRepository.findById(req.getHotelId()).orElse(null);
         Customer customer = customerRepository.findById(req.getCustomerId()).orElse(null);
+
+        Account caller = accessGuard.currentAccount();
+        if (caller.getRole() == Role.CUSTOMER) {
+            if (customer == null
+                    || customer.getAccount() == null
+                    || !customer.getAccount().getId().equals(caller.getId())) {
+                throw new AppException(ErrorCode.UN_AUTHORIZED, "Customers can only book for themselves");
+            }
+        } else {
+            accessGuard.requireBranchStaffOrAbove(req.getHotelId());
+        }
 
         Booking booking = bookingMapper.toEntity(req);
         booking.setHotel(hotel);
@@ -83,7 +97,7 @@ public class BookingServiceImpl implements BookingService {
         List<BookingRoomResponse> bookingRoomResponses = new ArrayList<>();
         List<BookingServiceResponse> bookingServiceResponses = new ArrayList<>();
 
-        for (Long room : req.getRooms()){
+        for (Long room : req.getRooms()) {
             BookingRoomCreateRequest roomCreateRequest = new BookingRoomCreateRequest();
             roomCreateRequest.setBooking(booking);
             roomCreateRequest.setRoom(roomRepository.findById(room).orElse(null));
@@ -95,13 +109,14 @@ public class BookingServiceImpl implements BookingService {
             bookingRoomResponses.add(bookingRoomResponse);
         }
 
-        for (Long service : req.getServices()){
+        for (Long service : req.getServices()) {
             BookingServiceCreateRequest serviceCreateRequest = new BookingServiceCreateRequest();
             serviceCreateRequest.setBooking(booking);
             serviceCreateRequest.setService(serviceRepository.findById(service).orElse(null));
             serviceCreateRequest.setQuantity(1L);
             serviceCreateRequest.setTotal(BigDecimal.valueOf(0));
-            com.vanmo.booking_app_be.entity.BookingService bookingService = bookingServiceServiceImpl.createBookingService(serviceCreateRequest);
+            com.vanmo.booking_app_be.entity.BookingService bookingService =
+                    bookingServiceServiceImpl.createBookingService(serviceCreateRequest);
 
             BookingServiceResponse bookingServiceResponse = bookingServiceMapper.toResponse(bookingService);
             ServiceInfoResponse serviceInfoResponse = serviceMapper.toInfoResponse(bookingService.getService());
@@ -117,38 +132,64 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse update(Long id, BookingUpdateRequest req) {
-        Booking entity = bookingRepository.findById(id)
+        Booking entity = bookingRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + id));
+        requireBookingAccess(entity);
         bookingMapper.updateEntity(entity, req);
         return bookingMapper.toResponse(bookingRepository.save(entity));
     }
 
     @Override
     public BookingResponse getById(Long id) {
-        Booking booking = bookingRepository.findById(id)
+        Booking booking = bookingRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + id));
+        requireBookingAccess(booking);
 
         return convertToBookingResponse(booking);
     }
 
     @Override
     public List<ListBookingResponse> getAllByHotel(Long hotelId, String bookingStatus) {
-        return bookingRepository.findAllByHotel_Id(hotelId).stream().map(this::convertToListBookingResponse).toList();
+        accessGuard.requireBranchStaffOrAbove(hotelId);
+        return bookingRepository.findAllByHotel_Id(hotelId).stream()
+                .map(this::convertToListBookingResponse)
+                .toList();
     }
 
     @Override
     public List<ListBookingResponse> getAllByCustomer(Long customerId, String bookingStatus) {
-        if (bookingStatus.isEmpty()){
-            return bookingRepository.findAllByCustomer_Id(customerId).stream().map(this::convertToListBookingResponse).toList();
+        Account caller = accessGuard.currentAccount();
+        if (caller.getRole() == Role.CUSTOMER) {
+            Customer customer = customerRepository
+                    .findById(customerId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found id=" + customerId));
+            if (customer.getAccount() == null || !customer.getAccount().getId().equals(caller.getId())) {
+                throw new AppException(ErrorCode.UN_AUTHORIZED);
+            }
         }
-        return bookingRepository.findAllByCustomer_IdAndBookingStatus(customerId, BookingStatus.valueOf(bookingStatus)).stream().map(this::convertToListBookingResponse).toList();
+        if (bookingStatus.isEmpty()) {
+            return bookingRepository.findAllByCustomer_Id(customerId).stream()
+                    .map(this::convertToListBookingResponse)
+                    .toList();
+        }
+        return bookingRepository
+                .findAllByCustomer_IdAndBookingStatus(customerId, BookingStatus.valueOf(bookingStatus))
+                .stream()
+                .map(this::convertToListBookingResponse)
+                .toList();
     }
 
-    ListBookingResponse convertToListBookingResponse(Booking booking){
+    ListBookingResponse convertToListBookingResponse(Booking booking) {
         ListBookingResponse listBookingResponse = bookingMapper.toListResponse(booking);
-        List<BookingRoomResponse> bookingRoomResponses = booking.getBookingRooms().stream().map(this::convertToBookingRoomResponse).toList();
+        List<BookingRoomResponse> bookingRoomResponses = booking.getBookingRooms().stream()
+                .map(this::convertToBookingRoomResponse)
+                .toList();
 
-        List<BookingServiceResponse> bookingServiceResponses = booking.getBookingServices().stream().map(this::convertToBookingServiceResponse).toList();
+        List<BookingServiceResponse> bookingServiceResponses = booking.getBookingServices().stream()
+                .map(this::convertToBookingServiceResponse)
+                .toList();
 
         listBookingResponse.setBookingRooms(bookingRoomResponses);
         listBookingResponse.setBookingServices(bookingServiceResponses);
@@ -158,16 +199,20 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public void delete(Long id) {
-        Booking entity = bookingRepository.findById(id)
+        Booking entity = bookingRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + id));
+        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
         bookingRepository.delete(entity);
     }
 
     @Override
     @Transactional
     public BookingResponse confirmBooking(Long id) {
-        Booking booking = bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        if (booking.getBookingStatus().equals(BookingStatus.COMPLETED)){
+        Booking booking =
+                bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        requireBookingAccess(booking);
+        if (booking.getBookingStatus().equals(BookingStatus.COMPLETED)) {
             throw new ResourceNotFoundException("Booking already completed");
         } else if (booking.getBookingStatus().equals(BookingStatus.CANCELED)) {
             throw new ResourceNotFoundException("Booking already cancelled");
@@ -182,8 +227,10 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse cancelBooking(Long id) {
-        Booking booking = bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        if (booking.getBookingStatus().equals(BookingStatus.COMPLETED)){
+        Booking booking =
+                bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        requireBookingAccess(booking);
+        if (booking.getBookingStatus().equals(BookingStatus.COMPLETED)) {
             throw new ResourceNotFoundException("Booking already completed");
         } else {
             booking.setBookingStatus(BookingStatus.CANCELED);
@@ -196,8 +243,10 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponse completeBooking(Long id) {
-        Booking booking = bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        if (booking.getBookingStatus().equals(BookingStatus.CANCELED)){
+        Booking booking =
+                bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        requireBookingAccess(booking);
+        if (booking.getBookingStatus().equals(BookingStatus.CANCELED)) {
             throw new ResourceNotFoundException("Booking already cancelled");
         } else {
             booking.setBookingStatus(BookingStatus.COMPLETED);
@@ -211,8 +260,10 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingResponse updatePaymentStatus(Long bookingId, PaymentStatus paymentStatus) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository
+                .findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+        requireBookingAccess(booking);
 
         booking.setPaymentStatus(paymentStatus);
 
@@ -228,11 +279,8 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void markExpiredPendingPaymentsAsFailed() {
-        List<Booking> expiredBookings = bookingRepository
-                .findByPaymentStatusAndPaymentExpireAtBefore(
-                        PaymentStatus.PENDING,
-                        java.time.LocalDateTime.now()
-                );
+        List<Booking> expiredBookings = bookingRepository.findByPaymentStatusAndPaymentExpireAtBefore(
+                PaymentStatus.PENDING, java.time.LocalDateTime.now());
 
         for (Booking booking : expiredBookings) {
             booking.setPaymentStatus(PaymentStatus.FAILED);
@@ -244,8 +292,10 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingResponse resetPendingPayment(Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository
+                .findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+        requireBookingAccess(booking);
 
         if (booking.getPaymentMethod() != PaymentMethod.VN_PAY) {
             throw new IllegalStateException("This booking does not use VN_PAY");
@@ -271,12 +321,29 @@ public class BookingServiceImpl implements BookingService {
         return convertToBookingResponse(booking);
     }
 
-    BookingResponse convertToBookingResponse(Booking booking){
+    private void requireBookingAccess(Booking booking) {
+        Account caller = accessGuard.currentAccount();
+        if (caller.getRole() == Role.CUSTOMER) {
+            if (booking.getCustomer() == null
+                    || booking.getCustomer().getAccount() == null
+                    || !booking.getCustomer().getAccount().getId().equals(caller.getId())) {
+                throw new AppException(ErrorCode.UN_AUTHORIZED);
+            }
+            return;
+        }
+        accessGuard.requireBranchStaffOrAbove(booking.getHotel().getId());
+    }
+
+    BookingResponse convertToBookingResponse(Booking booking) {
         BookingResponse bookingResponse = bookingMapper.toResponse(booking);
 
-        List<BookingRoomResponse> bookingRoomResponses = booking.getBookingRooms().stream().map(this::convertToBookingRoomResponse).toList();
+        List<BookingRoomResponse> bookingRoomResponses = booking.getBookingRooms().stream()
+                .map(this::convertToBookingRoomResponse)
+                .toList();
 
-        List<BookingServiceResponse> bookingServiceResponses = booking.getBookingServices().stream().map(this::convertToBookingServiceResponse).toList();
+        List<BookingServiceResponse> bookingServiceResponses = booking.getBookingServices().stream()
+                .map(this::convertToBookingServiceResponse)
+                .toList();
 
         bookingResponse.setBookingRooms(bookingRoomResponses);
         bookingResponse.setBookingServices(bookingServiceResponses);
@@ -284,7 +351,7 @@ public class BookingServiceImpl implements BookingService {
         return bookingResponse;
     }
 
-    BookingRoomResponse convertToBookingRoomResponse(BookingRoom bookingRoom){
+    BookingRoomResponse convertToBookingRoomResponse(BookingRoom bookingRoom) {
         BookingRoomResponse bookingRoomResponse = bookingRoomMapper.toResponse(bookingRoom);
         RoomInfoResponse roomInfoResponse = roomMapper.toInfoResponse(bookingRoom.getRoom());
         bookingRoomResponse.setRoomInfo(roomInfoResponse);
@@ -292,7 +359,8 @@ public class BookingServiceImpl implements BookingService {
         return bookingRoomResponse;
     }
 
-    BookingServiceResponse convertToBookingServiceResponse(com.vanmo.booking_app_be.entity.BookingService bookingService){
+    BookingServiceResponse convertToBookingServiceResponse(
+            com.vanmo.booking_app_be.entity.BookingService bookingService) {
         BookingServiceResponse bookingServiceResponse = bookingServiceMapper.toResponse(bookingService);
         ServiceInfoResponse serviceInfoResponse = serviceMapper.toInfoResponse(bookingService.getService());
         bookingServiceResponse.setServiceInfo(serviceInfoResponse);

@@ -1,14 +1,17 @@
 package com.vanmo.booking_app_be.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.PayrollCreateRequest;
 import com.vanmo.booking_app_be.dto.request.PayrollUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.PayrollResponse;
 import com.vanmo.booking_app_be.service.PayrollService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/payrolls")
@@ -23,8 +26,7 @@ public class PayrollController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<PayrollResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody PayrollUpdateRequest req) {
+    public ApiResponse<PayrollResponse> update(@PathVariable Long id, @Valid @RequestBody PayrollUpdateRequest req) {
         return ApiResponse.ok(payrollService.update(id, req));
     }
 
@@ -35,8 +37,7 @@ public class PayrollController {
 
     @GetMapping
     public ApiResponse<PageResponse<PayrollResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(payrollService.getAll(page, size));
     }
 

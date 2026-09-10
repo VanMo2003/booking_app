@@ -1,30 +1,13 @@
 package com.vanmo.booking_app_be.service.impl;
 
-import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jose.crypto.MACVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import com.vanmo.booking_app_be.dto.request.AuthenticationRequest;
-import com.vanmo.booking_app_be.dto.request.IntrospectRequest;
-import com.vanmo.booking_app_be.dto.request.LogoutRequest;
-import com.vanmo.booking_app_be.dto.request.RefreshTokenRequest;
-import com.vanmo.booking_app_be.dto.response.AuthenticationResponse;
-import com.vanmo.booking_app_be.dto.response.IntrospectResponse;
-import com.vanmo.booking_app_be.entity.*;
-import com.vanmo.booking_app_be.entity.enums.Role;
-import com.vanmo.booking_app_be.exception.AppException;
-import com.vanmo.booking_app_be.exception.ErrorCode;
-import com.vanmo.booking_app_be.mapper.CustomerMapper;
-import com.vanmo.booking_app_be.mapper.EmployeeMapper;
-import com.vanmo.booking_app_be.mapper.HotelMapper;
-import com.vanmo.booking_app_be.repository.*;
-import com.vanmo.booking_app_be.service.AccountService;
-import com.vanmo.booking_app_be.service.AuthenticationService;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
+import java.text.ParseException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+import java.util.List;
+import java.util.StringJoiner;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,12 +19,31 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
-import java.text.ParseException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.StringJoiner;
-import java.util.UUID;
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.MACVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import com.vanmo.booking_app_be.dto.request.AuthenticationRequest;
+import com.vanmo.booking_app_be.dto.request.IntrospectRequest;
+import com.vanmo.booking_app_be.dto.request.RefreshTokenRequest;
+import com.vanmo.booking_app_be.dto.response.AuthenticationResponse;
+import com.vanmo.booking_app_be.dto.response.IntrospectResponse;
+import com.vanmo.booking_app_be.entity.*;
+import com.vanmo.booking_app_be.entity.enums.Role;
+import com.vanmo.booking_app_be.exception.AppException;
+import com.vanmo.booking_app_be.exception.ErrorCode;
+import com.vanmo.booking_app_be.mapper.CustomerMapper;
+import com.vanmo.booking_app_be.mapper.EmployeeMapper;
+import com.vanmo.booking_app_be.mapper.HotelChainMapper;
+import com.vanmo.booking_app_be.mapper.HotelMapper;
+import com.vanmo.booking_app_be.repository.*;
+import com.vanmo.booking_app_be.service.AuthenticationService;
+
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 
 @Service
 @RequiredArgsConstructor
@@ -59,15 +61,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     AccountRepository accountRepository;
     InvalidatedRepository invalidatedRepository;
     HotelRepository hotelRepository;
+    HotelChainRepository hotelChainRepository;
     CustomerRepository customerRepository;
     EmployeeRepository employeeRepository;
     HotelMapper hotelMapper;
+    HotelChainMapper hotelChainMapper;
     CustomerMapper customerMapper;
     EmployeeMapper employeeMapper;
 
     @NonFinal
     @Value("${jwt.signer-key}")
     protected String SIGNER_KEY;
+
     @Override
     public IntrospectResponse introspect(IntrospectRequest request) throws ParseException, JOSEException {
         var token = request.getToken();
@@ -93,8 +98,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (!authenticated) throw new AppException(ErrorCode.INCORRECT_ACCOUNT_OR_PASSWORD);
 
         String jit = UUID.randomUUID().toString();
-        var accessToken  = generateToken(account, "ACCESS", jit);
-        var refreshToken  = generateToken(account, "REFRESH", jit);
+        var accessToken = generateToken(account, "ACCESS", jit);
+        var refreshToken = generateToken(account, "REFRESH", jit);
 
         AuthenticationResponse authenticationResponse = AuthenticationResponse.builder()
                 .accessToken(accessToken)
@@ -103,7 +108,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .role(account.getRole())
                 .build();
 
-        switch (account.getRole()){
+        switch (account.getRole()) {
+            case Role.ADMIN:
+                break;
+            case Role.HOTEL_OWNER:
+                HotelChain hotelChain = hotelChainRepository.findByAccount_Id(account.getId());
+                if (hotelChain == null) {
+                    authenticationResponse.setAccountId(account.getId());
+                } else {
+                    authenticationResponse.setHotelChain(hotelChainMapper.toResponse(hotelChain));
+                }
+                break;
             case Role.CUSTOMER:
                 Customer customer = customerRepository.findByAccount_Id(account.getId());
                 if (customer == null) {
@@ -112,11 +127,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 authenticationResponse.setCustomer(customerMapper.toResponse(customer));
                 break;
             case Role.HOTEL_MANAGER:
-                Hotel hotel = hotelRepository.findByAccount_Id(account.getId());
-                if (hotel == null) {
-                    authenticationResponse.setAccountId(account.getId());
-                }
-                authenticationResponse.setHotel(hotelMapper.toResponse(hotel));
+                List<Hotel> hotels = hotelRepository.findAllByAccount_Id(account.getId());
+                authenticationResponse.setHotels(
+                        hotels.stream().map(hotelMapper::toResponse).toList());
                 break;
             case Role.STAFF:
                 Employee employee = employeeRepository.findByAccount_Id(account.getId());
@@ -125,15 +138,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 }
                 authenticationResponse.setEmployee(employeeMapper.toResponse(employee));
                 break;
-            default:
-                throw new RuntimeException("Role not supported: " + account.getRole());
         }
 
         return authenticationResponse;
     }
 
     @Override
-    public AuthenticationResponse refreshToken(RefreshTokenRequest request)throws ParseException, JOSEException {
+    public AuthenticationResponse refreshToken(RefreshTokenRequest request) throws ParseException, JOSEException {
         SignedJWT signJWT = verifyToken(request.getToken());
 
         var claims = signJWT.getJWTClaimsSet();
@@ -150,12 +161,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         String username = claims.getSubject();
 
-        Account account =
-                accountRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.UN_AUTHENTICATED));
+        Account account = accountRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.UN_AUTHENTICATED));
 
         String jitNew = UUID.randomUUID().toString();
-        var accessToken  = generateToken(account, "ACCESS", jitNew);
-        var refreshToken  = generateToken(account, "REFRESH", jitNew);
+        var accessToken = generateToken(account, "ACCESS", jitNew);
+        var refreshToken = generateToken(account, "REFRESH", jitNew);
 
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
@@ -165,7 +177,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public void logout()throws ParseException, JOSEException {
+    public void logout() throws ParseException, JOSEException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
@@ -175,10 +187,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Jwt jwt = jwtAuth.getToken();
         String tokenValue = jwt.getTokenValue();
 
-        SignedJWT  signedJWT  = verifyToken(tokenValue);
+        SignedJWT signedJWT = verifyToken(tokenValue);
 
-        String jti = signedJWT .getJWTClaimsSet().getJWTID();
-        Date expiryTime = signedJWT .getJWTClaimsSet().getExpirationTime();
+        String jti = signedJWT.getJWTClaimsSet().getJWTID();
+        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
         InvalidatedToken invalidatedToken =
                 InvalidatedToken.builder().id(jti).expiryTime(expiryTime).build();
@@ -195,7 +207,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
-
         if (expiryTime.before(new Date())) throw new AppException(ErrorCode.UN_AUTHENTICATED);
 
         if (invalidatedRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
@@ -204,9 +215,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private String generateToken(Account account, String tokenType, String jit) {
-        long duration = tokenType.equals("ACCESS")
-                ? VALID_DURATION
-                : REFRESHABLE_DURATION;
+        long duration = tokenType.equals("ACCESS") ? VALID_DURATION : REFRESHABLE_DURATION;
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(account.getUsername())
                 .issuer("vanmo.com") // domain
@@ -217,7 +226,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .claim("scope", buildScope(account))
                 .claim("token_type", tokenType)
                 .build();
-
 
         try {
             JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);

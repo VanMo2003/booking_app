@@ -1,6 +1,7 @@
 package com.vanmo.booking_app_be.dto.request;
 
 import jakarta.validation.constraints.NotNull;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -11,6 +12,8 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PositionUpdateRequest {
-    @NotNull String name;
+    @NotNull
+    String name;
+
     String description;
 }

@@ -1,15 +1,18 @@
 package com.vanmo.booking_app_be.entity;
 
-import com.vanmo.booking_app_be.entity.enums.Role;
+import java.util.Date;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.validator.constraints.Length;
 
-import java.util.Date;
+import com.vanmo.booking_app_be.entity.enums.Role;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Getter

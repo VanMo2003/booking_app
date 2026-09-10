@@ -1,14 +1,15 @@
 package com.vanmo.booking_app_be.entity;
 
+import java.util.Date;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.lang.Nullable;
 
-import java.util.Date;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Getter
@@ -25,8 +26,10 @@ public class Amenity {
 
     @NotNull
     String name;
+
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
+
     boolean common;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -1,15 +1,15 @@
 package com.vanmo.booking_app_be.dto.request;
 
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+import static com.vanmo.booking_app_be.entity.enums.BookingStatus.PENDING;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.HashSet;
 import java.util.Set;
 
-import static com.vanmo.booking_app_be.entity.enums.BookingStatus.PENDING;
+import jakarta.validation.constraints.NotNull;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -18,11 +18,15 @@ import static com.vanmo.booking_app_be.entity.enums.BookingStatus.PENDING;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingCreateRequest {
-    @NotNull LocalDate checkinDate;
-    @NotNull LocalDate checkoutDate;
+    @NotNull
+    LocalDate checkinDate;
+
+    @NotNull
+    LocalDate checkoutDate;
+
     String bookingStatus = PENDING.name();
     String paymentMethod;
-//    String paymentStatus;
+    //    String paymentStatus;
     Long hotelId;
     Long customerId;
     Set<Long> rooms;

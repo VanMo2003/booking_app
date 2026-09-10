@@ -1,14 +1,17 @@
 package com.vanmo.booking_app_be.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.FeedbackCreateRequest;
 import com.vanmo.booking_app_be.dto.request.FeedbackUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.FeedbackResponse;
+import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.FeedbackService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/feedbacks")
@@ -23,8 +26,7 @@ public class FeedbackController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<FeedbackResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody FeedbackUpdateRequest req) {
+    public ApiResponse<FeedbackResponse> update(@PathVariable Long id, @Valid @RequestBody FeedbackUpdateRequest req) {
         return ApiResponse.ok(feedbackService.update(id, req));
     }
 
@@ -35,8 +37,7 @@ public class FeedbackController {
 
     @GetMapping
     public ApiResponse<PageResponse<FeedbackResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(feedbackService.getAll(page, size));
     }
 

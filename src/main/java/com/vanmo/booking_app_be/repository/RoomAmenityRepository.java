@@ -1,11 +1,11 @@
 package com.vanmo.booking_app_be.repository;
 
-import com.vanmo.booking_app_be.entity.Amenity;
-import com.vanmo.booking_app_be.entity.Room;
-import com.vanmo.booking_app_be.entity.RoomAmenity;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
+import com.vanmo.booking_app_be.entity.Amenity;
+import com.vanmo.booking_app_be.entity.RoomAmenity;
 
 public interface RoomAmenityRepository extends JpaRepository<RoomAmenity, Long> {
 

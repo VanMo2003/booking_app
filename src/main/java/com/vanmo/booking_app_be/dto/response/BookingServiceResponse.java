@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import java.util.Date;
 
 @Getter
 @Setter
@@ -16,5 +15,4 @@ import java.util.Date;
 public class BookingServiceResponse {
     Long id;
     ServiceInfoResponse serviceInfo;
-
 }

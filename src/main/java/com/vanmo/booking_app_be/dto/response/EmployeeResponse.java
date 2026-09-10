@@ -1,17 +1,13 @@
 package com.vanmo.booking_app_be.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-import org.hibernate.validator.constraints.Length;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter

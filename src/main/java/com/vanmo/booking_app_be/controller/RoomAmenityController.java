@@ -1,14 +1,17 @@
 package com.vanmo.booking_app_be.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.RoomAmenityCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomAmenityUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.RoomAmenityResponse;
 import com.vanmo.booking_app_be.service.RoomAmenityService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/roomAmenitys")
@@ -23,8 +26,8 @@ public class RoomAmenityController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<RoomAmenityResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody RoomAmenityUpdateRequest req) {
+    public ApiResponse<RoomAmenityResponse> update(
+            @PathVariable Long id, @Valid @RequestBody RoomAmenityUpdateRequest req) {
         return ApiResponse.ok(roomAmenityService.update(id, req));
     }
 
@@ -35,8 +38,7 @@ public class RoomAmenityController {
 
     @GetMapping
     public ApiResponse<PageResponse<RoomAmenityResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(roomAmenityService.getAll(page, size));
     }
 

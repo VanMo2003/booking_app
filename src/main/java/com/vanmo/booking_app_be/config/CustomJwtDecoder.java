@@ -1,10 +1,9 @@
 package com.vanmo.booking_app_be.config;
 
-import com.nimbusds.jose.JOSEException;
-import com.vanmo.booking_app_be.dto.request.IntrospectRequest;
-import com.vanmo.booking_app_be.exception.AppException;
-import com.vanmo.booking_app_be.exception.ErrorCode;
-import com.vanmo.booking_app_be.service.AuthenticationService;
+import java.text.ParseException;
+import java.util.Objects;
+import javax.crypto.spec.SecretKeySpec;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,9 +12,11 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.spec.SecretKeySpec;
-import java.text.ParseException;
-import java.util.Objects;
+import com.nimbusds.jose.JOSEException;
+import com.vanmo.booking_app_be.dto.request.IntrospectRequest;
+import com.vanmo.booking_app_be.exception.AppException;
+import com.vanmo.booking_app_be.exception.ErrorCode;
+import com.vanmo.booking_app_be.service.AuthenticationService;
 
 @Component
 public class CustomJwtDecoder implements JwtDecoder {

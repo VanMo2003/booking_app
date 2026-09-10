@@ -1,14 +1,17 @@
 package com.vanmo.booking_app_be.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.HotelImageCreateRequest;
 import com.vanmo.booking_app_be.dto.request.HotelImageUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.HotelImageResponse;
+import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.HotelImageService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/hotelImages")
@@ -23,8 +26,8 @@ public class HotelImageController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<HotelImageResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody HotelImageUpdateRequest req) {
+    public ApiResponse<HotelImageResponse> update(
+            @PathVariable Long id, @Valid @RequestBody HotelImageUpdateRequest req) {
         return ApiResponse.ok(hotelImageService.update(id, req));
     }
 
@@ -35,8 +38,7 @@ public class HotelImageController {
 
     @GetMapping
     public ApiResponse<PageResponse<HotelImageResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(hotelImageService.getAll(page, size));
     }
 

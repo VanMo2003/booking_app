@@ -1,14 +1,16 @@
 package com.vanmo.booking_app_be.entity;
 
+import java.math.BigDecimal;
+import java.util.Date;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
-import java.util.Date;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Getter
@@ -24,9 +26,11 @@ public class Service {
     Long id;
 
     String name;
+
     @NotNull(message = "Unit price cannot be left blank")
     @Column(nullable = false, precision = 12)
     BigDecimal unitPrice;
+
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
 

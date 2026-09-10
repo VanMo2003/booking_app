@@ -1,16 +1,19 @@
 package com.vanmo.booking_app_be.entity;
 
-import com.vanmo.booking_app_be.entity.enums.RoomStatus;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.Set;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import com.vanmo.booking_app_be.entity.enums.RoomStatus;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Getter
@@ -30,11 +33,14 @@ public class Room {
     @Column(length = 20, columnDefinition = "TEXT")
     @NotNull
     String roomNumber;
+
     @NotNull
     @Column(precision = 12)
     BigDecimal price;
+
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
+
     @NotNull
     Integer capacity;
 

@@ -1,17 +1,21 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
+import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.service.BookingService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/bookings")
@@ -26,8 +30,7 @@ public class BookingController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<BookingResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody BookingUpdateRequest req) {
+    public ApiResponse<BookingResponse> update(@PathVariable Long id, @Valid @RequestBody BookingUpdateRequest req) {
         return ApiResponse.ok(bookingService.update(id, req));
     }
 
@@ -43,12 +46,13 @@ public class BookingController {
             @RequestParam(defaultValue = "") String bookingStatus) {
         if (hotelId != 0) {
             return ApiResponse.ok(bookingService.getAllByHotel(hotelId, bookingStatus));
-        }else{
+        } else {
             return ApiResponse.ok(bookingService.getAllByCustomer(customerId, bookingStatus));
         }
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("!hasAuthority('ROLE_STAFF')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         bookingService.delete(id);
         return ApiResponse.ok(null);
@@ -70,8 +74,7 @@ public class BookingController {
     }
 
     @PutMapping("/{id}/payment-status")
-    public BookingResponse updatePaymentStatus(@PathVariable Long id,
-                                               @RequestParam PaymentStatus status) {
+    public BookingResponse updatePaymentStatus(@PathVariable Long id, @RequestParam PaymentStatus status) {
         return bookingService.updatePaymentStatus(id, status);
     }
 }

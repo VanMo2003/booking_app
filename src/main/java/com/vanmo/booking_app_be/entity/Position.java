@@ -1,11 +1,12 @@
 package com.vanmo.booking_app_be.entity;
 
+import java.util.Set;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.util.Set;
 
 @Entity
 @Getter
@@ -22,6 +23,7 @@ public class Position {
 
     @NotNull
     String name;
+
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
 

@@ -1,12 +1,13 @@
 package com.vanmo.booking_app_be.dto.request;
 
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
+
+import jakarta.validation.constraints.NotNull;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -17,7 +18,10 @@ import java.util.Set;
 public class BookingUpdateRequest {
     @NotNull
     LocalDate checkinDate;
-    @NotNull LocalDate checkoutDate;
+
+    @NotNull
+    LocalDate checkoutDate;
+
     String bookingStatus; // enum BookingStatus
     String paymentMethod; // enum PaymentMethod
     Long hotelId;

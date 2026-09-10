@@ -1,10 +1,11 @@
 package com.vanmo.booking_app_be.mapper;
 
+import org.mapstruct.*;
+
 import com.vanmo.booking_app_be.dto.request.RoomAmenityCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomAmenityUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.RoomAmenityResponse;
 import com.vanmo.booking_app_be.entity.RoomAmenity;
-import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
 public interface RoomAmenityMapper {

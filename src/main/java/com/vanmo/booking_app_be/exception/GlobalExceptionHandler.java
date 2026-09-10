@@ -1,19 +1,26 @@
 package com.vanmo.booking_app_be.exception;
 
-import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import com.vanmo.booking_app_be.dto.common.ApiResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Object>> handleAppException(AppException ex) {
-        return ResponseEntity
-                .status(ex.getErrorCode().getHttpStatusCode())
-                .body(ApiResponse.fail(ex.getMessage(), 401));
+        return ResponseEntity.status(ex.getErrorCode().getHttpStatusCode())
+                .body(ApiResponse.fail(ex.getMessage(), ex.getErrorCode().getCode()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(ErrorCode.UN_AUTHORIZED.getHttpStatusCode())
+                .body(ApiResponse.fail(ErrorCode.UN_AUTHORIZED.getMessage(), ErrorCode.UN_AUTHORIZED.getCode()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -28,16 +35,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleOther(Exception ex) {
         ex.printStackTrace();
-        return ResponseEntity.internalServerError()
-                .body(ApiResponse.fail("Unexpected error: " + ex.getMessage(), 403));
+        return ResponseEntity.internalServerError().body(ApiResponse.fail("Unexpected error: " + ex.getMessage(), 403));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleMaxSizeException(MaxUploadSizeExceededException ex) {
-        ApiResponse<Void> res = ApiResponse.fail(
-                "File quá lớn. Vui lòng upload file nhỏ hơn.",
-                413
-        );
+        ApiResponse<Void> res = ApiResponse.fail("File quá lớn. Vui lòng upload file nhỏ hơn.", 413);
         return ResponseEntity.status(413).body(res);
     }
 }

@@ -1,14 +1,17 @@
 package com.vanmo.booking_app_be.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.BookingServiceCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingServiceUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.BookingServiceResponse;
+import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.BookingServiceService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/bookingServices")
@@ -23,8 +26,8 @@ public class BookingServiceController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<BookingServiceResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody BookingServiceUpdateRequest req) {
+    public ApiResponse<BookingServiceResponse> update(
+            @PathVariable Long id, @Valid @RequestBody BookingServiceUpdateRequest req) {
         return ApiResponse.ok(bookingServiceService.update(id, req));
     }
 
@@ -35,8 +38,7 @@ public class BookingServiceController {
 
     @GetMapping
     public ApiResponse<PageResponse<BookingServiceResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(bookingServiceService.getAll(page, size));
     }
 

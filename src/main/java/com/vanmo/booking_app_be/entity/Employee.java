@@ -1,18 +1,20 @@
 package com.vanmo.booking_app_be.entity;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.validator.constraints.Length;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.Set;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.validator.constraints.Length;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Getter
@@ -40,10 +42,7 @@ public class Employee {
     @NotNull
     String fullName;
 
-    @Pattern(
-            regexp = "0\\d{9}",
-            message = "Phone number is not in correct format"
-    )
+    @Pattern(regexp = "0\\d{9}", message = "Phone number is not in correct format")
     @Length(min = 10, max = 10, message = "Phone number must have exactly 10 digits")
     @NotNull
     String phoneNumber;

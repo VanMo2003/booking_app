@@ -1,16 +1,18 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.PositionCreateRequest;
 import com.vanmo.booking_app_be.dto.request.PositionUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.PositionResponse;
 import com.vanmo.booking_app_be.service.PositionService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/positions")
@@ -25,8 +27,7 @@ public class PositionController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<PositionResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody PositionUpdateRequest req) {
+    public ApiResponse<PositionResponse> update(@PathVariable Long id, @Valid @RequestBody PositionUpdateRequest req) {
         return ApiResponse.ok(positionService.update(id, req));
     }
 

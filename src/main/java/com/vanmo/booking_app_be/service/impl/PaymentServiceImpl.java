@@ -1,5 +1,15 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.stereotype.Service;
+
 import com.vanmo.booking_app_be.config.VNPayConfig;
 import com.vanmo.booking_app_be.dto.response.PaymentResponse;
 import com.vanmo.booking_app_be.entity.Booking;
@@ -10,17 +20,10 @@ import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.repository.BookingRepository;
 import com.vanmo.booking_app_be.service.PaymentService;
 import com.vanmo.booking_app_be.utils.VNPayUtil;
-import jakarta.servlet.http.HttpServletRequest;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -30,8 +33,10 @@ public class PaymentServiceImpl implements PaymentService {
     BookingRepository bookingRepository;
 
     @Override
-    public PaymentResponse createVnPayPayment(HttpServletRequest request, Long bookingId, Long amount, String bankCode) {
-        Booking booking = bookingRepository.findById(bookingId)
+    public PaymentResponse createVnPayPayment(
+            HttpServletRequest request, Long bookingId, Long amount, String bankCode) {
+        Booking booking = bookingRepository
+                .findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
 
         if (booking.getPaymentMethod() != PaymentMethod.VN_PAY) {
@@ -52,7 +57,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (booking.getPaymentStatus() == PaymentStatus.FAILED
                 || (booking.getPaymentExpireAt() != null
-                && booking.getPaymentExpireAt().isBefore(LocalDateTime.now()))) {
+                        && booking.getPaymentExpireAt().isBefore(LocalDateTime.now()))) {
             booking.setPaymentStatus(PaymentStatus.PENDING);
             booking.setPaymentExpireAt(LocalDateTime.now().plusMinutes(15));
             booking.setPaidAt(null);

@@ -1,13 +1,13 @@
 package com.vanmo.booking_app_be.dto.response;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 
 @Getter
 @Setter
@@ -27,6 +27,7 @@ public class HotelDetailResponse {
     String pathImage;
     boolean active;
     String accountId;
+    Long hotelChainId;
     List<String> images = new ArrayList<>();
     List<RoomResponse> rooms = new ArrayList<>();
     List<AmenityResponse> amenities = new ArrayList<>();

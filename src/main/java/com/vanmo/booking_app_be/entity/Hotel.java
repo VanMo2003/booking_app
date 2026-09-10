@@ -1,18 +1,20 @@
 package com.vanmo.booking_app_be.entity;
 
-import com.vanmo.booking_app_be.entity.enums.HotelStatus;
+import java.util.Date;
+import java.util.Set;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.validator.constraints.Length;
-import org.springframework.lang.Nullable;
 
-import java.util.Date;
-import java.util.Set;
+import com.vanmo.booking_app_be.entity.enums.HotelStatus;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Getter
@@ -28,26 +30,33 @@ public class Hotel {
     Long id;
 
     String pathImage;
+
     @NotNull
     String name;
+
     @NotNull
     String address;
-    @Pattern(
-            regexp = "0\\d{9}",
-            message = "Phone number is not in correct format"
-    )
+
+    @Pattern(regexp = "0\\d{9}", message = "Phone number is not in correct format")
     @Length(min = 10, max = 10, message = "Phone number must have exactly 10 digits")
     @NotNull
     String phone;
+
     @Column(length = 5000, columnDefinition = "TEXT")
     String description;
+
     @NotNull
     String category; // Luxury, Grand, Holiday, Standard
+
     double rating;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "account_id", nullable = false)
     Account account;
+
+    @ManyToOne
+    @JoinColumn(name = "hotel_chain_id", nullable = false)
+    HotelChain hotelChain;
 
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<HotelImage> hotelImages;
@@ -58,12 +67,13 @@ public class Hotel {
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL)
     Set<Service> services;
 
-    @OneToMany(mappedBy = "hotel",cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL)
     Set<Amenity> amenities;
+
     boolean active;
 
     HotelStatus status;
-    
+
     @CreationTimestamp
     @Column(updatable = false)
     Date onCreate;

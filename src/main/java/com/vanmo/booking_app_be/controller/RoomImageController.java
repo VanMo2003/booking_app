@@ -1,14 +1,17 @@
 package com.vanmo.booking_app_be.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.RoomImageCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomImageUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.RoomImageResponse;
 import com.vanmo.booking_app_be.service.RoomImageService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/roomImages")
@@ -23,8 +26,8 @@ public class RoomImageController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<RoomImageResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody RoomImageUpdateRequest req) {
+    public ApiResponse<RoomImageResponse> update(
+            @PathVariable Long id, @Valid @RequestBody RoomImageUpdateRequest req) {
         return ApiResponse.ok(roomImageService.update(id, req));
     }
 
@@ -35,8 +38,7 @@ public class RoomImageController {
 
     @GetMapping
     public ApiResponse<PageResponse<RoomImageResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(roomImageService.getAll(page, size));
     }
 

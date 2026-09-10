@@ -1,12 +1,13 @@
 package com.vanmo.booking_app_be.dto.response;
 
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.domain.Page;
-
-import java.util.List;
 
 @Getter
 @Setter

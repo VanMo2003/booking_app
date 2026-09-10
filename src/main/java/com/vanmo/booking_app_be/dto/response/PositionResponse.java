@@ -2,10 +2,8 @@ package com.vanmo.booking_app_be.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import java.util.Date;
 
 @Getter
 @Setter

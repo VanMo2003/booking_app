@@ -1,18 +1,19 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+
 import com.vanmo.booking_app_be.dto.request.RoomImageCreateRequest;
 import com.vanmo.booking_app_be.dto.request.RoomImageUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.RoomImageResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.RoomImageResponse;
 import com.vanmo.booking_app_be.entity.RoomImage;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.RoomImageMapper;
 import com.vanmo.booking_app_be.repository.RoomImageRepository;
 import com.vanmo.booking_app_be.service.RoomImageService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
-import org.springframework.stereotype.Service;
 
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +30,8 @@ public class RoomImageServiceImpl implements RoomImageService {
 
     @Override
     public RoomImageResponse update(Long id, RoomImageUpdateRequest req) {
-        RoomImage entity = roomImageRepository.findById(id)
+        RoomImage entity = roomImageRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RoomImage not found id=" + id));
         roomImageMapper.updateEntity(entity, req);
         return roomImageMapper.toResponse(roomImageRepository.save(entity));
@@ -37,7 +39,8 @@ public class RoomImageServiceImpl implements RoomImageService {
 
     @Override
     public RoomImageResponse getById(Long id) {
-        RoomImage entity = roomImageRepository.findById(id)
+        RoomImage entity = roomImageRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RoomImage not found id=" + id));
         return roomImageMapper.toResponse(entity);
     }
@@ -51,7 +54,8 @@ public class RoomImageServiceImpl implements RoomImageService {
 
     @Override
     public void delete(Long id) {
-        RoomImage entity = roomImageRepository.findById(id)
+        RoomImage entity = roomImageRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RoomImage not found id=" + id));
         roomImageRepository.delete(entity);
     }

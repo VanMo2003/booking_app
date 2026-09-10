@@ -1,14 +1,17 @@
 package com.vanmo.booking_app_be.controller;
 
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AccountCreateRequest;
 import com.vanmo.booking_app_be.dto.request.AccountUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.AccountResponse;
+import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.AccountService;
-import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/accounts")
@@ -23,8 +26,7 @@ public class AccountController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<AccountResponse> update(@PathVariable String id,
-                                              @Valid @RequestBody AccountUpdateRequest req) {
+    public ApiResponse<AccountResponse> update(@PathVariable String id, @Valid @RequestBody AccountUpdateRequest req) {
         return ApiResponse.ok(accountService.update(id, req));
     }
 
@@ -35,8 +37,7 @@ public class AccountController {
 
     @GetMapping
     public ApiResponse<PageResponse<AccountResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(accountService.getAll(page, size));
     }
 

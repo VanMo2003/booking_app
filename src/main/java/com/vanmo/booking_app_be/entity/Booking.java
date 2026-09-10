@@ -1,20 +1,23 @@
 package com.vanmo.booking_app_be.entity;
 
-import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
-import com.vanmo.booking_app_be.entity.enums.BookingStatus;
-import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Set;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Getter
@@ -31,6 +34,7 @@ public class Booking {
 
     @NotNull
     LocalDate checkinDate;
+
     @NotNull
     LocalDate checkoutDate;
 

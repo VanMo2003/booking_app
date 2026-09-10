@@ -1,10 +1,10 @@
 package com.vanmo.booking_app_be.dto.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
@@ -20,9 +20,7 @@ public class YearWeek {
         int week = date.get(wf.weekOfWeekBasedYear());
         int year = date.get(wf.weekBasedYear());
 
-        LocalDate start = date
-                .with(wf.weekOfWeekBasedYear(), week)
-                .with(wf.dayOfWeek(), 1);
+        LocalDate start = date.with(wf.weekOfWeekBasedYear(), week).with(wf.dayOfWeek(), 1);
 
         LocalDate end = start.plusDays(6);
 

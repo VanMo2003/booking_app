@@ -1,10 +1,11 @@
 package com.vanmo.booking_app_be.mapper;
 
+import org.mapstruct.*;
+
 import com.vanmo.booking_app_be.dto.request.EmployeeCreateRequest;
 import com.vanmo.booking_app_be.dto.request.EmployeeUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.EmployeeResponse;
 import com.vanmo.booking_app_be.entity.Employee;
-import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
 public interface EmployeeMapper {

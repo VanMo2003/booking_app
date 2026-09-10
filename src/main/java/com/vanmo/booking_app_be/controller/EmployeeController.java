@@ -1,16 +1,19 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.EmployeeCreateRequest;
 import com.vanmo.booking_app_be.dto.request.EmployeeUpdateRequest;
-import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.dto.response.EmployeeResponse;
+import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.service.EmployeeService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/employees")
@@ -25,8 +28,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<EmployeeResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody EmployeeUpdateRequest req) {
+    public ApiResponse<EmployeeResponse> update(@PathVariable Long id, @Valid @RequestBody EmployeeUpdateRequest req) {
         return ApiResponse.ok(employeeService.update(id, req));
     }
 
@@ -42,8 +44,7 @@ public class EmployeeController {
 
     @GetMapping
     public ApiResponse<PageResponse<EmployeeResponse>> getAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(employeeService.getAll(page, size));
     }
 

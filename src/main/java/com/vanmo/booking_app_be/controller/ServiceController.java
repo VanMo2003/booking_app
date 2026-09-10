@@ -1,15 +1,19 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.util.List;
+
+import jakarta.validation.Valid;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.ServiceCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ServiceUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.ServiceResponse;
 import com.vanmo.booking_app_be.service.ServiceService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/services")
@@ -24,8 +28,7 @@ public class ServiceController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ServiceResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody ServiceUpdateRequest req) {
+    public ApiResponse<ServiceResponse> update(@PathVariable Long id, @Valid @RequestBody ServiceUpdateRequest req) {
         return ApiResponse.ok(serviceService.update(id, req));
     }
 
@@ -40,6 +43,7 @@ public class ServiceController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("!hasAuthority('ROLE_STAFF')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         serviceService.delete(id);
         return ApiResponse.ok(null);

@@ -1,14 +1,14 @@
 package com.vanmo.booking_app_be.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
-import com.vanmo.booking_app_be.entity.enums.HotelStatus;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.vanmo.booking_app_be.entity.enums.HotelStatus;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -29,6 +29,7 @@ public class ListHotelResponse {
     boolean active;
     HotelStatus status;
     String accountId;
+    Long hotelChainId;
     List<AmenityResponse> amenities = new ArrayList<>();
     List<ServiceResponse> services = new ArrayList<>();
     Date onCreate;
