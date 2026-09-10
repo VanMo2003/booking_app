@@ -7,10 +7,19 @@ import com.vanmo.booking_app_be.dto.request.FeedbackCreateRequest;
 import com.vanmo.booking_app_be.dto.request.FeedbackUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.FeedbackResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.entity.Account;
+import com.vanmo.booking_app_be.entity.Booking;
+import com.vanmo.booking_app_be.entity.Customer;
 import com.vanmo.booking_app_be.entity.Feedback;
+import com.vanmo.booking_app_be.entity.enums.Role;
+import com.vanmo.booking_app_be.exception.AppException;
+import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.FeedbackMapper;
+import com.vanmo.booking_app_be.repository.BookingRepository;
+import com.vanmo.booking_app_be.repository.CustomerRepository;
 import com.vanmo.booking_app_be.repository.FeedbackRepository;
+import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.FeedbackService;
 
 import lombok.RequiredArgsConstructor;
@@ -20,11 +29,30 @@ import lombok.RequiredArgsConstructor;
 public class FeedbackServiceImpl implements FeedbackService {
 
     private final FeedbackRepository feedbackRepository;
+    private final BookingRepository bookingRepository;
+    private final CustomerRepository customerRepository;
     private final FeedbackMapper feedbackMapper;
+    private final AccessGuard accessGuard;
 
     @Override
     public FeedbackResponse create(FeedbackCreateRequest req) {
+        Booking booking = bookingRepository
+                .findById(req.getBookingId())
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + req.getBookingId()));
+        Customer customer = customerRepository
+                .findById(req.getCustomerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found id=" + req.getCustomerId()));
+
+        Account caller = accessGuard.currentAccount();
+        if (caller.getRole() == Role.CUSTOMER
+                && (customer.getAccount() == null
+                        || !customer.getAccount().getId().equals(caller.getId()))) {
+            throw new AppException(ErrorCode.UN_AUTHORIZED, "Customers can only leave feedback as themselves");
+        }
+
         Feedback entity = feedbackMapper.toEntity(req);
+        entity.setBooking(booking);
+        entity.setCustomer(customer);
         return feedbackMapper.toResponse(feedbackRepository.save(entity));
     }
 

@@ -15,6 +15,7 @@ import com.vanmo.booking_app_be.mapper.RoomAmenityMapper;
 import com.vanmo.booking_app_be.repository.AmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
+import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.RoomAmenityService;
 
 import lombok.RequiredArgsConstructor;
@@ -27,18 +28,20 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
     private final RoomRepository roomRepository;
     private final AmenityRepository amenityRepository;
     private final RoomAmenityMapper roomAmenityMapper;
+    private final AccessGuard accessGuard;
 
     @Override
     public boolean create(RoomAmenityCreateRequest req) {
-        RoomAmenity entity = roomAmenityMapper.toEntity(req);
-
         Room room = roomRepository
                 .findById(req.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+        accessGuard.requireBranchStaffOrAbove(room.getHotel().getId());
+
         Amenity amenity = amenityRepository
                 .findById(req.getAmenityId())
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found"));
 
+        RoomAmenity entity = roomAmenityMapper.toEntity(req);
         entity.setRoom(room);
         entity.setAmenity(amenity);
         roomAmenityRepository.save(entity);
@@ -50,6 +53,7 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
         RoomAmenity entity = roomAmenityRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RoomAmenity not found id=" + id));
+        accessGuard.requireBranchStaffOrAbove(entity.getRoom().getHotel().getId());
         roomAmenityMapper.updateEntity(entity, req);
         return roomAmenityMapper.toResponse(roomAmenityRepository.save(entity));
     }
@@ -74,6 +78,7 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
         RoomAmenity entity = roomAmenityRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RoomAmenity not found id=" + id));
+        accessGuard.requireBranchManagerOrAbove(entity.getRoom().getHotel().getId());
         roomAmenityRepository.delete(entity);
     }
 }

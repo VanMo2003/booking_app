@@ -17,11 +17,13 @@ import org.springframework.stereotype.Service;
 import com.vanmo.booking_app_be.dto.request.ReportCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ReportUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
+import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Report;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.ReportMapper;
 import com.vanmo.booking_app_be.repository.BookingRepository;
+import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.ReportRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.ReportService;
@@ -35,11 +37,14 @@ public class ReportServiceImpl implements ReportService {
     private final ReportRepository reportRepository;
     private final ReportMapper reportMapper;
     private final BookingRepository bookingRepository;
+    private final HotelRepository hotelRepository;
     private final AccessGuard accessGuard;
 
     @Override
     public ReportResponse create(ReportCreateRequest req) {
+        Hotel hotel = accessGuard.requireBranchManagerOrAbove(req.getHotelId());
         Report entity = reportMapper.toEntity(req);
+        entity.setHotel(hotel);
         return reportMapper.toResponse(reportRepository.save(entity));
     }
 
@@ -48,6 +53,7 @@ public class ReportServiceImpl implements ReportService {
         Report entity = reportRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found id=" + id));
+        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
         reportMapper.updateEntity(entity, req);
         return reportMapper.toResponse(reportRepository.save(entity));
     }
@@ -57,11 +63,13 @@ public class ReportServiceImpl implements ReportService {
         Report entity = reportRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found id=" + id));
+        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
         return reportMapper.toResponse(entity);
     }
 
     @Override
     public PageResponse<ReportResponse> getAll(int page, int size) {
+        accessGuard.requireAdmin();
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<ReportResponse> data = reportRepository.findAll(pageable).map(reportMapper::toResponse);
         return PageResponse.from(data);
@@ -72,6 +80,7 @@ public class ReportServiceImpl implements ReportService {
         Report entity = reportRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found id=" + id));
+        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
         reportRepository.delete(entity);
     }
 

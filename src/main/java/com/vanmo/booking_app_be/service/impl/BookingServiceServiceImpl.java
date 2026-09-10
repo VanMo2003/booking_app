@@ -10,6 +10,7 @@ import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.entity.BookingService;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.BookingServiceMapper;
+import com.vanmo.booking_app_be.repository.BookingRepository;
 import com.vanmo.booking_app_be.repository.BookingServiceRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.BookingServiceService;
@@ -21,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class BookingServiceServiceImpl implements BookingServiceService {
 
     private final BookingServiceRepository bookingServiceRepository;
+    private final BookingRepository bookingRepository;
     private final BookingServiceMapper bookingServiceMapper;
     private final AccessGuard accessGuard;
 
@@ -28,8 +30,15 @@ public class BookingServiceServiceImpl implements BookingServiceService {
     public BookingServiceResponse create(BookingServiceCreateRequest req) {
         // direct API entry point (BookingServiceController) - internal calls from
         // BookingServiceImpl.create() go through createBookingService() below instead,
-        // since that caller has already run its own (customer-aware) access check
-        accessGuard.requireBranchStaffOrAbove(req.getBooking().getHotel().getId());
+        // since that caller has already run its own (customer-aware) access check.
+        // Re-fetch the real Booking rather than trusting req.getBooking() - a client
+        // calling this endpoint typically only sends {"booking": {"id": X}}, so any
+        // other field (including .hotel) on that partial object is null.
+        var booking = bookingRepository
+                .findById(req.getBooking().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Booking not found id=" + req.getBooking().getId()));
+        accessGuard.requireBranchStaffOrAbove(booking.getHotel().getId());
         BookingService entity = createBookingService(req);
         return bookingServiceMapper.toResponse(entity);
     }

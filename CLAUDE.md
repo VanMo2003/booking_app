@@ -130,3 +130,32 @@ a `@RequestPart("files") List<MultipartFile>`. `FileStorageService` writes to `f
 MySQL 8.4; `spring.jpa.hibernate.ddl-auto=update` by default (no migration tool — schema evolves
 via entity changes on boot). `src/main/resources/static/booking_db.sql` is a reference dump of the
 schema/seed data, not an executed migration.
+
+### A recurring bug shape to watch for
+
+Several `*ServiceImpl.create()` methods historically called `mapper.toEntity(req)` and saved
+directly, trusting MapStruct to turn a `*Id` field (e.g. `hotelId`) on the request DTO into the
+matching `@ManyToOne` field (e.g. `hotel`) on the entity — MapStruct doesn't do that automatically
+(different property names, `Long` → entity isn't an auto-conversion), so the association silently
+stayed `null` and saving failed a NOT NULL/FK constraint (or, for nullable FKs, just silently lost
+the association). Fixed instances: `Hotel.account`/`.hotelChain`, `Payroll.employee`,
+`HotelImage.hotel`, `RoomImage.room`, `Feedback.booking`/`.customer`, `Report.hotel` — each now
+resolves the referenced entity from its repository and sets it manually before save. If you add a
+new `create()` that takes a `*Id` field, check whether the mapper actually wires it up (look for an
+explicit `@Mapping(source=..., target=...)` or manual `entity.setX(...)` in the service) rather than
+assuming it does.
+
+### Known gap: `/hotels`, `/rooms`, `/amenities`, `/services` browsing endpoints aren't actually public
+
+`HotelServiceImpl`/`RoomServiceImpl`/etc.'s read methods (`getAll`, `getById`, `getAllByHotel`, …)
+are deliberately left unguarded by `AccessGuard` so customers can browse before logging in — but
+`SecurityConfig.PUBLIC_ENDPOINT_GET` only allowlists two dead paths (`/user/checkExistUser/{}`,
+`/storage/{}}`, neither of which matches any real controller) and gates everything else behind
+`anyRequest().authenticated()`. So today these browsing endpoints actually require a valid JWT
+despite the code's evident intent — pre-existing, not introduced by the hierarchy work. Fixing it
+means adding the real browsing paths (`/hotels`, `/hotels/detail/{id}`, `/hotels/category`,
+`/hotels/search`, `/rooms`, `/rooms/{id}`, `/rooms/available`, `/amenities/hotel/{hotelId}`,
+`/amenities/room`, `/services`) to that allowlist — deliberately not done as part of this change
+since it's a global authorization-policy change outside what was asked; flagged to the user instead.
+`postman/booking_app.postman_collection.json`'s browsing requests currently send a bearer token to
+match this real behavior.
