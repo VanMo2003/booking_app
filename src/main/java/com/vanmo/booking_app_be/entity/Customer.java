@@ -28,8 +28,9 @@ public class Customer {
 
     String pathImage;
 
+    /** Null for a walk-in guest created by staff at the front desk (no login account yet). */
     @OneToOne
-    @JoinColumn(name = "account_id", nullable = false)
+    @JoinColumn(name = "account_id")
     Account account;
 
     String fullName;

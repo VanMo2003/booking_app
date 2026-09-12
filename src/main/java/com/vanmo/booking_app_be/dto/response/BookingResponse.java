@@ -32,6 +32,9 @@ public class BookingResponse {
     List<BookingServiceResponse> bookingServices;
     BigDecimal totalAmount;
     String note;
+    /** Null when the customer booked it themselves; set when staff took it at the front desk. */
+    String handledByAccountId;
+
     Date onCreate;
     Date onUpdate;
 }

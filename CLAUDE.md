@@ -145,17 +145,48 @@ new `create()` that takes a `*Id` field, check whether the mapper actually wires
 explicit `@Mapping(source=..., target=...)` or manual `entity.setX(...)` in the service) rather than
 assuming it does.
 
-### Known gap: `/hotels`, `/rooms`, `/amenities`, `/services` browsing endpoints aren't actually public
+### Walk-in guests
 
-`HotelServiceImpl`/`RoomServiceImpl`/etc.'s read methods (`getAll`, `getById`, `getAllByHotel`, …)
-are deliberately left unguarded by `AccessGuard` so customers can browse before logging in — but
-`SecurityConfig.PUBLIC_ENDPOINT_GET` only allowlists two dead paths (`/user/checkExistUser/{}`,
-`/storage/{}}`, neither of which matches any real controller) and gates everything else behind
-`anyRequest().authenticated()`. So today these browsing endpoints actually require a valid JWT
-despite the code's evident intent — pre-existing, not introduced by the hierarchy work. Fixing it
-means adding the real browsing paths (`/hotels`, `/hotels/detail/{id}`, `/hotels/category`,
-`/hotels/search`, `/rooms`, `/rooms/{id}`, `/rooms/available`, `/amenities/hotel/{hotelId}`,
-`/amenities/room`, `/services`) to that allowlist — deliberately not done as part of this change
-since it's a global authorization-policy change outside what was asked; flagged to the user instead.
-`postman/booking_app.postman_collection.json`'s browsing requests currently send a bearer token to
-match this real behavior.
+`Customer.account` is **optional**. A guest who books at the front desk gets a profile with just
+name/phone and no login account (`POST /customers` with no `accountId`, staff-or-above only via
+`AccessGuard.requireStaffOrAbove()`); staff then books for them with the returned `customerId`
+through the normal `POST /bookings`. `Booking.handledBy` records the staff/manager account that took
+the booking (null for customer self-service) and is what the staff-performance report groups by.
+If that guest later self-registers, `POST /customers/link-by-phone` attaches their new account to
+the *same* `Customer` row (matched on phone, unlinked rows only) instead of creating a duplicate;
+`GET /customers/search?phoneNumber=` is the front-desk lookup that stops duplicates in the first
+place.
+
+### Reports
+
+Two families, both in `ReportController`/`ReportServiceImpl`, each with a branch-level
+(`requireBranchManagerOrAbove`) and a chain-level `/reports/chain/...` (`requireChainOwner`) variant:
+revenue (by date/month/year/week, pre-existing) and the detailed set — `occupancy`,
+`occupancy/daily`, `revenue-by-room-type`, `revenue-by-service`, `top-customers`,
+`staff-performance`, `cancellation-rate`, plus `export` returning a multi-sheet `.xlsx`
+(`ExcelReportServiceImpl`, Apache POI). Two things worth knowing about the numbers:
+
+- **Room revenue is derived, not stored.** `BookingRoom` has no price column and `Booking.totalAmount`
+  is a single client-supplied figure, so revenue-by-room-type computes `room.price × nights` per
+  booked room. Service revenue *is* stored (`BookingService.total`, set from
+  `service.unitPrice × quantity` at booking time).
+- **Occupancy and room-night maths happen in Java**, not SQL (`BookedRoomNightRow` +
+  `ReportServiceImpl.nightsWithin`), to avoid DB-specific date arithmetic. `occupancy/daily` is
+  capped at 92 days (`MAX_DAILY_RANGE`).
+
+### Public browsing
+
+`SecurityConfig.PUBLIC_ENDPOINT_GET` allowlists the anonymous browse surface (`/hotels`,
+`/hotels/detail/{id}`, `/hotels/category`, `/hotels/search`, `/rooms`, `/rooms/{id}`,
+`/rooms/available`, `/amenities/hotel/{hotelId}`, `/amenities/room`, `/services`) so a visitor can
+browse without logging in; everything that writes or is account-scoped still needs a token. The
+matching service methods intentionally carry no `AccessGuard` call — if you add a new browse
+endpoint, it needs both halves (no guard *and* an allowlist entry) or it will 401 anonymously.
+
+### Testing the whole API
+
+`postman/booking_app.postman_collection.json` is the authoritative end-to-end suite (~166 requests,
+10 folders) and runs top-to-bottom in Postman's Collection Runner, chaining tokens/ids through
+collection variables and finishing with a cleanup folder so it can be re-run back-to-back. It covers
+every controller plus the authorization-negative cases (staff can't delete, cross-tenant reads
+rejected, customer can't book for someone else). Keep it in sync when adding endpoints.

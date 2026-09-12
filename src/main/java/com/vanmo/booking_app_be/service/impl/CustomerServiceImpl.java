@@ -11,6 +11,9 @@ import com.vanmo.booking_app_be.dto.response.CustomerResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Customer;
+import com.vanmo.booking_app_be.entity.enums.Role;
+import com.vanmo.booking_app_be.exception.AppException;
+import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.CustomerMapper;
 import com.vanmo.booking_app_be.repository.AccountRepository;
@@ -34,10 +37,18 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public CustomerResponse create(CustomerCreateRequest req) {
         Customer entity = customerMapper.toEntity(req);
-        Account acc = accountRepository
-                .findById(req.getAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found id=" + req.getAccountId()));
-        entity.setAccount(acc);
+
+        if (req.getAccountId() == null || req.getAccountId().isBlank()) {
+            // walk-in guest: front-desk staff records name/phone, no login account yet
+            accessGuard.requireStaffOrAbove();
+        } else {
+            accessGuard.requireSelfOrAdmin(req.getAccountId());
+            Account acc = accountRepository
+                    .findById(req.getAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Account not found id=" + req.getAccountId()));
+            entity.setAccount(acc);
+        }
+
         return customerMapper.toResponse(customerRepository.save(entity));
     }
 
@@ -72,6 +83,33 @@ public class CustomerServiceImpl implements CustomerService {
         return bookingRepository.findDistinctCustomersByHotelId(hotelId).stream()
                 .map(customerMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public List<CustomerResponse> searchByPhone(String phoneNumber) {
+        accessGuard.requireStaffOrAbove();
+        return customerRepository.findAllByPhoneNumber(phoneNumber).stream()
+                .map(customerMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public CustomerResponse linkByPhone(String phoneNumber) {
+        Account caller = accessGuard.currentAccount();
+        if (caller.getRole() != Role.CUSTOMER) {
+            throw new AppException(ErrorCode.UN_AUTHORIZED, "Only a customer account can claim a walk-in profile");
+        }
+        if (customerRepository.findByAccount_Id(caller.getId()) != null) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "This account already has a customer profile");
+        }
+
+        Customer walkIn = customerRepository.findAllByPhoneNumberAndAccountIsNull(phoneNumber).stream()
+                .findFirst()
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("No unlinked walk-in profile with phone=" + phoneNumber));
+
+        walkIn.setAccount(caller);
+        return customerMapper.toResponse(customerRepository.save(walkIn));
     }
 
     @Override

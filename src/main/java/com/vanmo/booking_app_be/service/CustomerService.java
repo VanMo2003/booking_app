@@ -18,5 +18,9 @@ public interface CustomerService {
 
     List<CustomerResponse> getAllByHotel(Long hotelId);
 
+    List<CustomerResponse> searchByPhone(String phoneNumber);
+
+    CustomerResponse linkByPhone(String phoneNumber);
+
     void delete(Long id);
 }

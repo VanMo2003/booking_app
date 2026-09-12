@@ -3,8 +3,10 @@ package com.vanmo.booking_app_be.service.impl;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,14 +19,21 @@ import org.springframework.stereotype.Service;
 import com.vanmo.booking_app_be.dto.request.ReportCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ReportUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
+import com.vanmo.booking_app_be.entity.Employee;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Report;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.exception.AppException;
+import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.ReportMapper;
 import com.vanmo.booking_app_be.repository.BookingRepository;
+import com.vanmo.booking_app_be.repository.BookingRoomRepository;
+import com.vanmo.booking_app_be.repository.BookingServiceRepository;
+import com.vanmo.booking_app_be.repository.EmployeeRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.ReportRepository;
+import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.ReportService;
 
@@ -34,9 +43,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
 
+    private static final int MAX_DAILY_RANGE = 92;
+
     private final ReportRepository reportRepository;
     private final ReportMapper reportMapper;
     private final BookingRepository bookingRepository;
+    private final BookingRoomRepository bookingRoomRepository;
+    private final BookingServiceRepository bookingServiceRepository;
+    private final RoomRepository roomRepository;
+    private final EmployeeRepository employeeRepository;
     private final HotelRepository hotelRepository;
     private final AccessGuard accessGuard;
 
@@ -197,6 +212,208 @@ public class ReportServiceImpl implements ReportService {
         return groupByWeek(dailyRevenue)
                 .sorted(Comparator.comparing(RevenueByWeekDTO::getWeek))
                 .toList();
+    }
+
+    // ---------------- detailed reports ----------------
+
+    @Override
+    public OccupancyResponse getOccupancy(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return occupancy(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public OccupancyResponse getOccupancyForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return occupancy(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    @Override
+    public List<OccupancyByDateDTO> getOccupancyByDate(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        requireRange(from, to);
+        long days = ChronoUnit.DAYS.between(from, to);
+        if (days > MAX_DAILY_RANGE) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Khoảng ngày quá dài, tối đa " + MAX_DAILY_RANGE + " ngày");
+        }
+
+        List<Long> hotelIds = List.of(hotelId);
+        long totalRooms = roomRepository.countByHotel_IdIn(hotelIds);
+        List<BookedRoomNightRow> rows = bookingRoomRepository.findBookedRoomNights(hotelIds, from, to);
+
+        return from.datesUntil(to)
+                .map(date -> {
+                    long occupied = rows.stream()
+                            .filter(r -> !date.isBefore(r.getCheckinDate()) && date.isBefore(r.getCheckoutDate()))
+                            .map(BookedRoomNightRow::getRoomId)
+                            .distinct()
+                            .count();
+                    return new OccupancyByDateDTO(date, totalRooms, occupied, rate(occupied, totalRooms));
+                })
+                .toList();
+    }
+
+    @Override
+    public List<RevenueByRoomTypeDTO> getRevenueByRoomType(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return revenueByRoomType(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public List<RevenueByRoomTypeDTO> getRevenueByRoomTypeForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return revenueByRoomType(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    @Override
+    public List<RevenueByServiceDTO> getRevenueByService(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        requireRange(from, to);
+        return bookingServiceRepository.revenueByService(List.of(hotelId), BookingStatus.COMPLETED, from, to);
+    }
+
+    @Override
+    public List<RevenueByServiceDTO> getRevenueByServiceForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        List<Long> hotelIds = accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId));
+        requireRange(from, to);
+        return bookingServiceRepository.revenueByService(hotelIds, BookingStatus.COMPLETED, from, to);
+    }
+
+    @Override
+    public List<TopCustomerDTO> getTopCustomers(Long hotelId, LocalDate from, LocalDate to, int limit) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return topCustomers(List.of(hotelId), from, to, limit);
+    }
+
+    @Override
+    public List<TopCustomerDTO> getTopCustomersForChain(Long hotelChainId, LocalDate from, LocalDate to, int limit) {
+        return topCustomers(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to, limit);
+    }
+
+    @Override
+    public List<StaffPerformanceDTO> getStaffPerformance(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return staffPerformance(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public List<StaffPerformanceDTO> getStaffPerformanceForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return staffPerformance(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    @Override
+    public CancellationRateResponse getCancellationRate(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return cancellationRate(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public CancellationRateResponse getCancellationRateForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return cancellationRate(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private OccupancyResponse occupancy(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireRange(from, to);
+        long nights = ChronoUnit.DAYS.between(from, to);
+        long totalRooms = roomRepository.countByHotel_IdIn(hotelIds);
+        long roomNights = totalRooms * nights;
+
+        long occupiedRoomNights = bookingRoomRepository.findBookedRoomNights(hotelIds, from, to).stream()
+                .mapToLong(r -> nightsWithin(r, from, to))
+                .sum();
+
+        return OccupancyResponse.builder()
+                .from(from)
+                .to(to)
+                .totalRooms(totalRooms)
+                .roomNights(roomNights)
+                .occupiedRoomNights(occupiedRoomNights)
+                .occupancyRate(rate(occupiedRoomNights, roomNights))
+                .build();
+    }
+
+    private List<RevenueByRoomTypeDTO> revenueByRoomType(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireRange(from, to);
+        List<BookedRoomNightRow> rows =
+                bookingRoomRepository.findRoomNightsByStatus(hotelIds, BookingStatus.COMPLETED, from, to);
+
+        Map<Long, RevenueByRoomTypeDTO> byType = new LinkedHashMap<>();
+        for (BookedRoomNightRow row : rows) {
+            long nights = Math.max(1, ChronoUnit.DAYS.between(row.getCheckinDate(), row.getCheckoutDate()));
+            BigDecimal revenue = row.getRoomPrice() == null
+                    ? BigDecimal.ZERO
+                    : row.getRoomPrice().multiply(BigDecimal.valueOf(nights));
+
+            RevenueByRoomTypeDTO acc = byType.computeIfAbsent(
+                    row.getRoomTypeId(),
+                    id -> new RevenueByRoomTypeDTO(id, row.getRoomTypeName(), 0L, 0L, BigDecimal.ZERO));
+            acc.setBookedRooms(acc.getBookedRooms() + 1);
+            acc.setRoomNights(acc.getRoomNights() + nights);
+            acc.setTotalRevenue(acc.getTotalRevenue().add(revenue));
+        }
+
+        return byType.values().stream()
+                .sorted(Comparator.comparing(RevenueByRoomTypeDTO::getTotalRevenue)
+                        .reversed())
+                .toList();
+    }
+
+    private List<TopCustomerDTO> topCustomers(List<Long> hotelIds, LocalDate from, LocalDate to, int limit) {
+        requireRange(from, to);
+        int safeLimit = limit <= 0 ? 10 : Math.min(limit, 100);
+        return bookingRepository.topCustomers(
+                hotelIds, BookingStatus.COMPLETED, from, to, PageRequest.of(0, safeLimit));
+    }
+
+    private List<StaffPerformanceDTO> staffPerformance(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireRange(from, to);
+        List<StaffPerformanceDTO> rows = bookingRepository.staffPerformance(hotelIds, from, to);
+
+        // the query can only see the Account; names/positions live on Employee (managers have none)
+        for (StaffPerformanceDTO row : rows) {
+            Employee employee = employeeRepository.findByAccount_Id(row.getAccountId());
+            if (employee != null) {
+                row.setFullName(employee.getFullName());
+                if (employee.getPosition() != null) {
+                    row.setPositionName(employee.getPosition().getName());
+                }
+            }
+        }
+        return rows;
+    }
+
+    private CancellationRateResponse cancellationRate(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireRange(from, to);
+        long total = bookingRepository.countBookings(hotelIds, from, to);
+        long canceled = bookingRepository.countBookingsByStatus(hotelIds, BookingStatus.CANCELED, from, to);
+        long completed = bookingRepository.countBookingsByStatus(hotelIds, BookingStatus.COMPLETED, from, to);
+
+        return CancellationRateResponse.builder()
+                .from(from)
+                .to(to)
+                .totalBooking(total)
+                .canceledBooking(canceled)
+                .completedBooking(completed)
+                .cancellationRate(rate(canceled, total))
+                .build();
+    }
+
+    /** Nights of this stay that fall inside [from, to) - stays can start before or end after it. */
+    private long nightsWithin(BookedRoomNightRow row, LocalDate from, LocalDate to) {
+        LocalDate start = row.getCheckinDate().isBefore(from) ? from : row.getCheckinDate();
+        LocalDate end = row.getCheckoutDate().isAfter(to) ? to : row.getCheckoutDate();
+        return Math.max(0, ChronoUnit.DAYS.between(start, end));
+    }
+
+    private double rate(long part, long whole) {
+        if (whole <= 0) {
+            return 0d;
+        }
+        return Math.round((part * 10000d) / whole) / 100d;
+    }
+
+    private void requireRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null || !from.isBefore(to)) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "'from' phải trước 'to'");
+        }
     }
 
     private Long requireChainAccess(Long hotelChainId) {

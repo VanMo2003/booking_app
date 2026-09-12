@@ -64,6 +64,14 @@ public class Booking {
     @JoinColumn(name = "customer_id", nullable = false)
     Customer customer;
 
+    /**
+     * Staff/manager account that took this booking at the front desk; null when the customer
+     * booked it themselves. Drives the staff-performance report.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "handled_by_account_id")
+    Account handledBy;
+
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<BookingRoom> bookingRooms;
 

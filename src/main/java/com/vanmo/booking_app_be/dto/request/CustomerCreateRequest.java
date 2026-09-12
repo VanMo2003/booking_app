@@ -17,7 +17,7 @@ import lombok.experimental.FieldDefaults;
 public class CustomerCreateRequest {
     String pathImage;
 
-    @NotNull
+    /** Optional: omitted for a walk-in guest profile created by staff (no login account). */
     String accountId;
 
     String fullName;

@@ -17,4 +17,6 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     Page<Room> findByHotelId(Long hotelId, Pageable pageable);
 
     List<Room> findAllByHotel_Id(Long hotelId);
+
+    long countByHotel_IdIn(List<Long> hotelIds);
 }

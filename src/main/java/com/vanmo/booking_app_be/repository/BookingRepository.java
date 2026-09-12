@@ -6,6 +6,7 @@ import java.util.List;
 
 import jakarta.validation.constraints.NotNull;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByMonthDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByYearDTO;
+import com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.TopCustomerDTO;
 import com.vanmo.booking_app_be.entity.Booking;
 import com.vanmo.booking_app_be.entity.Customer;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
@@ -176,6 +179,70 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 		GROUP BY b.checkoutDate
 	""")
     List<RevenueByDateDTO> revenueByDateRangeForHotels(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.TopCustomerDTO(
+			c.id, c.fullName, c.phoneNumber, COUNT(b.id), SUM(b.totalAmount)
+		)
+		FROM Booking b
+		JOIN b.customer c
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkoutDate BETWEEN :from AND :to
+		GROUP BY c.id, c.fullName, c.phoneNumber
+		ORDER BY SUM(b.totalAmount) DESC
+	""")
+    List<TopCustomerDTO> topCustomers(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            Pageable pageable);
+
+    /**
+     * Bookings grouped by the staff/manager account that took them. Customer self-service bookings
+     * have a null handledBy and are excluded.
+     */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO(
+			acc.id, acc.username, null, null, COUNT(b.id), SUM(b.totalAmount)
+		)
+		FROM Booking b
+		JOIN b.handledBy acc
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus <> com.vanmo.booking_app_be.entity.enums.BookingStatus.CANCELED
+		AND b.checkinDate BETWEEN :from AND :to
+		GROUP BY acc.id, acc.username
+		ORDER BY COUNT(b.id) DESC
+	""")
+    List<StaffPerformanceDTO> staffPerformance(
+            @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query(
+            """
+		SELECT COUNT(b.id)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.checkinDate BETWEEN :from AND :to
+	""")
+    long countBookings(
+            @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query(
+            """
+		SELECT COUNT(b.id)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkinDate BETWEEN :from AND :to
+	""")
+    long countBookingsByStatus(
             @Param("hotelIds") List<Long> hotelIds,
             @Param("status") BookingStatus status,
             @Param("from") LocalDate from,

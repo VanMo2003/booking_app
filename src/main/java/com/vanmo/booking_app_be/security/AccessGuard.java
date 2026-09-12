@@ -54,6 +54,19 @@ public class AccessGuard {
         }
     }
 
+    /**
+     * Role-only "works here" check for resources that aren't hotel-scoped (e.g. Customer profiles,
+     * which are global). Use {@link #requireBranchStaffOrAbove(Long)} whenever a hotel id is
+     * available - that one also verifies the caller actually belongs to that branch.
+     */
+    public Account requireStaffOrAbove() {
+        Account current = currentAccount();
+        if (current.getRole() == Role.CUSTOMER) {
+            throw new AppException(ErrorCode.UN_AUTHORIZED);
+        }
+        return current;
+    }
+
     public void requireSelfOrAdmin(String accountId) {
         Account current = currentAccount();
         if (current.getRole() != Role.ADMIN && !current.getId().equals(accountId)) {

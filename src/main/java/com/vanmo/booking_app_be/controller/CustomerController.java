@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.CustomerCreateRequest;
+import com.vanmo.booking_app_be.dto.request.CustomerLinkByPhoneRequest;
 import com.vanmo.booking_app_be.dto.request.CustomerUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.CustomerResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
@@ -25,6 +26,18 @@ public class CustomerController {
     @GetMapping("/by-hotel")
     public ApiResponse<List<CustomerResponse>> getAllByHotel(@RequestParam Long hotelId) {
         return ApiResponse.ok(customerService.getAllByHotel(hotelId));
+    }
+
+    /** Front-desk lookup so a returning walk-in guest doesn't get a duplicate profile. */
+    @GetMapping("/search")
+    public ApiResponse<List<CustomerResponse>> searchByPhone(@RequestParam String phoneNumber) {
+        return ApiResponse.ok(customerService.searchByPhone(phoneNumber));
+    }
+
+    /** A newly registered customer claims the walk-in profile staff created for them earlier. */
+    @PostMapping("/link-by-phone")
+    public ApiResponse<CustomerResponse> linkByPhone(@Valid @RequestBody CustomerLinkByPhoneRequest req) {
+        return ApiResponse.ok(customerService.linkByPhone(req.getPhoneNumber()));
     }
 
     @PostMapping

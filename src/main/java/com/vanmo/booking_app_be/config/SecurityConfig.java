@@ -28,7 +28,18 @@ public class SecurityConfig {
     @Value("${jwt.signer-key}")
     private String SIGNER_KEY;
 
-    private final String[] PUBLIC_ENDPOINT_GET = {"/user/checkExistUser/{}", "/storage/{}"};
+    private final String[] PUBLIC_ENDPOINT_GET = {
+        "/hotels",
+        "/hotels/detail/{id}",
+        "/hotels/category",
+        "/hotels/search",
+        "/rooms",
+        "/rooms/{id}",
+        "/rooms/available",
+        "/amenities/hotel/{hotelId}",
+        "/amenities/room",
+        "/services"
+    };
     private final String[] PUBLIC_ENDPOINT_POST = {
         "/accounts", "/auth/login", "/auth/introspect", "/auth/refreshToken", "/storage/upload"
     };

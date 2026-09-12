@@ -83,6 +83,9 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingMapper.toEntity(req);
         booking.setHotel(hotel);
         booking.setCustomer(customer);
+        if (caller.getRole() != Role.CUSTOMER) {
+            booking.setHandledBy(caller);
+        }
 
         if (booking.getPaymentMethod() == PaymentMethod.VN_PAY) {
             booking.setPaymentStatus(PaymentStatus.PENDING);
@@ -110,11 +113,19 @@ public class BookingServiceImpl implements BookingService {
         }
 
         for (Long service : req.getServices()) {
+            com.vanmo.booking_app_be.entity.Service bookedService =
+                    serviceRepository.findById(service).orElse(null);
+            long quantity = 1L;
+
             BookingServiceCreateRequest serviceCreateRequest = new BookingServiceCreateRequest();
             serviceCreateRequest.setBooking(booking);
-            serviceCreateRequest.setService(serviceRepository.findById(service).orElse(null));
-            serviceCreateRequest.setQuantity(1L);
-            serviceCreateRequest.setTotal(BigDecimal.valueOf(0));
+            serviceCreateRequest.setService(bookedService);
+            serviceCreateRequest.setQuantity(quantity);
+            // line total, so the revenue-by-service report has something to sum
+            serviceCreateRequest.setTotal(
+                    bookedService == null || bookedService.getUnitPrice() == null
+                            ? BigDecimal.ZERO
+                            : bookedService.getUnitPrice().multiply(BigDecimal.valueOf(quantity)));
             com.vanmo.booking_app_be.entity.BookingService bookingService =
                     bookingServiceServiceImpl.createBookingService(serviceCreateRequest);
 

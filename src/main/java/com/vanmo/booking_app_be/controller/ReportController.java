@@ -6,12 +6,16 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.ReportCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ReportUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
+import com.vanmo.booking_app_be.service.ExcelReportService;
 import com.vanmo.booking_app_be.service.ReportService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class ReportController {
 
     private final ReportService reportService;
+    private final ExcelReportService excelReportService;
 
     @PostMapping
     public ApiResponse<ReportResponse> create(@Valid @RequestBody ReportCreateRequest req) {
@@ -125,5 +130,143 @@ public class ReportController {
     public ApiResponse<List<RevenueByWeekDTO>> revenueByWeekInMonthForChain(
             @RequestParam Long hotelChainId, @RequestParam Integer year, @RequestParam Integer month) {
         return ApiResponse.ok(reportService.getRevenueByWeekInMonthForChain(hotelChainId, year, month));
+    }
+
+    // ---- detailed reports: one branch ----
+
+    @GetMapping("/occupancy")
+    public ApiResponse<OccupancyResponse> occupancy(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getOccupancy(hotelId, from, to));
+    }
+
+    @GetMapping("/occupancy/daily")
+    public ApiResponse<List<OccupancyByDateDTO>> occupancyDaily(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getOccupancyByDate(hotelId, from, to));
+    }
+
+    @GetMapping("/revenue-by-room-type")
+    public ApiResponse<List<RevenueByRoomTypeDTO>> revenueByRoomType(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueByRoomType(hotelId, from, to));
+    }
+
+    @GetMapping("/revenue-by-service")
+    public ApiResponse<List<RevenueByServiceDTO>> revenueByService(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueByService(hotelId, from, to));
+    }
+
+    @GetMapping("/top-customers")
+    public ApiResponse<List<TopCustomerDTO>> topCustomers(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "10") int limit) {
+        return ApiResponse.ok(reportService.getTopCustomers(hotelId, from, to, limit));
+    }
+
+    @GetMapping("/staff-performance")
+    public ApiResponse<List<StaffPerformanceDTO>> staffPerformance(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getStaffPerformance(hotelId, from, to));
+    }
+
+    @GetMapping("/cancellation-rate")
+    public ApiResponse<CancellationRateResponse> cancellationRate(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getCancellationRate(hotelId, from, to));
+    }
+
+    // ---- detailed reports: whole chain ----
+
+    @GetMapping("/chain/occupancy")
+    public ApiResponse<OccupancyResponse> occupancyForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getOccupancyForChain(hotelChainId, from, to));
+    }
+
+    @GetMapping("/chain/revenue-by-room-type")
+    public ApiResponse<List<RevenueByRoomTypeDTO>> revenueByRoomTypeForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueByRoomTypeForChain(hotelChainId, from, to));
+    }
+
+    @GetMapping("/chain/revenue-by-service")
+    public ApiResponse<List<RevenueByServiceDTO>> revenueByServiceForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueByServiceForChain(hotelChainId, from, to));
+    }
+
+    @GetMapping("/chain/top-customers")
+    public ApiResponse<List<TopCustomerDTO>> topCustomersForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "10") int limit) {
+        return ApiResponse.ok(reportService.getTopCustomersForChain(hotelChainId, from, to, limit));
+    }
+
+    @GetMapping("/chain/staff-performance")
+    public ApiResponse<List<StaffPerformanceDTO>> staffPerformanceForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getStaffPerformanceForChain(hotelChainId, from, to));
+    }
+
+    @GetMapping("/chain/cancellation-rate")
+    public ApiResponse<CancellationRateResponse> cancellationRateForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getCancellationRateForChain(hotelChainId, from, to));
+    }
+
+    // ---- Excel export ----
+
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportHotelReport(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        byte[] workbook = excelReportService.buildHotelReport(hotelId, from, to);
+        return xlsx(workbook, "bao-cao-co-so-" + hotelId + "_" + from + "_" + to + ".xlsx");
+    }
+
+    @GetMapping("/chain/export")
+    public ResponseEntity<byte[]> exportChainReport(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        byte[] workbook = excelReportService.buildChainReport(hotelChainId, from, to);
+        return xlsx(workbook, "bao-cao-chuoi-" + hotelChainId + "_" + from + "_" + to + ".xlsx");
+    }
+
+    private ResponseEntity<byte[]> xlsx(byte[] body, String fileName) {
+        return ResponseEntity.ok()
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .body(body);
     }
 }

@@ -41,4 +41,34 @@ public interface ReportService {
     List<RevenueByWeekDTO> getRevenueByWeekForChain(Long hotelChainId, LocalDate from, LocalDate to);
 
     List<RevenueByWeekDTO> getRevenueByWeekInMonthForChain(Long hotelChainId, Integer year, Integer month);
+
+    // ---- detailed reports: branch level ----
+
+    OccupancyResponse getOccupancy(Long hotelId, LocalDate from, LocalDate to);
+
+    List<OccupancyByDateDTO> getOccupancyByDate(Long hotelId, LocalDate from, LocalDate to);
+
+    List<RevenueByRoomTypeDTO> getRevenueByRoomType(Long hotelId, LocalDate from, LocalDate to);
+
+    List<RevenueByServiceDTO> getRevenueByService(Long hotelId, LocalDate from, LocalDate to);
+
+    List<TopCustomerDTO> getTopCustomers(Long hotelId, LocalDate from, LocalDate to, int limit);
+
+    List<StaffPerformanceDTO> getStaffPerformance(Long hotelId, LocalDate from, LocalDate to);
+
+    CancellationRateResponse getCancellationRate(Long hotelId, LocalDate from, LocalDate to);
+
+    // ---- detailed reports: chain level ----
+
+    OccupancyResponse getOccupancyForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    List<RevenueByRoomTypeDTO> getRevenueByRoomTypeForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    List<RevenueByServiceDTO> getRevenueByServiceForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    List<TopCustomerDTO> getTopCustomersForChain(Long hotelChainId, LocalDate from, LocalDate to, int limit);
+
+    List<StaffPerformanceDTO> getStaffPerformanceForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    CancellationRateResponse getCancellationRateForChain(Long hotelChainId, LocalDate from, LocalDate to);
 }
