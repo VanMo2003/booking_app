@@ -41,8 +41,19 @@ services:
       VNPAY_SECRET_KEY: ${VNPAY_SECRET_KEY:-K20SB7Q7577Q70YWF5I512BL3IX95TP4}
       VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
       VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-http://localhost/booking-app/api/v1/payment/vn-pay-callback}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost/booking-app/api/v1}
+      # Ví dụ: đặt file vào ./secrets/firebase-service-account.json rồi FIREBASE_CREDENTIALS=/app/secrets/firebase-service-account.json
+      FIREBASE_CREDENTIALS: ${FIREBASE_CREDENTIALS:-}
     volumes:
       - ./uploads:/app/uploads
+      - ./secrets:/app/secrets:ro
 
 volumes:
   booking-db-data:

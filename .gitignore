@@ -37,4 +37,8 @@ build/
 .env.local
 .env.production
 
+# Secrets (Firebase service account key…)
+secrets/
+*service-account*.json
+
 

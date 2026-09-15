@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `booking_app_be` is the Spring Boot 3.5 / Java 21 backend for a hotel booking platform (graduation
 thesis project, repo `VanMo2003/booking_app`). It exposes a REST API under `/booking-app/api/v1`,
-backed by MySQL, with JWT authentication and VNPay payment integration.
+backed by MySQL, with JWT authentication, VNPay payment integration, email (Spring Mail) and push
+notifications (Firebase Cloud Messaging).
 
 ## Commands
 
@@ -32,7 +33,7 @@ docker compose logs -f booking-app
 ```
 
 Copy `.env.example` to `.env` to override compose defaults (DB creds, JWT signer key, VNPay sandbox
-keys). See [DEPLOY_EC2.md](DEPLOY_EC2.md) for the EC2 deployment sequence.
+keys, SMTP, Firebase). See [DEPLOY_EC2.md](DEPLOY_EC2.md) for the EC2 deployment sequence.
 
 ## Architecture
 
@@ -40,12 +41,14 @@ Standard layered structure, one package per concern under `com.vanmo.booking_app
 
 - `controller` — thin `@RestController`s; every response is wrapped in `ApiResponse<T>`
   (`success`/`message`/`code`/`data`, see `dto/common/ApiResponse.java`). `ApiResponse.ok(...)` on
-  success; failures normally reach `GlobalExceptionHandler` rather than being built by hand.
+  success; failures normally reach `GlobalExceptionHandler` rather than being built by hand. The one
+  exception is `AppLinkController`, which returns a plain HTML page.
 - `service` (interface) + `service/impl` (implementation) — one interface/impl pair per domain
   entity (e.g. `HotelService`/`HotelServiceImpl`). Controllers depend on the interface.
 - `repository` — Spring Data JPA repositories, one per entity.
 - `entity` — JPA entities; enums for status/role fields live in `entity/enums` (`Role`,
-  `BookingStatus`, `PaymentStatus`, `RoomStatus`, `HotelStatus`, `PayrollStatus`, `PaymentMethod`).
+  `BookingStatus`, `PaymentStatus`, `RoomStatus`, `HotelStatus`, `PayrollStatus`, `PaymentMethod`,
+  `ApprovalStatus`, `NotificationType`).
 - `dto/request`, `dto/response` — request/response DTOs, one class per operation (`XCreateRequest`,
   `XUpdateRequest`, `XResponse`, `ListXResponse`) rather than shared/generic DTOs.
 - `mapper` — MapStruct interfaces (`@Mapper(componentModel = "spring")`) converting between
@@ -54,20 +57,25 @@ Standard layered structure, one package per concern under `com.vanmo.booking_app
   manually in the service layer.
 - `config` — security (`SecurityConfig`, `CustomJwtDecoder`, `JwtAuthenticationEntryPoint`),
   CORS/web (`CorsConfig`, `WebConfig`), VNPay (`VNPayConfig`), and `ApplicationInitConfig`, which
-  seeds a default `admin123`/`admin123` ADMIN account on startup if none exists.
+  seeds a default `admin123`/`admin123` ADMIN account on startup if none exists and marks
+  pre-approval hotel chains as `APPROVED`.
 - `security` — `AccessGuard`, the one place hierarchy/ownership authorization checks live (see
   below); called from the service layer, not controllers.
+- `event` — Spring application events and their `@Async` after-commit listeners (push, review
+  email); see *Notifications, push and email*.
 - `exception` — `AppException` + `ErrorCode` enum (numeric app-level codes, distinct from HTTP
   status) are the standard way to fail a request; `GlobalExceptionHandler` maps these (and
   validation/upload-size/access-denied errors) to `ApiResponse.fail(...)`.
 - `scheduler` — `PaymentExpireScheduler` polls every 60s to expire stale pending-payment bookings.
+- `utils` — `VNPayUtil`, `AppLinks` (app deep links), `NotificationMessages` (notification copy).
 
 ### Multi-tenant hierarchy: chain → branch → staff
 
 Three levels, each tied to an `Account` by role:
 
 1. **`HotelChain`** ("khách sạn") — one `HOTEL_OWNER` account owns exactly one chain
-   (`HotelChain.account`, `@OneToOne`).
+   (`HotelChain.account`, `@OneToOne`). The chain doubles as the owner's registration: it carries the
+   contact details and the admin's review state (see *Owner registration and admin review*).
 2. **`Hotel`** ("cơ sở"/branch — the entity keeps its original name; it is NOT the chain) —
    `@ManyToOne` to `HotelChain`, plus `Hotel.account` is the branch's `HOTEL_MANAGER`
    (`@ManyToOne`, not unique — one manager can run several `Hotel` rows). `Room`, `Amenity`,
@@ -78,8 +86,8 @@ Three levels, each tied to an `Account` by role:
    exclusively through `POST /employees` (which internally creates the backing `STAFF` `Account`),
    never directly via `POST /accounts`.
 
-`ADMIN` is unrestricted. `CUSTOMER` is unaffected by this hierarchy (global accounts, can book at
-any branch).
+`ADMIN` can read everything but is review-only (see *Admin is review-only*). `CUSTOMER` is
+unaffected by this hierarchy (global accounts, can book at any branch).
 
 ### Auth & authorization
 
@@ -88,29 +96,93 @@ server with a custom `NimbusJwtDecoder` (`SecurityConfig.jwtDecoder`). Roles are
 `Role` enum values (`ADMIN`, `HOTEL_OWNER`, `HOTEL_MANAGER`, `STAFF`, `CUSTOMER`), carried as JWT
 authorities with no prefix (`ROLE_HOTEL_MANAGER`, etc.) and JWT `sub` = username. Only a small
 allowlist in `SecurityConfig` (`PUBLIC_ENDPOINT_GET`, `PUBLIC_ENDPOINT_POST` — login/introspect/
-refresh/account-create/file endpoints) is open; every other endpoint requires authentication.
-`/uploads/**` is excluded from the security filter chain entirely (served as static files, see
-`file.upload-dir` in `application.yaml`).
+refresh/account-create/owner-registration/file endpoints, the browse surface, `/app-links/{target}`)
+is open; every other endpoint requires authentication. `/uploads/**` is excluded from the security
+filter chain entirely (served as static files, see `file.upload-dir` in `application.yaml`).
 
 Coarse "who is even authenticated" gating stops at `SecurityConfig`; everything ownership-shaped
 (does this manager actually run this branch, does this staff member belong to this branch, does
-this owner's chain contain this branch) is enforced by `security/AccessGuard.java`, called at the
-top of the relevant `service/impl/*` methods — `requireChainOwner`, `requireBranchManagerOrAbove`,
-`requireBranchStaffOrAbove`, `requireSelfOrAdmin`, `requireAdmin`. It resolves the caller via
-`SecurityContextHolder` + `AccountRepository.findByUsername`, and every rejection throws
-`AppException(ErrorCode.UN_AUTHORIZED)` (403). A few `@PreAuthorize("!hasAuthority('ROLE_STAFF')")`
-annotations on `@DeleteMapping` methods (Room/Amenity/Service/Booking) exist as defense-in-depth
-alongside the service-layer check, not instead of it — `GlobalExceptionHandler` maps the resulting
-`AccessDeniedException` to 403 too. `POST /accounts` stays public for `role=CUSTOMER` self-signup;
-every other role is gated inside `AccountServiceImpl.create()`'s role-creation matrix (e.g. only
-`ADMIN` can mint `HOTEL_OWNER` accounts, only `ADMIN`/`HOTEL_OWNER` can mint `HOTEL_MANAGER`
-accounts, `STAFF` is rejected there outright and must go through `/employees`).
+this owner's chain contain this branch, has this owner been approved) is enforced by
+`security/AccessGuard.java`, called at the top of the relevant `service/impl/*` methods —
+`requireChainOwner`, `requireOwnChain`, `requireApprovedOwner`, `requireBranchManagerOrAbove`,
+`requireBranchStaffOrAbove`, `requireBranchEditor`, `requireBranchManagerEditor`,
+`requireSelfOrAdmin`, `requireAdmin`. It resolves the caller via `SecurityContextHolder` +
+`AccountRepository.findByUsername`, and rejections throw `AppException(ErrorCode.UN_AUTHORIZED)`
+(403) — or the more specific `OWNER_NOT_APPROVED` / `ADMIN_READ_ONLY` (also 403). A few
+`@PreAuthorize("!hasAuthority('ROLE_STAFF')")` annotations on `@DeleteMapping` methods
+(Room/Amenity/Service/Booking) exist as defense-in-depth alongside the service-layer check, not
+instead of it — `GlobalExceptionHandler` maps the resulting `AccessDeniedException` to 403 too.
+`POST /accounts` stays public for `role=CUSTOMER` self-signup; every other role is gated inside
+`AccountServiceImpl.create()`'s role-creation matrix: `HOTEL_OWNER` is rejected there (owners
+self-register through `POST /owner-registrations`), `ADMIN` can't be created at all (only the seeded
+one exists), `HOTEL_MANAGER` needs an *approved* owner, and `STAFF` must go through `/employees`.
 
 `BookingServiceImpl` is the one place `AccessGuard` isn't the whole story: bookings are created
 and read by both staff (scoped to their branch) and customers (self-service, any branch), so its
 mutation/read methods check `Role.CUSTOMER` first (must be booking for their own `Customer` record)
 and fall back to `accessGuard.requireBranchStaffOrAbove(...)` otherwise — see
 `BookingServiceImpl.requireBookingAccess`.
+
+### Owner registration and admin review
+
+Hotel owners sign themselves up: public `POST /owner-registrations` creates the `HOTEL_OWNER`
+account and its `HotelChain` in one transaction, with the contact details (`ownerName`, `email`,
+`phone`, `address`) and `approvalStatus = PENDING`. The review state lives on `HotelChain`
+(`approvalStatus`, `rejectionReason`, `submittedAt`, `reviewedAt`) because the chain *is* the hotel
+being reviewed, and the login response already carries `hotelChain`, so the app knows the state
+without an extra call.
+
+- A pending or rejected owner can log in, read `GET /owner-registrations/me` and resubmit with
+  `PUT /owner-registrations/me` (both guarded by `AccessGuard.requireOwnChain()`), nothing else:
+  `requireChainOwner` and `requireApprovedOwner` throw `OWNER_NOT_APPROVED` (1011) until an admin
+  approves, which blocks branches, managers, reports and chain edits.
+- Admins work the queue with `GET /owner-registrations?status=PENDING` (oldest first),
+  `GET /owner-registrations/{id}`, `PUT /owner-registrations/{id}/approve` and
+  `PUT /owner-registrations/{id}/reject` (`reason` required). Only `PENDING` rows can be decided
+  (`REGISTRATION_NOT_PENDING`, 1013). A resubmission keeps the previous `rejectionReason` as
+  history; editing a still-pending submission doesn't notify admins again.
+- `POST /hotel-chains` (an owner without a chain, e.g. after deleting it) also creates a `PENDING`
+  chain, and only the owner account itself may call it.
+- Chains that existed before this flow are set to `APPROVED` on startup
+  (`HotelChainRepository.approveLegacyChains`, called from `ApplicationInitConfig`);
+  `HotelChain.isApproved()` treats a null status as approved as well.
+
+### Admin is review-only
+
+`ADMIN` still reads everything, but no longer creates or edits branch content or accounts: rooms,
+room images, amenities (and room-amenity links), services and staff (`POST /employees` mints a
+login) go through `AccessGuard.requireBranchEditor` / `requireBranchManagerEditor`, which reject
+`ADMIN` with `ADMIN_READ_ONLY` (1012). In `AccountServiceImpl`, an admin can only lock/unlock an
+account (`status`); role changes are rejected for everyone, password changes are allowed only for
+the account holder, and `GET /accounts` / `DELETE /accounts/{id}` are admin-only (delete also removes
+the account's notifications and device tokens). The catalog (`/roomTypes`, `/positions`) is still
+managed by admins.
+
+### Notifications, push and email
+
+- `Notification` rows are the in-app inbox (`GET /notifications`, `GET /notifications/unread-count`,
+  `PUT /notifications/{id}/read`, `PUT /notifications/read-all`). `NotificationService.notify` /
+  `notifyAdmins` store them and publish a `PushRequestedEvent`; the wording lives in
+  `utils/NotificationMessages` and the deep links in `utils/AppLinks`
+  (`bookingapp://owner-status`, `bookingapp://owner-registrations/{id}`).
+- Push goes out through the FCM HTTP v1 API (`FcmPushNotificationSender`, service-account auth via
+  `google-auth-library-oauth2-http`) to the account's `DeviceToken`s, which the app registers with
+  `POST /notifications/devices` and removes with `DELETE /notifications/devices?token=` before
+  logout. Without `FIREBASE_CREDENTIALS` the sender is disabled and only the inbox works; tokens FCM
+  reports as unregistered are deleted.
+- Approve/reject publishes `OwnerReviewedEvent`; `OwnerReviewMailListener` sends the HTML result
+  email through `MailServiceImpl` (Spring Mail, `MAIL_*` variables). Without `MAIL_USERNAME` the
+  mail is only logged.
+- Both listeners are `@Async @TransactionalEventListener(AFTER_COMMIT)` (`@EnableAsync` sits on the
+  application class), so a rolled-back review never notifies anyone and SMTP/FCM latency never slows
+  the request down.
+- Mail clients strip custom-scheme links, so the email button points at the public
+  `GET /app-links/{target}` page (built from `APP_PUBLIC_URL`), which forwards the phone to
+  `bookingapp://{target}` (via `intent://` on Android Chrome). Only allowlisted targets are served.
+
+To test mail locally, point `MAIL_HOST`/`MAIL_PORT` at a throwaway SMTP sink with
+`MAIL_SMTP_AUTH=false`, `MAIL_SMTP_STARTTLS=false` and any `MAIL_USERNAME`. The first message after
+startup can take ~10 s to leave (JavaMail resolves the local host name once).
 
 ### Payments
 
@@ -185,8 +257,9 @@ endpoint, it needs both halves (no guard *and* an allowlist entry) or it will 40
 
 ### Testing the whole API
 
-`postman/booking_app.postman_collection.json` is the authoritative end-to-end suite (~166 requests,
-10 folders) and runs top-to-bottom in Postman's Collection Runner, chaining tokens/ids through
-collection variables and finishing with a cleanup folder so it can be re-run back-to-back. It covers
-every controller plus the authorization-negative cases (staff can't delete, cross-tenant reads
-rejected, customer can't book for someone else). Keep it in sync when adding endpoints.
+`postman/booking_app.postman_collection.json` is the authoritative end-to-end suite (10 folders)
+and runs top-to-bottom in Postman's Collection Runner, chaining tokens/ids through collection
+variables and finishing with a cleanup folder so it can be re-run back-to-back. It covers every
+controller plus the authorization-negative cases (staff can't delete, cross-tenant reads rejected,
+customer can't book for someone else, pending owners locked out, admin is review-only) and the
+owner registration → reject → resubmit → approve flow. Keep it in sync when adding endpoints.

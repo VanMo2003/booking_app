@@ -29,7 +29,7 @@ public class ServiceServiceImpl implements ServiceService {
 
     @Override
     public ServiceResponse create(ServiceCreateRequest req) {
-        Hotel hotel = accessGuard.requireBranchStaffOrAbove(req.getHotelId());
+        Hotel hotel = accessGuard.requireBranchEditor(req.getHotelId());
         Service entity = serviceMapper.toEntity(req);
         entity.setHotel(hotel);
         return serviceMapper.toResponse(serviceRepository.save(entity));
@@ -40,7 +40,7 @@ public class ServiceServiceImpl implements ServiceService {
         Service entity = serviceRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Service not found id=" + id));
-        accessGuard.requireBranchStaffOrAbove(entity.getHotel().getId());
+        accessGuard.requireBranchEditor(entity.getHotel().getId());
         serviceMapper.updateEntity(entity, req);
         return serviceMapper.toResponse(serviceRepository.save(entity));
     }
@@ -66,7 +66,7 @@ public class ServiceServiceImpl implements ServiceService {
         Service entity = serviceRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Service not found id=" + id));
-        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
+        accessGuard.requireBranchManagerEditor(entity.getHotel().getId());
         serviceRepository.delete(entity);
     }
 }

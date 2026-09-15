@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.enums.Role;
 import com.vanmo.booking_app_be.repository.AccountRepository;
+import com.vanmo.booking_app_be.repository.HotelChainRepository;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,8 @@ public class ApplicationInitConfig {
      * @return
      */
     @Bean
-    ApplicationRunner applicationRunner(AccountRepository accountRepository) {
+    ApplicationRunner applicationRunner(
+            AccountRepository accountRepository, HotelChainRepository hotelChainRepository) {
         return args -> {
             if (accountRepository.findByUsername(ADMIN_USER_NAME).isEmpty()) {
 
@@ -48,6 +50,12 @@ public class ApplicationInitConfig {
                 accountRepository.save(account);
                 log.warn(
                         "{ADMIN_USER_NAME} user has been create with default password: {ADMIN_PASSWORD}, please change it");
+            }
+
+            // Chains opened before owner approval existed were already live - keep them running.
+            int approved = hotelChainRepository.approveLegacyChains();
+            if (approved > 0) {
+                log.info("Marked {} existing hotel chain(s) as APPROVED", approved);
             }
         };
     }

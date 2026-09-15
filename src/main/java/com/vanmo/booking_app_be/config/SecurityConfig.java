@@ -38,10 +38,11 @@ public class SecurityConfig {
         "/rooms/available",
         "/amenities/hotel/{hotelId}",
         "/amenities/room",
-        "/services"
+        "/services",
+        "/app-links/{target}"
     };
     private final String[] PUBLIC_ENDPOINT_POST = {
-        "/accounts", "/auth/login", "/auth/introspect", "/auth/refreshToken", "/storage/upload"
+        "/accounts", "/owner-registrations", "/auth/login", "/auth/introspect", "/auth/refreshToken", "/storage/upload"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

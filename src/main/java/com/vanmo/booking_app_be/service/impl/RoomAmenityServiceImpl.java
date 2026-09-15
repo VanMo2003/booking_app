@@ -35,7 +35,7 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
         Room room = roomRepository
                 .findById(req.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
-        accessGuard.requireBranchStaffOrAbove(room.getHotel().getId());
+        accessGuard.requireBranchEditor(room.getHotel().getId());
 
         Amenity amenity = amenityRepository
                 .findById(req.getAmenityId())
@@ -53,7 +53,7 @@ public class RoomAmenityServiceImpl implements RoomAmenityService {
         RoomAmenity entity = roomAmenityRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RoomAmenity not found id=" + id));
-        accessGuard.requireBranchStaffOrAbove(entity.getRoom().getHotel().getId());
+        accessGuard.requireBranchEditor(entity.getRoom().getHotel().getId());
         roomAmenityMapper.updateEntity(entity, req);
         return roomAmenityMapper.toResponse(roomAmenityRepository.save(entity));
     }

@@ -74,6 +74,31 @@ public class AccessGuard {
         }
     }
 
+    /**
+     * The calling HOTEL_OWNER's own chain in whatever review state it is. Only the registration endpoints use this -
+     * a pending or rejected owner may still read their status and resubmit, nothing else.
+     */
+    public HotelChain requireOwnChain() {
+        Account current = currentAccount();
+        if (current.getRole() != Role.HOTEL_OWNER) {
+            throw new AppException(ErrorCode.UN_AUTHORIZED);
+        }
+        HotelChain chain = hotelChainRepository.findByAccount_Id(current.getId());
+        if (chain == null) {
+            throw new ResourceNotFoundException("Hotel chain not found for this account");
+        }
+        return chain;
+    }
+
+    /** A HOTEL_OWNER whose registration an admin has approved - the only owners allowed to run their hotel. */
+    public HotelChain requireApprovedOwner() {
+        HotelChain chain = requireOwnChain();
+        if (!chain.isApproved()) {
+            throw new AppException(ErrorCode.OWNER_NOT_APPROVED);
+        }
+        return chain;
+    }
+
     public HotelChain requireChainOwner(Long hotelChainId) {
         Account current = currentAccount();
         HotelChain chain = hotelChainRepository
@@ -84,13 +109,53 @@ public class AccessGuard {
             return chain;
         }
         if (current.getRole() == Role.HOTEL_OWNER && chain.getAccount().getId().equals(current.getId())) {
+            if (!chain.isApproved()) {
+                throw new AppException(ErrorCode.OWNER_NOT_APPROVED);
+            }
             return chain;
         }
         throw new AppException(ErrorCode.UN_AUTHORIZED);
     }
 
     public Hotel requireBranchManagerOrAbove(Long hotelId) {
+        return branchManagerOrAbove(currentAccount(), hotelId);
+    }
+
+    public Hotel requireBranchStaffOrAbove(Long hotelId) {
+        return branchStaffOrAbove(currentAccount(), hotelId);
+    }
+
+    /**
+     * Write access to a branch's own catalogue and people (rooms, amenities, services, staff accounts). Same branch
+     * check as {@link #requireBranchStaffOrAbove(Long)}, but ADMIN is refused: admins review this data, they don't
+     * author it.
+     */
+    public Hotel requireBranchEditor(Long hotelId) {
         Account current = currentAccount();
+        rejectAdmin(current);
+        return branchStaffOrAbove(current, hotelId);
+    }
+
+    /** Manager-level write access (deletes, staff accounts) with ADMIN refused - see {@link #requireBranchEditor}. */
+    public Hotel requireBranchManagerEditor(Long hotelId) {
+        Account current = currentAccount();
+        rejectAdmin(current);
+        return branchManagerOrAbove(current, hotelId);
+    }
+
+    public List<Long> hotelIdsForChain(Long hotelChainId) {
+        return hotelRepository.findAllByHotelChain_Id(hotelChainId).stream()
+                .map(Hotel::getId)
+                .toList();
+    }
+
+    private void rejectAdmin(Account current) {
+        if (current.getRole() == Role.ADMIN) {
+            throw new AppException(ErrorCode.ADMIN_READ_ONLY);
+        }
+    }
+
+    private Hotel branchManagerOrAbove(Account current, Long hotelId) {
         Hotel hotel = hotelRepository
                 .findById(hotelId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id=" + hotelId));
@@ -112,10 +177,9 @@ public class AccessGuard {
         return hotel;
     }
 
-    public Hotel requireBranchStaffOrAbove(Long hotelId) {
-        Account current = currentAccount();
+    private Hotel branchStaffOrAbove(Account current, Long hotelId) {
         if (current.getRole() != Role.STAFF) {
-            return requireBranchManagerOrAbove(hotelId);
+            return branchManagerOrAbove(current, hotelId);
         }
 
         Hotel hotel = hotelRepository
@@ -127,11 +191,5 @@ public class AccessGuard {
             throw new AppException(ErrorCode.UN_AUTHORIZED);
         }
         return hotel;
-    }
-
-    public List<Long> hotelIdsForChain(Long hotelChainId) {
-        return hotelRepository.findAllByHotelChain_Id(hotelChainId).stream()
-                .map(Hotel::getId)
-                .toList();
     }
 }

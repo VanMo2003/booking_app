@@ -176,6 +176,14 @@
     {
       "key": "walkInGuestToken",
       "value": ""
+    },
+    {
+      "key": "ownerOtherChainId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
     }
   ],
   "item": [
@@ -284,7 +292,7 @@
       "name": "01 - Hierarchy: Chain, Branch, Manager, Staff",
       "item": [
         {
-          "name": "Admin creates HOTEL_OWNER account",
+          "name": "Anonymous registers as HOTEL_OWNER (pending review)",
           "event": [
             {
               "listen": "test",
@@ -292,7 +300,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('ownerAccountId', pm.response.json().data.id);"
+                  "pm.test('waits for review', () => pm.expect(pm.response.json().data.approvalStatus).to.eql('PENDING'));",
+                  "pm.collectionVariables.set('ownerAccountId', pm.response.json().data.accountId);",
+                  "pm.collectionVariables.set('chainId', pm.response.json().data.id);"
                 ]
               }
             }
@@ -303,29 +313,25 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminToken}}"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"owner_{{runSuffix}}\",\n  \"password\": \"password1\",\n  \"role\": \"HOTEL_OWNER\"\n}",
+              "raw": "{\n  \"username\": \"owner_{{runSuffix}}\",\n  \"password\": \"password1\",\n  \"ownerName\": \"Nguyen Van Chu\",\n  \"email\": \"owner_{{runSuffix}}@example.com\",\n  \"phone\": \"0901234567\",\n  \"hotelName\": \"Chuoi KS Van Mo {{runSuffix}}\",\n  \"address\": \"12 Bach Dang, Hai Chau, Da Nang\",\n  \"description\": \"Khach san ven song\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/accounts",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "accounts"
-              ]
             }
           }
         },
@@ -373,15 +379,47 @@
           }
         },
         {
-          "name": "Owner creates Hotel Chain",
+          "name": "Pending owner reads own registration",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('chainId', pm.response.json().data.id);"
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pending owner cannot create a manager -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
                 ]
               }
             }
@@ -398,22 +436,582 @@
                 "value": "Bearer {{ownerToken}}"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "accounts"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Chuoi KS Van Mo {{runSuffix}}\",\n  \"description\": \"Test chain\",\n  \"accountId\": \"{{ownerAccountId}}\"\n}",
+              "raw": "{\n  \"username\": \"manager_pending_{{runSuffix}}\",\n  \"password\": \"password1\",\n  \"role\": \"HOTEL_MANAGER\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
+            }
+          }
+        },
+        {
+          "name": "Pending owner cannot open own chain -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/hotel-chains",
+              "raw": "{{baseUrl}}/hotel-chains/{{chainId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "hotel-chains"
+                "hotel-chains",
+                "{{chainId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin lists pending owner registrations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations?status=PENDING&page=0&size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin reads the new-registration notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin rejects without a reason -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations/{{chainId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations",
+                "{{chainId}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin rejects the registration with a reason",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('rejected', () => pm.expect(pm.response.json().data.approvalStatus).to.eql('REJECTED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations/{{chainId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations",
+                "{{chainId}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"So dien thoai khach san khong lien lac duoc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Owner reads the rejection notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('rejection first', () => pm.expect(pm.response.json().data.content[0].type).to.eql('OWNER_REJECTED'));",
+                  "pm.collectionVariables.set('notificationId', pm.response.json().data.content[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner marks the notification read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner resubmits the registration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ownerName\": \"Nguyen Van Chu\",\n  \"email\": \"owner_{{runSuffix}}@example.com\",\n  \"phone\": \"0912345678\",\n  \"hotelName\": \"Chuoi KS Van Mo {{runSuffix}}\",\n  \"address\": \"12 Bach Dang, Hai Chau, Da Nang\",\n  \"description\": \"Khach san ven song\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin approves the registration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('approved', () => pm.expect(pm.response.json().data.approvalStatus).to.eql('APPROVED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations/{{chainId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations",
+                "{{chainId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approving the same registration twice -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations/{{chainId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations",
+                "{{chainId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner unread notification count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "unread-count"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner registers an FCM device token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "devices"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"postman-device-{{runSuffix}}\",\n  \"platform\": \"android\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Owner unregisters the device token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/devices?token=postman-device-{{runSuffix}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "devices"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "postman-device-{{runSuffix}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner marks all notifications read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
               ]
             }
           }
@@ -5603,14 +6201,14 @@
       "name": "08 - Authorization & Negative Tests",
       "item": [
         {
-          "name": "Anonymous creates HOTEL_OWNER account -> 401",
+          "name": "Anonymous creates HOTEL_OWNER via /accounts -> 400 (owners use /owner-registrations)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
                 ]
               }
             }
@@ -5800,7 +6398,7 @@
           }
         },
         {
-          "name": "Admin creates a second HOTEL_OWNER (unrelated)",
+          "name": "Second owner registers (unrelated)",
           "event": [
             {
               "listen": "test",
@@ -5808,7 +6406,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('ownerOtherAccountId', pm.response.json().data.id);"
+                  "pm.collectionVariables.set('ownerOtherAccountId', pm.response.json().data.accountId);",
+                  "pm.collectionVariables.set('ownerOtherChainId', pm.response.json().data.id);"
                 ]
               }
             }
@@ -5819,28 +6418,58 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminToken}}"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/owner-registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owner-registrations"
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"owner_other_{{runSuffix}}\",\n  \"password\": \"password1\",\n  \"role\": \"HOTEL_OWNER\"\n}",
+              "raw": "{\n  \"username\": \"owner_other_{{runSuffix}}\",\n  \"password\": \"password1\",\n  \"ownerName\": \"Nguyen Van Chu\",\n  \"email\": \"owner_{{runSuffix}}@example.com\",\n  \"phone\": \"0901234567\",\n  \"hotelName\": \"Chuoi KS Khac {{runSuffix}}\",\n  \"address\": \"12 Bach Dang, Hai Chau, Da Nang\",\n  \"description\": \"Khach san ven song\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
+            }
+          }
+        },
+        {
+          "name": "Admin approves the second owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/accounts",
+              "raw": "{{baseUrl}}/owner-registrations/{{ownerOtherChainId}}/approve",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "accounts"
+                "owner-registrations",
+                "{{ownerOtherChainId}}",
+                "approve"
               ]
             }
           }
@@ -5967,6 +6596,305 @@
               ],
               "path": [
                 "hotels"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin creates HOTEL_OWNER via /accounts -> 400 (admin is review-only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"owner_by_admin_{{runSuffix}}\",\n  \"password\": \"password1\",\n  \"role\": \"HOTEL_OWNER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates HOTEL_MANAGER -> 403 (admin is review-only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"manager_by_admin_{{runSuffix}}\",\n  \"password\": \"password1\",\n  \"role\": \"HOTEL_MANAGER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates a Room -> 403 (admin is review-only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rooms"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hotelId\": {{hotelId}},\n  \"roomNumber\": \"ADM1\",\n  \"price\": 100000,\n  \"capacity\": 2,\n  \"roomTypeId\": {{roomTypeId}},\n  \"status\": \"AVAILABLE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates a Service -> 403 (admin is review-only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Spa\",\n  \"unitPrice\": 200000,\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates an Amenity -> 403 (admin is review-only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/amenities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "amenities"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Wifi\",\n  \"common\": true,\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin changes an account role -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/accounts/{{managerAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "accounts",
+                "{{managerAccountId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "App link landing page is public HTML",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/app-links/owner-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "app-links",
+                "owner-status"
               ]
             }
           }
@@ -6610,6 +7538,28 @@
               "path": [
                 "accounts",
                 "{{managerAccountId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Hotel Chain [second owner]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerOtherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hotel-chains/{{ownerOtherChainId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotel-chains",
+                "{{ownerOtherChainId}}"
               ]
             }
           }
