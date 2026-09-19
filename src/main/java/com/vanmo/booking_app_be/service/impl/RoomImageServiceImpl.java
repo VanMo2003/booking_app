@@ -35,7 +35,14 @@ public class RoomImageServiceImpl implements RoomImageService {
         accessGuard.requireBranchEditor(room.getHotel().getId());
         RoomImage entity = roomImageMapper.toEntity(req);
         entity.setRoom(room);
-        return roomImageMapper.toResponse(roomImageRepository.save(entity));
+        RoomImage saved = roomImageRepository.save(entity);
+
+        // First photo for this room also becomes its list-thumbnail, same convention as Hotel.pathImage.
+        if (room.getPathImage() == null || room.getPathImage().isBlank()) {
+            room.setPathImage(req.getPathImage());
+            roomRepository.save(room);
+        }
+        return roomImageMapper.toResponse(saved);
     }
 
     @Override

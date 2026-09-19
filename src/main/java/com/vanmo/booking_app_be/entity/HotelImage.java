@@ -18,7 +18,7 @@ public class HotelImage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false, length = 1000)
     String pathImage;
 
     @ManyToOne(fetch = FetchType.LAZY)

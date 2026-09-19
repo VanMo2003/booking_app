@@ -119,6 +119,11 @@ public class RoomServiceImpl implements RoomService {
 
         roomImageRepository.saveAll(images);
 
+        // First photo for this room also becomes its list-thumbnail, same convention as Hotel.pathImage.
+        if ((room.getPathImage() == null || room.getPathImage().isBlank()) && !urls.isEmpty()) {
+            room.setPathImage(urls.getFirst());
+            roomRepository.save(room);
+        }
         return urls;
     }
 
