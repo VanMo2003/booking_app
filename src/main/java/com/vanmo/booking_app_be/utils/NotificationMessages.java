@@ -34,6 +34,22 @@ public final class NotificationMessages {
                 "Lý do: " + trimmed + separator + "Cập nhật thông tin rồi gửi lại trong ứng dụng.");
     }
 
+    /** Push for the guest: the branch's name as title, like a messenger app shows the contact. */
+    public static Message chatToCustomer(String hotelName, String content) {
+        return new Message(hotelName, preview(content));
+    }
+
+    /** Push for the branch team; the branch name is there because an owner answers for several branches. */
+    public static Message chatToHotel(String customerName, String hotelName, String content) {
+        String sender = isBlank(customerName) ? "Khách hàng" : customerName;
+        return new Message(sender + " · " + hotelName, preview(content));
+    }
+
+    public static String preview(String content) {
+        String flat = content.strip().replaceAll("\\s+", " ");
+        return flat.length() <= 120 ? flat : flat.substring(0, 119) + "…";
+    }
+
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
     }

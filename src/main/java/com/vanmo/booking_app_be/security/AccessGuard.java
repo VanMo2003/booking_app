@@ -149,6 +149,36 @@ public class AccessGuard {
                 .toList();
     }
 
+    /**
+     * The branch's own team - its chain owner, its manager or one of its staff - who share the branch's chat inbox.
+     * Admins are refused as well: conversations are private between the guest and the hotel.
+     */
+    public Hotel requireBranchTeam(Long hotelId) {
+        Account current = currentAccount();
+        if (current.getRole() == Role.ADMIN || current.getRole() == Role.CUSTOMER) {
+            throw new AppException(ErrorCode.UN_AUTHORIZED);
+        }
+        return branchStaffOrAbove(current, hotelId);
+    }
+
+    /** Branches whose chat this account answers: an owner's whole chain, a manager's branches, a staff member's one. */
+    public List<Long> branchIdsServedBy(Account account) {
+        return switch (account.getRole()) {
+            case HOTEL_OWNER -> {
+                HotelChain chain = hotelChainRepository.findByAccount_Id(account.getId());
+                yield chain == null ? List.of() : hotelIdsForChain(chain.getId());
+            }
+            case HOTEL_MANAGER -> hotelRepository.findAllByAccount_Id(account.getId()).stream()
+                    .map(Hotel::getId)
+                    .toList();
+            case STAFF -> {
+                Employee employee = employeeRepository.findByAccount_Id(account.getId());
+                yield employee == null ? List.of() : List.of(employee.getHotel().getId());
+            }
+            default -> throw new AppException(ErrorCode.UN_AUTHORIZED);
+        };
+    }
+
     private void rejectAdmin(Account current) {
         if (current.getRole() == Role.ADMIN) {
             throw new AppException(ErrorCode.ADMIN_READ_ONLY);

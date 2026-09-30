@@ -39,10 +39,19 @@ public class SecurityConfig {
         "/amenities/hotel/{hotelId}",
         "/amenities/room",
         "/services",
-        "/app-links/{target}"
+        "/dishes",
+        "/dishes/{id}",
+        "/app-links/{target}",
+        "/ai/status"
     };
     private final String[] PUBLIC_ENDPOINT_POST = {
-        "/accounts", "/owner-registrations", "/auth/login", "/auth/introspect", "/auth/refreshToken", "/storage/upload"
+        "/accounts",
+        "/owner-registrations",
+        "/auth/login",
+        "/auth/introspect",
+        "/auth/refreshToken",
+        "/storage/upload",
+        "/ai/search"
     };
 
     private final CustomJwtDecoder customJwtDecoder;
@@ -59,6 +68,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINT_POST)
+                .permitAll()
+                // The chat socket authenticates its own upgrade from ?token= (ChatHandshakeInterceptor).
+                .requestMatchers("/ws/chat")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINT_GET)
                 .permitAll()

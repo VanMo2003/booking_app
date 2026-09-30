@@ -13,6 +13,7 @@ tốt nghiệp 2026.
 - **VNPay** sandbox cho thanh toán online
 - **Apache POI** cho xuất báo cáo Excel
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
+- **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -28,7 +29,8 @@ dto         -> request/response riêng cho từng thao tác
 mapper      -> MapStruct
 config      -> security, CORS, VNPay, seed admin mặc định
 security    -> AccessGuard - kiểm tra quyền theo phân cấp khách sạn/cơ sở
-event       -> sự kiện sau khi commit: gửi push, gửi email xét duyệt
+event       -> sự kiện sau khi commit: gửi push, gửi email xét duyệt, phát tin nhắn chat
+websocket   -> kênh chat realtime /ws/chat (xác thực token, danh sách kết nối)
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -53,9 +55,59 @@ Việc kiểm tra quyền theo phân cấp trên nằm ở `AccessGuard` (packag
 service — không phải chỉ role-check đơn thuần mà còn xác thực quan hệ sở hữu (chain ↔ owner,
 branch ↔ manager, staff ↔ branch của họ) và trạng thái duyệt của chủ khách sạn.
 
-Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Booking, BookingRoom,
-BookingService (dịch vụ đi kèm), Customer, Employee, Position, Payroll, Feedback, Payment, Report,
-Notification, DeviceToken, Account (auth).
+Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Dish (món ăn), Booking,
+BookingRoom, BookingService (dịch vụ đi kèm), Customer, Employee, Position, Payroll, Feedback,
+Payment, Report, Notification, DeviceToken, Conversation + ChatMessage (nhắn tin), Account (auth).
+
+### Thực đơn món ăn
+
+Mỗi cơ sở có thực đơn riêng (`Dish`: tên, mô tả, giá, nhóm món, ảnh, còn phục vụ/tạm hết), xoá cơ
+sở thì xoá theo thực đơn. Nhóm món cố định theo thứ tự đọc thực đơn: `APPETIZER` (khai vị),
+`MAIN_COURSE`, `SIDE_DISH`, `DESSERT`, `DRINK`, `OTHER`.
+
+| Thao tác | Endpoint | Ai được gọi |
+|---|---|---|
+| Xem thực đơn | `GET /dishes?hotelId=`, `GET /dishes/{id}` | Công khai, không cần đăng nhập |
+| Thêm món | `POST /dishes` | `HOTEL_OWNER` của chuỗi / `HOTEL_MANAGER` của cơ sở |
+| Sửa món (sửa một phần) | `PUT /dishes/{id}` | như trên |
+| Tải ảnh từ máy | `POST /dishes/{id}/image` (multipart, part `file`) | như trên |
+| Xoá món | `DELETE /dishes/{id}` | như trên |
+
+Nhân viên và quản trị viên chỉ xem (`403`).
+
+### Nhắn tin khách hàng ↔ khách sạn
+
+Khách hàng (đã có hồ sơ) nhắn tin với **một cơ sở**; phía cơ sở là **hộp thư chung** — chủ khách
+sạn, quản lý cơ sở và mọi nhân viên của cơ sở đều nhận và trả lời được, trạng thái "đã đọc" tính
+theo phía (một người của cơ sở mở là cả cơ sở đã đọc). Quản trị viên không xem được tin nhắn.
+
+- **REST** (gửi tin, lịch sử, hộp thư) dưới `/conversations`:
+
+| Thao tác | Endpoint | Ai gọi |
+|---|---|---|
+| Mở (hoặc lấy lại) cuộc trò chuyện với cơ sở | `POST /conversations` `{hotelId}` | Khách hàng |
+| Hộp thư của khách | `GET /conversations/me?page&size` | Khách hàng |
+| Hộp thư của cơ sở | `GET /conversations/inbox?hotelId&page&size` (bỏ `hotelId` = mọi cơ sở mình phụ trách) | Chủ / quản lý / nhân viên |
+| Số tin chưa đọc | `GET /conversations/unread-count?hotelId` | Cả hai phía |
+| Chi tiết | `GET /conversations/{id}` | Hai bên của cuộc trò chuyện |
+| Tin nhắn (mới nhất trước) | `GET /conversations/{id}/messages?beforeId&size` | Hai bên |
+| Gửi tin (≤ 2000 ký tự) | `POST /conversations/{id}/messages` `{content}` | Hai bên |
+| Đánh dấu đã đọc | `PUT /conversations/{id}/read` | Hai bên |
+
+- **WebSocket** (nhận tin tức thì): `ws://<host>:8080/booking-app/api/v1/ws/chat?token=<accessToken>`
+  (WebSocket thuần, không STOMP). Máy chủ đẩy JSON `{"type": "CONNECTED" | "MESSAGE" | "READ" | "PONG",
+  "conversation": {...}, "message": {...}}` tới mọi thiết bị đang mở của cả hai phía; client gửi
+  `{"type":"PING"}` để giữ kết nối. Token sai/đã đăng xuất → `401`, tài khoản quản trị → `403`.
+- Người nhận **không mở app** (không có kết nối WebSocket) được gửi **thông báo đẩy FCM** kèm deep
+  link `bookingapp://chat/{id}`; tin nhắn không tạo thông báo trong hộp thông báo.
+- Xoá cơ sở hoặc hồ sơ khách thì các cuộc trò chuyện và tin nhắn bị xoá theo (ràng buộc
+  `ON DELETE CASCADE`). Tên, vai trò người gửi lưu kèm từng tin nên xoá tài khoản nhân viên vẫn giữ
+  được lịch sử.
+- Chỉ chạy một instance: danh sách kết nối nằm trong bộ nhớ (`ChatSessionRegistry`); chạy nhiều máy
+  chủ thì cần message broker dùng chung. `PUT` chỉ đổi các trường được gửi, nên có thể gửi
+`{"available": false}` để đánh dấu tạm hết; `pathImage: ""` để gỡ ảnh. Ảnh có thể là link ngoài
+(`https://...`) hoặc đường dẫn `/uploads/...` sau khi tải lên. Danh sách trả về đã sắp theo nhóm món
+rồi theo tên. Chưa có đặt món/tính tiền món vào đơn đặt phòng.
 
 ### Đăng ký chủ khách sạn và xét duyệt
 
@@ -71,7 +123,7 @@ Notification, DeviceToken, Account (auth).
    trong email mở `GET /app-links/owner-status`, trang này chuyển điện thoại sang deep link
    `bookingapp://owner-status` của app.
 5. Bị từ chối thì sửa theo lý do và gửi lại (quay về bước 3). Được duyệt thì chủ khách sạn tự tạo
-   quản lý, mở cơ sở, thêm phòng, tiện ích, dịch vụ.
+   quản lý, mở cơ sở, thêm phòng, tiện ích, dịch vụ, thực đơn món ăn.
 
 ## Yêu cầu môi trường
 

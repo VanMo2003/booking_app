@@ -70,9 +70,16 @@ public class Hotel {
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL)
     Set<Amenity> amenities;
 
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<Dish> dishes;
+
     boolean active;
 
     HotelStatus status;
+
+    /** Chat assistant answers customers when nobody on the team has replied in time. Null (old rows) = off. */
+    @Column(name = "ai_auto_reply")
+    Boolean aiAutoReply;
 
     @CreationTimestamp
     @Column(updatable = false)

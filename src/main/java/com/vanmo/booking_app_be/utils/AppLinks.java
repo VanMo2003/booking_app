@@ -20,4 +20,8 @@ public final class AppLinks {
     public static String ownerRegistration(Long chainId) {
         return deepLink("owner-registrations/" + chainId);
     }
+
+    public static String chat(Long conversationId) {
+        return deepLink("chat/" + conversationId);
+    }
 }

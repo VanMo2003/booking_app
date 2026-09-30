@@ -48,7 +48,7 @@ Standard layered structure, one package per concern under `com.vanmo.booking_app
 - `repository` — Spring Data JPA repositories, one per entity.
 - `entity` — JPA entities; enums for status/role fields live in `entity/enums` (`Role`,
   `BookingStatus`, `PaymentStatus`, `RoomStatus`, `HotelStatus`, `PayrollStatus`, `PaymentMethod`,
-  `ApprovalStatus`, `NotificationType`).
+  `ApprovalStatus`, `NotificationType`, `DishCategory`, `ChatSide`).
 - `dto/request`, `dto/response` — request/response DTOs, one class per operation (`XCreateRequest`,
   `XUpdateRequest`, `XResponse`, `ListXResponse`) rather than shared/generic DTOs.
 - `mapper` — MapStruct interfaces (`@Mapper(componentModel = "spring")`) converting between
@@ -61,8 +61,10 @@ Standard layered structure, one package per concern under `com.vanmo.booking_app
   pre-approval hotel chains as `APPROVED`.
 - `security` — `AccessGuard`, the one place hierarchy/ownership authorization checks live (see
   below); called from the service layer, not controllers.
-- `event` — Spring application events and their `@Async` after-commit listeners (push, review
-  email); see *Notifications, push and email*.
+- `event` — Spring application events and their after-commit listeners (push, review email, chat
+  fan-out); see *Notifications, push and email* and *Guest ↔ hotel chat*.
+- `websocket` — the chat socket (`ChatWebSocketHandler`, `ChatHandshakeInterceptor`,
+  `ChatSessionRegistry`), registered by `config/WebSocketConfig`.
 - `exception` — `AppException` + `ErrorCode` enum (numeric app-level codes, distinct from HTTP
   status) are the standard way to fail a request; `GlobalExceptionHandler` maps these (and
   validation/upload-size/access-denied errors) to `ApiResponse.fail(...)`.
@@ -81,12 +83,28 @@ Three levels, each tied to an `Account` by role:
    (`@ManyToOne`, not unique — one manager can run several `Hotel` rows). `Room`, `Amenity`,
    `Service`, `HotelImage`, `Employee`, and `Booking` all hang off `Hotel` exactly as before this
    hierarchy was added — none of those FK names or the `/hotels`, `/rooms?hotelId=` etc. REST
-   contracts changed.
+   contracts changed. `Dish` (the branch's food menu, see *Food menu*) hangs off `Hotel` the same
+   way.
 3. **`Employee`** (`STAFF`) — already scoped to exactly one `Hotel` via `Employee.hotel`; created
    exclusively through `POST /employees` (which internally creates the backing `STAFF` `Account`),
    never directly via `POST /accounts`.
 
-`ADMIN` can read everything but is review-only (see *Admin is review-only*). `CUSTOMER` is
+`ADMIN` can read everything but is review-only (see *Admin is review-only*).
+
+### Food menu
+
+`Dish` (`dishes` table: name, description, price, `DishCategory` enum, `pathImage`, `available`)
+belongs to one `Hotel` branch and is removed with it (`Hotel.dishes`, cascade + orphanRemoval).
+`DishController` (`/dishes`) reads are public (`GET /dishes?hotelId=`, `GET /dishes/{id}` — both
+in `PUBLIC_ENDPOINT_GET`); create/update/delete/image-upload go through
+`AccessGuard.requireBranchManagerEditor`, so only the branch's `HOTEL_OWNER`/`HOTEL_MANAGER` write
+it — `STAFF` and `ADMIN` are read-only, unlike rooms/amenities/services where staff may edit
+(`@PreAuthorize` on the write methods repeats that). `PUT /dishes/{id}` is a partial update
+(`DishUpdateRequest` fields are all optional, mapper uses `NullValuePropertyMappingStrategy.IGNORE`),
+so `{"available": false}` alone toggles "sold out"; a blank `pathImage` clears the photo.
+`POST /dishes/{id}/image` takes a single multipart part named `file`. `DishServiceImpl` sorts the
+list by `DishCategory` declaration order (the menu's reading order), then name — keep new enum
+values in that order. Dishes are menu-only: nothing links them to bookings or billing. `CUSTOMER` is
 unaffected by this hierarchy (global accounts, can book at any branch).
 
 ### Auth & authorization
@@ -96,8 +114,9 @@ server with a custom `NimbusJwtDecoder` (`SecurityConfig.jwtDecoder`). Roles are
 `Role` enum values (`ADMIN`, `HOTEL_OWNER`, `HOTEL_MANAGER`, `STAFF`, `CUSTOMER`), carried as JWT
 authorities with no prefix (`ROLE_HOTEL_MANAGER`, etc.) and JWT `sub` = username. Only a small
 allowlist in `SecurityConfig` (`PUBLIC_ENDPOINT_GET`, `PUBLIC_ENDPOINT_POST` — login/introspect/
-refresh/account-create/owner-registration/file endpoints, the browse surface, `/app-links/{target}`)
-is open; every other endpoint requires authentication. `/uploads/**` is excluded from the security
+refresh/account-create/owner-registration/file endpoints, the browse surface, `/app-links/{target}`,
+plus `/ws/chat`, which authenticates its own upgrade) is open; every other endpoint requires
+authentication. `/uploads/**` is excluded from the security
 filter chain entirely (served as static files, see `file.upload-dir` in `application.yaml`).
 
 Coarse "who is even authenticated" gating stops at `SecurityConfig`; everything ownership-shaped
@@ -106,7 +125,8 @@ this owner's chain contain this branch, has this owner been approved) is enforce
 `security/AccessGuard.java`, called at the top of the relevant `service/impl/*` methods —
 `requireChainOwner`, `requireOwnChain`, `requireApprovedOwner`, `requireBranchManagerOrAbove`,
 `requireBranchStaffOrAbove`, `requireBranchEditor`, `requireBranchManagerEditor`,
-`requireSelfOrAdmin`, `requireAdmin`. It resolves the caller via `SecurityContextHolder` +
+`requireBranchTeam` (chat: owner/manager/staff of the branch, never admin), `requireSelfOrAdmin`,
+`requireAdmin`. It resolves the caller via `SecurityContextHolder` +
 `AccountRepository.findByUsername`, and rejections throw `AppException(ErrorCode.UN_AUTHORIZED)`
 (403) — or the more specific `OWNER_NOT_APPROVED` / `ADMIN_READ_ONLY` (also 403). A few
 `@PreAuthorize("!hasAuthority('ROLE_STAFF')")` annotations on `@DeleteMapping` methods
@@ -184,6 +204,34 @@ To test mail locally, point `MAIL_HOST`/`MAIL_PORT` at a throwaway SMTP sink wit
 `MAIL_SMTP_AUTH=false`, `MAIL_SMTP_STARTTLS=false` and any `MAIL_USERNAME`. The first message after
 startup can take ~10 s to leave (JavaMail resolves the local host name once).
 
+### Guest ↔ hotel chat
+
+`Conversation` (one per customer × branch, unique) and `ChatMessage`. The branch side is a shared
+inbox: the chain owner, the branch manager and every `Employee` of that branch read and answer the
+same thread, so unread state is two counters on the conversation (`customerUnread`,
+`hotelUnread`), not per person. Access lives in `ChatServiceImpl.sideOf` — a `CUSTOMER` must own
+the conversation's `Customer`; everyone else goes through `AccessGuard.requireBranchTeam`, which
+refuses `ADMIN` too (chats are private; admins aren't "read everything" here). Only customers with a
+`Customer` profile can open a conversation (`CUSTOMER_PROFILE_REQUIRED`, 1014).
+
+- Sending, history and inboxes are REST (`ChatController`, `/conversations`); messages come back newest
+  first and page with `beforeId`. The WebSocket at `/ws/chat` is server → client only: plain
+  `TextWebSocketHandler`, no STOMP. `ChatHandshakeInterceptor` authenticates the upgrade with the same
+  access token (`?token=` since browsers can't set headers, or `Authorization`), via
+  `CustomJwtDecoder` so logged-out tokens fail; `/ws/chat` is `permitAll` in `SecurityConfig` for that
+  reason.
+- Every change publishes `ChatUpdatedEvent` (built inside the transaction with per-side views of the
+  conversation, so the listener never touches lazy entities). `ChatEventListener` runs after commit,
+  synchronously so messages hit sockets in order, sends the event to every open socket of both sides
+  and pushes (FCM, `bookingapp://chat/{id}`, Android tag per conversation) only to the other side's
+  accounts with no open socket. It calls `PushNotificationListener.onPushRequested` directly: an event
+  published from an after-commit callback would never fire.
+- `ChatSessionRegistry` keeps sockets in memory (wrapped in `ConcurrentWebSocketSessionDecorator`) —
+  single-instance only.
+- Deleting a branch or a customer removes their conversations and messages through DB-level
+  `@OnDelete(CASCADE)` foreign keys. Message senders are a snapshot (id/name/role, no FK) so deleting
+  a staff account never blocks on chat history.
+
 ### Payments
 
 VNPay sandbox integration (`VNPayConfig`, `VNPayUtil`, `PaymentServiceImpl`,
@@ -250,7 +298,8 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
 
 `SecurityConfig.PUBLIC_ENDPOINT_GET` allowlists the anonymous browse surface (`/hotels`,
 `/hotels/detail/{id}`, `/hotels/category`, `/hotels/search`, `/rooms`, `/rooms/{id}`,
-`/rooms/available`, `/amenities/hotel/{hotelId}`, `/amenities/room`, `/services`) so a visitor can
+`/rooms/available`, `/amenities/hotel/{hotelId}`, `/amenities/room`, `/services`, `/dishes`,
+`/dishes/{id}`) so a visitor can
 browse without logging in; everything that writes or is account-scoped still needs a token. The
 matching service methods intentionally carry no `AccessGuard` call — if you add a new browse
 endpoint, it needs both halves (no guard *and* an allowlist entry) or it will 401 anonymously.
@@ -262,4 +311,6 @@ and runs top-to-bottom in Postman's Collection Runner, chaining tokens/ids throu
 variables and finishing with a cleanup folder so it can be re-run back-to-back. It covers every
 controller plus the authorization-negative cases (staff can't delete, cross-tenant reads rejected,
 customer can't book for someone else, pending owners locked out, admin is review-only) and the
-owner registration → reject → resubmit → approve flow. Keep it in sync when adding endpoints.
+owner registration → reject → resubmit → approve flow, and the chat REST flow (customer ↔ staff,
+cross-tenant and admin refusals). The `/ws/chat` socket can't run in the Collection Runner — test it
+with a Postman WebSocket request or a script. Keep it in sync when adding endpoints.

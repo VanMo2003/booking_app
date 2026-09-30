@@ -20,7 +20,10 @@ public enum ErrorCode {
     BAD_REQUEST(1010, "Bad request", HttpStatus.BAD_REQUEST),
     OWNER_NOT_APPROVED(1011, "Hotel owner account is not approved yet", HttpStatus.FORBIDDEN),
     ADMIN_READ_ONLY(1012, "Admin can only view this data", HttpStatus.FORBIDDEN),
-    REGISTRATION_NOT_PENDING(1013, "Registration is not waiting for review", HttpStatus.BAD_REQUEST);
+    REGISTRATION_NOT_PENDING(1013, "Registration is not waiting for review", HttpStatus.BAD_REQUEST),
+    CUSTOMER_PROFILE_REQUIRED(1014, "Create your customer profile before chatting", HttpStatus.BAD_REQUEST),
+    AI_UNAVAILABLE(1015, "AI assistant is unavailable right now", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_RATE_LIMITED(1016, "Too many AI requests, try again in a few minutes", HttpStatus.TOO_MANY_REQUESTS);
 
     private int code;
     private String message;

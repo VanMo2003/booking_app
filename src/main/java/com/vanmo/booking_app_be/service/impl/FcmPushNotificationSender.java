@@ -85,6 +85,13 @@ public class FcmPushNotificationSender implements PushNotificationSender {
         if (body != null) {
             notification.put("body", body);
         }
+        Map<String, Object> android = new HashMap<>();
+        android.put("priority", "high");
+        // A "tag" groups notifications on Android: a newer one with the same tag replaces the older (chat threads).
+        if (data != null && data.get("tag") != null) {
+            android.put("notification", Map.of("tag", data.get("tag")));
+            android.put("collapse_key", data.get("tag"));
+        }
         return Map.of(
                 "token",
                 token,
@@ -93,7 +100,7 @@ public class FcmPushNotificationSender implements PushNotificationSender {
                 "data",
                 data == null ? Map.of() : data,
                 "android",
-                Map.of("priority", "high"));
+                android);
     }
 
     private synchronized String accessToken() {

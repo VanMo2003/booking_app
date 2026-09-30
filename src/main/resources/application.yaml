@@ -52,6 +52,17 @@ firebase:
   # thông báo trong app, không gửi push.
   credentials-path: ${FIREBASE_CREDENTIALS:}
 
+ai:
+  # Claude API (console.anthropic.com > API Keys). Để trống ANTHROPIC_API_KEY thì mọi tính năng AI tự tắt.
+  api-key: ${ANTHROPIC_API_KEY:}
+  base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
+  # Trợ lý lễ tân (cần gọi công cụ, suy luận) và tác vụ nhanh (tách bộ lọc tìm kiếm).
+  assistant-model: ${AI_ASSISTANT_MODEL:claude-sonnet-5}
+  fast-model: ${AI_FAST_MODEL:claude-haiku-4-5-20251001}
+  timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
+  # Cơ sở bật "tự trả lời": khách nhắn mà sau chừng này giây chưa ai của cơ sở trả lời thì trợ lý trả lời.
+  auto-reply-delay-seconds: ${AI_AUTO_REPLY_DELAY_SECONDS:90}
+
 vnpay:
   tmnCode : ${VNPAY_TMN_CODE:KUHZ6TQJ}
   secretKey : ${VNPAY_SECRET_KEY:K20SB7Q7577Q70YWF5I512BL3IX95TP4}
