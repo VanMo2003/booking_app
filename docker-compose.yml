@@ -51,9 +51,14 @@ services:
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost/booking-app/api/v1}
       # Ví dụ: đặt file vào ./secrets/firebase-service-account.json rồi FIREBASE_CREDENTIALS=/app/secrets/firebase-service-account.json
       FIREBASE_CREDENTIALS: ${FIREBASE_CREDENTIALS:-}
+      # AI: có GEMINI_API_KEY là dùng Gemini (gói miễn phí); xem README mục "Tích hợp AI".
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      AI_ASSISTANT_MODEL: ${AI_ASSISTANT_MODEL:-claude-sonnet-5}
-      AI_FAST_MODEL: ${AI_FAST_MODEL:-claude-haiku-4-5-20251001}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_ASSISTANT_MODEL: ${AI_ASSISTANT_MODEL:-}
+      AI_FAST_MODEL: ${AI_FAST_MODEL:-}
       AI_AUTO_REPLY_DELAY_SECONDS: ${AI_AUTO_REPLY_DELAY_SECONDS:-90}
     volumes:
       - ./uploads:/app/uploads

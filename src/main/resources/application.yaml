@@ -9,8 +9,8 @@ spring:
     name: booking_app
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/booking_app_db}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:03092003}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
@@ -34,7 +34,7 @@ spring:
       "[mail.smtp.writetimeout]": 10000
 
 jwt:
-  signer-key: ${JWT_SIGNER_KEY:6lhXE9HRxzm7EyIVWdl0XPx9eoGdgXm8VNfpaBQ1dUDpZF6NcF8z4fDAO15JFAdF}
+  signer-key: ${JWT_SIGNER_KEY:}
   valid-duration: 36000 # 10 tiếng
   refreshable-duration: 604800 # 7 ngày
 
@@ -53,19 +53,27 @@ firebase:
   credentials-path: ${FIREBASE_CREDENTIALS:}
 
 ai:
-  # Claude API (console.anthropic.com > API Keys). Để trống ANTHROPIC_API_KEY thì mọi tính năng AI tự tắt.
-  api-key: ${ANTHROPIC_API_KEY:}
-  base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
-  # Trợ lý lễ tân (cần gọi công cụ, suy luận) và tác vụ nhanh (tách bộ lọc tìm kiếm).
-  assistant-model: ${AI_ASSISTANT_MODEL:claude-sonnet-5}
-  fast-model: ${AI_FAST_MODEL:claude-haiku-4-5-20251001}
+  # gemini (Google AI Studio, có gói miễn phí) | anthropic (Claude, trả phí) | openai (máy chủ chuẩn OpenAI
+  # khác: Groq, OpenRouter, Ollama…). Để trống thì tự chọn theo key đang có (GEMINI_API_KEY → gemini).
+  provider: ${AI_PROVIDER:}
+  # Không có key nào thì mọi tính năng AI tự tắt. AI_API_KEY dùng cho mọi nhà cung cấp.
+  api-key: ${AI_API_KEY:}
+  gemini-api-key: ${GEMINI_API_KEY:}
+  anthropic-api-key: ${ANTHROPIC_API_KEY:}
+  # Để trống = địa chỉ mặc định của nhà cung cấp.
+  base-url: ${AI_BASE_URL:}
+  # Để trống = model mặc định: gemini-3.8-flash / gemini-3.5-flash-lite (gemini),
+  # claude-sonnet-5 / claude-haiku-4-5-20251001 (anthropic). Trợ lý lễ tân cần gọi công cụ; model nhanh
+  # chỉ tách bộ lọc tìm kiếm.
+  assistant-model: ${AI_ASSISTANT_MODEL:}
+  fast-model: ${AI_FAST_MODEL:}
   timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
   # Cơ sở bật "tự trả lời": khách nhắn mà sau chừng này giây chưa ai của cơ sở trả lời thì trợ lý trả lời.
   auto-reply-delay-seconds: ${AI_AUTO_REPLY_DELAY_SECONDS:90}
 
 vnpay:
-  tmnCode : ${VNPAY_TMN_CODE:KUHZ6TQJ}
-  secretKey : ${VNPAY_SECRET_KEY:K20SB7Q7577Q70YWF5I512BL3IX95TP4}
+  tmnCode : ${VNPAY_TMN_CODE:}
+  secretKey : ${VNPAY_SECRET_KEY:}
   url : ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
   returnUrl : "${VNPAY_RETURN_URL:http://localhost:8080/booking-app/api/v1/payment/vn-pay-callback}"
   version : "2.1.0"

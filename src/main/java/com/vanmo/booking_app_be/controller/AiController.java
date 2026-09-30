@@ -8,9 +8,9 @@ import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.*;
 
+import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.ChatAssistant;
-import com.vanmo.booking_app_be.ai.ClaudeClient;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
@@ -20,20 +20,27 @@ import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 
 import lombok.RequiredArgsConstructor;
 
-/** AI features backed by the Claude API. Every call goes through the backend - the app never holds the API key. */
+/**
+ * AI features (Google Gemini, Claude or another OpenAI-compatible model - see {@link AiClient}). Every call goes
+ * through the backend - the app never holds the API key.
+ */
 @RestController
 @RequestMapping("/ai")
 @RequiredArgsConstructor
 public class AiController {
 
-    private final ClaudeClient claudeClient;
+    private final AiClient aiClient;
     private final AiSearchService aiSearchService;
     private final ChatAssistant chatAssistant;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
-    public ApiResponse<Map<String, Boolean>> status() {
-        return ApiResponse.ok(Map.of("enabled", claudeClient.isEnabled()));
+    public ApiResponse<Map<String, Object>> status() {
+        return ApiResponse.ok(Map.of(
+                "enabled",
+                aiClient.isEnabled(),
+                "provider",
+                aiClient.getProvider().name().toLowerCase()));
     }
 
     /** Public like the rest of browsing; rate-limited per account, or per IP when signed out. */

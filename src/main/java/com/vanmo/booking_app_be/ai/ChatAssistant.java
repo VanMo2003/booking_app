@@ -124,7 +124,7 @@ public class ChatAssistant {
 
     public record Reply(String content, boolean handoff, String handoffReason, List<String> toolsUsed) {}
 
-    private final ClaudeClient claude;
+    private final AiClient ai;
     private final HotelKnowledge knowledge;
     private final ConversationRepository conversationRepository;
     private final ChatMessageRepository chatMessageRepository;
@@ -140,7 +140,7 @@ public class ChatAssistant {
     private final ExecutorService workers = Executors.newVirtualThreadPerTaskExecutor();
 
     public ChatAssistant(
-            ClaudeClient claude,
+            AiClient ai,
             HotelKnowledge knowledge,
             ConversationRepository conversationRepository,
             ChatMessageRepository chatMessageRepository,
@@ -150,7 +150,7 @@ public class ChatAssistant {
             AiRateLimiter rateLimiter,
             @Value("${ai.auto-reply-delay-seconds:90}") long autoReplyDelaySeconds)
             throws JsonProcessingException {
-        this.claude = claude;
+        this.ai = ai;
         this.knowledge = knowledge;
         this.conversationRepository = conversationRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -159,7 +159,7 @@ public class ChatAssistant {
         this.accessGuard = accessGuard;
         this.rateLimiter = rateLimiter;
         this.autoReplyDelaySeconds = autoReplyDelaySeconds;
-        this.tools = claude.json().readTree(TOOLS);
+        this.tools = ai.json().readTree(TOOLS);
     }
 
     @PreDestroy
@@ -176,7 +176,7 @@ public class ChatAssistant {
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found id=" + conversationId));
         Hotel hotel = accessGuard.requireBranchTeam(conversation.getHotel().getId());
         Account caller = accessGuard.currentAccount();
-        if (!claude.isEnabled()) {
+        if (!ai.isEnabled()) {
             throw new AppException(ErrorCode.AI_UNAVAILABLE);
         }
         rateLimiter.check("suggest:" + caller.getId(), 30, Duration.ofMinutes(10));
@@ -197,7 +197,7 @@ public class ChatAssistant {
 
     /** Called after a guest message is committed; answers later if the branch wants it and nobody else did. */
     public void onCustomerMessage(Long conversationId, Long messageId) {
-        if (!claude.isEnabled()) {
+        if (!ai.isEnabled()) {
             return;
         }
         delays.schedule(
@@ -251,7 +251,7 @@ public class ChatAssistant {
         return AiBranchSettingsResponse.builder()
                 .hotelId(hotel.getId())
                 .autoReply(Boolean.TRUE.equals(hotel.getAiAutoReply()))
-                .aiEnabled(claude.isEnabled())
+                .aiEnabled(ai.isEnabled())
                 .autoReplyDelaySeconds(autoReplyDelaySeconds)
                 .build();
     }
@@ -260,22 +260,22 @@ public class ChatAssistant {
 
     Reply generate(Long hotelId, List<ChatMessage> history, Mode mode) {
         LocalDate today = LocalDate.now(ZONE);
-        ObjectNode request = claude.newRequest(claude.getAssistantModel(), 1024);
+        ObjectNode request = ai.newRequest(ai.getAssistantModel(), 1024);
         ArrayNode system = request.putArray("system");
-        system.add(claude.textBlock(RULES, false));
+        system.add(ai.textBlock(RULES, false));
         // The fact sheet is the same for every turn of the branch: cache it.
-        system.add(claude.textBlock(knowledge.factSheet(hotelId), true));
+        system.add(ai.textBlock(knowledge.factSheet(hotelId), true));
         request.set("tools", tools);
         ArrayNode messages = (ArrayNode) request.get("messages");
-        messages.add(claude.userMessage(prompt(history, today, mode)));
+        messages.add(ai.userMessage(prompt(history, today, mode)));
 
         boolean handoff = false;
         String handoffReason = null;
         List<String> toolsUsed = new ArrayList<>();
         for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
-            JsonNode response = claude.createMessage(request);
+            JsonNode response = ai.createMessage(request);
             if (!"tool_use".equals(response.path("stop_reason").asText())) {
-                String text = clean(ClaudeClient.text(response));
+                String text = clean(AiClient.text(response));
                 if (text.isEmpty()) {
                     throw new AppException(ErrorCode.AI_UNAVAILABLE);
                 }
@@ -285,7 +285,7 @@ public class ChatAssistant {
             assistantTurn.put("role", "assistant");
             assistantTurn.set("content", response.get("content"));
 
-            ArrayNode results = claude.array();
+            ArrayNode results = ai.array();
             for (JsonNode block : response.path("content")) {
                 if (!"tool_use".equals(block.path("type").asText())) {
                     continue;
@@ -343,7 +343,7 @@ public class ChatAssistant {
         List<HotelKnowledge.RoomOption> rooms =
                 knowledge.availableRooms(hotelId, checkin, checkout, guests, null, null);
 
-        ObjectNode out = claude.json().createObjectNode();
+        ObjectNode out = ai.json().createObjectNode();
         out.put("checkin", checkin.toString());
         out.put("checkout", checkout.toString());
         out.put("nights", nights);

@@ -14,6 +14,8 @@ tốt nghiệp 2026.
 - **Apache POI** cho xuất báo cáo Excel
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
 - **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
+- **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
+  trợ lý lễ tân AI và tìm phòng bằng câu nói tự nhiên
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -31,6 +33,7 @@ config      -> security, CORS, VNPay, seed admin mặc định
 security    -> AccessGuard - kiểm tra quyền theo phân cấp khách sạn/cơ sở
 event       -> sự kiện sau khi commit: gửi push, gửi email xét duyệt, phát tin nhắn chat
 websocket   -> kênh chat realtime /ws/chat (xác thực token, danh sách kết nối)
+ai          -> gọi model AI: trợ lý lễ tân trong chat, tìm phòng bằng câu nói
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -73,7 +76,10 @@ sở thì xoá theo thực đơn. Nhóm món cố định theo thứ tự đọc
 | Tải ảnh từ máy | `POST /dishes/{id}/image` (multipart, part `file`) | như trên |
 | Xoá món | `DELETE /dishes/{id}` | như trên |
 
-Nhân viên và quản trị viên chỉ xem (`403`).
+Nhân viên và quản trị viên chỉ xem (`403`). `PUT` chỉ đổi các trường được gửi, nên có thể gửi
+`{"available": false}` để đánh dấu tạm hết; `pathImage: ""` để gỡ ảnh. Ảnh có thể là link ngoài
+(`https://...`) hoặc đường dẫn `/uploads/...` sau khi tải lên. Danh sách trả về đã sắp theo nhóm món
+rồi theo tên. Chưa có đặt món/tính tiền món vào đơn đặt phòng.
 
 ### Nhắn tin khách hàng ↔ khách sạn
 
@@ -104,10 +110,43 @@ theo phía (một người của cơ sở mở là cả cơ sở đã đọc). Q
   `ON DELETE CASCADE`). Tên, vai trò người gửi lưu kèm từng tin nên xoá tài khoản nhân viên vẫn giữ
   được lịch sử.
 - Chỉ chạy một instance: danh sách kết nối nằm trong bộ nhớ (`ChatSessionRegistry`); chạy nhiều máy
-  chủ thì cần message broker dùng chung. `PUT` chỉ đổi các trường được gửi, nên có thể gửi
-`{"available": false}` để đánh dấu tạm hết; `pathImage: ""` để gỡ ảnh. Ảnh có thể là link ngoài
-(`https://...`) hoặc đường dẫn `/uploads/...` sau khi tải lên. Danh sách trả về đã sắp theo nhóm món
-rồi theo tên. Chưa có đặt món/tính tiền món vào đơn đặt phòng.
+  chủ thì cần message broker dùng chung.
+
+### Tích hợp AI (mặc định Google Gemini, gói miễn phí)
+
+Mọi lời gọi AI đi qua BE (`ai/AiClient`) — app không bao giờ giữ API key. Nhà cung cấp chọn bằng biến
+môi trường, logic AI không đổi:
+
+| `AI_PROVIDER` | Key | Model mặc định (trợ lý / tìm kiếm) |
+|---|---|---|
+| `gemini` (tự chọn khi có `GEMINI_API_KEY`) | `GEMINI_API_KEY` — aistudio.google.com → *Get API key* | `gemini-3.8-flash` / `gemini-3.5-flash-lite` (đều có gói free) |
+| `anthropic` | `ANTHROPIC_API_KEY` (trả phí) | `claude-sonnet-5` / `claude-haiku-4-5-20251001` |
+| `openai` (Groq, OpenRouter, Ollama… qua `AI_BASE_URL`) | `AI_API_KEY` | đặt bằng `AI_ASSISTANT_MODEL` / `AI_FAST_MODEL` |
+
+Gemini được gọi qua endpoint chuẩn OpenAI của Google (`…/v1beta/openai/chat/completions`);
+`ai/OpenAiCompat` đổi qua lại giữa định dạng đó và định dạng nội bộ, và gửi lại nguyên văn lượt gọi
+công cụ (gồm *thought signature* mà Gemini 3 bắt buộc). Không có key nào thì mọi tính năng AI tự tắt,
+`GET /ai/status` trả `enabled: false` và app ẩn các nút AI. **Lưu ý:** ở gói miễn phí, Google có thể
+dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo với dữ liệu test.
+
+1. **Trợ lý lễ tân trong chat** (`ai/ChatAssistant`):
+   - AI chỉ biết **hồ sơ cơ sở** lấy từ DB (`ai/HotelKnowledge`: loại phòng và giá, tiện ích, dịch vụ,
+     thực đơn) và **tra phòng trống thật** qua công cụ `find_available_rooms` — không tự bịa giá hay
+     phòng. Việc cần người (đặt/huỷ/đổi đơn, thanh toán, khiếu nại, câu hỏi hồ sơ không có) → công cụ
+     `handoff_to_staff`: cuộc trò chuyện được gắn `needsStaff` + lý do cho đội ngũ cơ sở (khách không
+     thấy).
+   - **Gợi ý trả lời:** `POST /ai/conversations/{id}/suggest-reply` (chủ/quản lý/nhân viên của cơ sở)
+     trả bản nháp, **không gửi gì cho khách**.
+   - **Tự trả lời:** chủ khách sạn/quản lý bật bằng `PUT /ai/branches/{hotelId}/settings
+     {"autoReply": true}` (`GET` để xem). Khách nhắn mà sau `AI_AUTO_REPLY_DELAY_SECONDS` (mặc định 90
+     giây) chưa ai của cơ sở trả lời thì trợ lý trả lời, tin mang nhãn "Trợ lý AI" (`aiGenerated`).
+     Nhân viên trả lời kịp hoặc khách nhắn tiếp thì bỏ lượt đó; nhân viên trả lời thì `needsStaff` tự xoá.
+2. **Tìm phòng bằng câu nói tự nhiên:** `POST /ai/search {"query": "..."}` (công khai, 20 lần/10 phút mỗi
+   tài khoản hoặc IP). Model nhanh chỉ **tách câu thành bộ lọc** (ngày, số khách, giá, khu vực, tiện ích);
+   lọc cơ sở và phòng trống do BE làm trên dữ liệu thật. Điều kiện không dùng được (ngày đã qua, tiện ích
+   không cơ sở nào có) được bỏ kèm ghi chú `notes`.
+
+Mã lỗi: `1015 AI_UNAVAILABLE` (503 — chưa có key hoặc nhà cung cấp lỗi/hết lượt), `1016 AI_RATE_LIMITED` (429).
 
 ### Đăng ký chủ khách sạn và xét duyệt
 
@@ -219,6 +258,12 @@ ghi log.
 | `MAIL_SMTP_AUTH` / `MAIL_SMTP_STARTTLS` | `true` / `true` | Tắt khi thử với SMTP giả trên máy |
 | `APP_PUBLIC_URL` | `http://localhost:8080/booking-app/api/v1` | Địa chỉ API công khai cho link trong email |
 | `FIREBASE_CREDENTIALS` | trống | Đường dẫn file JSON service account Firebase; trống thì tắt push |
+| `GEMINI_API_KEY` | trống | Key Google AI Studio — bật AI với Gemini (gói miễn phí) |
+| `ANTHROPIC_API_KEY` | trống | Key Claude (trả phí), dùng khi `AI_PROVIDER=anthropic` |
+| `AI_PROVIDER` | tự chọn theo key | `gemini` \| `anthropic` \| `openai` |
+| `AI_API_KEY`, `AI_BASE_URL` | trống | Key / địa chỉ cho máy chủ chuẩn OpenAI khác (Groq, OpenRouter, Ollama) hoặc máy chủ giả lập khi test |
+| `AI_ASSISTANT_MODEL`, `AI_FAST_MODEL` | theo nhà cung cấp | Đổi model trợ lý / tìm kiếm |
+| `AI_AUTO_REPLY_DELAY_SECONDS` | `90` | Chờ bao lâu không ai trả lời thì trợ lý tự trả lời |
 
 Xem đầy đủ trong [.env.example](.env.example).
 

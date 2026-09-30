@@ -65,6 +65,8 @@ Standard layered structure, one package per concern under `com.vanmo.booking_app
   fan-out); see *Notifications, push and email* and *Guest ↔ hotel chat*.
 - `websocket` — the chat socket (`ChatWebSocketHandler`, `ChatHandshakeInterceptor`,
   `ChatSessionRegistry`), registered by `config/WebSocketConfig`.
+- `ai` — model calls (Gemini by default, Claude or any OpenAI-compatible server): chat receptionist and
+  natural-language search; see *AI features*.
 - `exception` — `AppException` + `ErrorCode` enum (numeric app-level codes, distinct from HTTP
   status) are the standard way to fail a request; `GlobalExceptionHandler` maps these (and
   validation/upload-size/access-denied errors) to `ApiResponse.fail(...)`.
@@ -115,8 +117,8 @@ server with a custom `NimbusJwtDecoder` (`SecurityConfig.jwtDecoder`). Roles are
 authorities with no prefix (`ROLE_HOTEL_MANAGER`, etc.) and JWT `sub` = username. Only a small
 allowlist in `SecurityConfig` (`PUBLIC_ENDPOINT_GET`, `PUBLIC_ENDPOINT_POST` — login/introspect/
 refresh/account-create/owner-registration/file endpoints, the browse surface, `/app-links/{target}`,
-plus `/ws/chat`, which authenticates its own upgrade) is open; every other endpoint requires
-authentication. `/uploads/**` is excluded from the security
+plus `/ws/chat`, which authenticates its own upgrade, and `GET /ai/status` / `POST /ai/search`) is open;
+every other endpoint requires authentication. `/uploads/**` is excluded from the security
 filter chain entirely (served as static files, see `file.upload-dir` in `application.yaml`).
 
 Coarse "who is even authenticated" gating stops at `SecurityConfig`; everything ownership-shaped
@@ -231,6 +233,36 @@ refuses `ADMIN` too (chats are private; admins aren't "read everything" here). O
 - Deleting a branch or a customer removes their conversations and messages through DB-level
   `@OnDelete(CASCADE)` foreign keys. Message senders are a snapshot (id/name/role, no FK) so deleting
   a staff account never blocks on chat history.
+
+### AI features (`ai` package)
+
+Two features, both grounded in database data rather than model knowledge:
+
+- **Chat receptionist** (`ChatAssistant`): the system prompt carries `HotelKnowledge.factSheet(hotelId)`
+  (room types/prices, amenities, services, menu - public browse data only, never bookings or customers)
+  and the model gets two tools: `find_available_rooms` (a real availability lookup, same rule as the
+  hotel detail page) and `handoff_to_staff` (sets `Conversation.needsStaff` + `handoffReason`, shown
+  only on the hotel side, cleared when a person on the team replies). Guest text goes inside
+  `<conversation>` tags and the rules tell the model it is data, not instructions. Two entry points:
+  `POST /ai/conversations/{id}/suggest-reply` (team member gets a draft, nothing is sent) and
+  auto-reply - when `Hotel.aiAutoReply` is on, `ChatEventListener` calls
+  `ChatAssistant.onCustomerMessage` for every guest message; after `ai.auto-reply-delay-seconds` it
+  answers only if that message is still the newest (staff didn't answer, guest didn't write again),
+  via `ChatService.postAssistantReply` (sender = "Trợ lý AI", `aiGenerated`, no account, hotel
+  unread left as is). Delays run on a private scheduled executor, model calls on virtual threads.
+- **Natural-language search** (`AiSearchService`, public `POST /ai/search`): the fast model only turns
+  the sentence into filters through a forced tool call (`set_search_filters`); matching branches and
+  free rooms is plain Java. Unusable filters are dropped with a note instead of failing.
+
+`AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
+(system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
+`GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),
+`OpenAiCompat` translates to/from Chat Completions. It carries the model's tool-calling assistant turn
+through verbatim in a private `_openai_raw` block because Gemini 3 rejects a follow-up turn without
+its thought signatures. No key → `isEnabled()` false, `GET /ai/status` says so, endpoints throw
+`AI_UNAVAILABLE` (1015, 503). `AiRateLimiter` caps calls per account/IP in memory (`AI_RATE_LIMITED`,
+1016, 429). To test without a key, point `AI_BASE_URL` at a local stub that serves `/chat/completions`
+(or `/v1/messages` for anthropic); there is no real-model test in the repo.
 
 ### Payments
 

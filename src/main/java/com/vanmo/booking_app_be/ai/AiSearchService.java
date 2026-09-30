@@ -71,24 +71,24 @@ public class AiSearchService {
 			}
 			""";
 
-    private final ClaudeClient claude;
+    private final AiClient ai;
     private final HotelKnowledge knowledge;
     private final HotelRepository hotelRepository;
     private final AiRateLimiter rateLimiter;
     private final JsonNode tool;
 
     public AiSearchService(
-            ClaudeClient claude, HotelKnowledge knowledge, HotelRepository hotelRepository, AiRateLimiter rateLimiter)
+            AiClient ai, HotelKnowledge knowledge, HotelRepository hotelRepository, AiRateLimiter rateLimiter)
             throws JsonProcessingException {
-        this.claude = claude;
+        this.ai = ai;
         this.knowledge = knowledge;
         this.hotelRepository = hotelRepository;
         this.rateLimiter = rateLimiter;
-        this.tool = claude.json().readTree(TOOL);
+        this.tool = ai.json().readTree(TOOL);
     }
 
     public AiSearchResponse search(String rawQuery, String clientKey) {
-        if (!claude.isEnabled()) {
+        if (!ai.isEnabled()) {
             throw new AppException(ErrorCode.AI_UNAVAILABLE);
         }
         String query = rawQuery.strip();
@@ -143,8 +143,8 @@ public class AiSearchService {
             amenities.addAll(knowledge.amenityNames(hotel.getId()));
             categories.add(hotel.getCategory());
         }
-        ObjectNode request = claude.newRequest(claude.getFastModel(), 512);
-        request.putArray("system").add(claude.textBlock(SYSTEM, false));
+        ObjectNode request = ai.newRequest(ai.getFastModel(), 512);
+        request.putArray("system").add(ai.textBlock(SYSTEM, false));
         ArrayNode tools = request.putArray("tools");
         tools.add(tool);
         ObjectNode choice = request.putObject("tool_choice");
@@ -154,12 +154,18 @@ public class AiSearchService {
                 + "Tiện ích có trong hệ thống: " + String.join("; ", amenities) + "\n"
                 + "Loại hình cơ sở: " + String.join("; ", categories) + "\n"
                 + "<query>" + query.replace("</query>", "") + "</query>";
-        ((ArrayNode) request.get("messages")).add(claude.userMessage(prompt));
-        JsonNode call = ClaudeClient.toolUse(claude.createMessage(request), "set_search_filters");
-        if (call == null) {
+        ((ArrayNode) request.get("messages")).add(ai.userMessage(prompt));
+        JsonNode response = ai.createMessage(request);
+        JsonNode call = AiClient.toolUse(response, "set_search_filters");
+        if (call != null) {
+            return call.path("input");
+        }
+        // Some OpenAI-compatible servers ignore a forced tool call and answer with the JSON as text.
+        JsonNode fromText = ai.jsonObjectIn(AiClient.text(response));
+        if (fromText == null) {
             throw new AppException(ErrorCode.AI_UNAVAILABLE);
         }
-        return call.path("input");
+        return fromText;
     }
 
     /** Model output → validated filters; anything unusable is dropped with a note instead of failing the search. */
