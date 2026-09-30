@@ -1,7 +1,12 @@
 package com.vanmo.booking_app_be.ai;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -38,24 +43,47 @@ import lombok.extern.slf4j.Slf4j;
 public class AiClient {
 
     public enum Provider {
-        ANTHROPIC("https://api.anthropic.com", "claude-sonnet-5", "claude-haiku-4-5-20251001"),
-        // Both have a free tier in Google AI Studio.
-        GEMINI("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-flash", "gemini-3.5-flash-lite"),
+        ANTHROPIC(
+                "https://api.anthropic.com",
+                "claude-sonnet-5",
+                "claude-haiku-4-5-20251001",
+                List.of("claude-haiku-4-5-20251001"),
+                List.of()),
+        // Every model here has a free tier in Google AI Studio. The newest model is often "experiencing high
+        // demand" (503) on the free tier, so older, steadier models back it up.
+        GEMINI(
+                "https://generativelanguage.googleapis.com/v1beta/openai",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash-lite",
+                List.of("gemini-3.5-flash", "gemini-2.5-flash"),
+                List.of("gemini-2.5-flash-lite")),
         // Any other Chat Completions server: set AI_BASE_URL and the models.
-        OPENAI("https://api.openai.com/v1", "", "");
+        OPENAI("https://api.openai.com/v1", "", "", List.of(), List.of());
 
         final String baseUrl;
         final String assistantModel;
         final String fastModel;
+        final List<String> assistantFallbacks;
+        final List<String> fastFallbacks;
 
-        Provider(String baseUrl, String assistantModel, String fastModel) {
+        Provider(
+                String baseUrl,
+                String assistantModel,
+                String fastModel,
+                List<String> assistantFallbacks,
+                List<String> fastFallbacks) {
             this.baseUrl = baseUrl;
             this.assistantModel = assistantModel;
             this.fastModel = fastModel;
+            this.assistantFallbacks = assistantFallbacks;
+            this.fastFallbacks = fastFallbacks;
         }
     }
 
     private static final String ANTHROPIC_VERSION = "2023-06-01";
+
+    /** Waits before retrying a 5xx ("model overloaded") on the same model. */
+    private static final long[] RETRY_DELAYS_MS = {1_000, 2_500};
 
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
@@ -70,6 +98,13 @@ public class AiClient {
     @Getter
     private final String fastModel;
 
+    /** Primary model first, then the ones tried when it is overloaded or out of quota. */
+    @Getter
+    private final List<String> assistantModels;
+
+    @Getter
+    private final List<String> fastModels;
+
     public AiClient(
             ObjectMapper objectMapper,
             @Value("${ai.provider:}") String provider,
@@ -79,6 +114,8 @@ public class AiClient {
             @Value("${ai.base-url:}") String baseUrl,
             @Value("${ai.assistant-model:}") String assistantModel,
             @Value("${ai.fast-model:}") String fastModel,
+            @Value("${ai.assistant-fallback-models:}") String assistantFallbacks,
+            @Value("${ai.fast-fallback-models:}") String fastFallbacks,
             @Value("${ai.timeout-seconds:60}") int timeoutSeconds) {
         this.objectMapper = objectMapper;
         this.provider = resolveProvider(provider, geminiApiKey, anthropicApiKey);
@@ -91,6 +128,8 @@ public class AiClient {
         this.apiKey = firstNonBlank(apiKey, providerKey);
         this.assistantModel = firstNonBlank(assistantModel, this.provider.assistantModel);
         this.fastModel = firstNonBlank(fastModel, this.provider.fastModel, this.assistantModel);
+        this.assistantModels = chain(this.assistantModel, assistantFallbacks, this.provider.assistantFallbacks);
+        this.fastModels = chain(this.fastModel, fastFallbacks, this.provider.fastFallbacks);
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(10));
@@ -108,8 +147,8 @@ public class AiClient {
             log.info(
                     "AI features on: provider={}, assistant={}, fast={}",
                     this.provider,
-                    this.assistantModel,
-                    this.fastModel);
+                    String.join(" > ", this.assistantModels),
+                    String.join(" > ", this.fastModels));
         }
     }
 
@@ -130,28 +169,92 @@ public class AiClient {
     }
 
     /**
+     * Runs {@code call} with each model of the chain in turn while the provider answers "overloaded" (5xx) or "out
+     * of quota" (429) - quotas are per model, so the next model usually still has some. Any other failure, or the
+     * last model failing, is thrown. A whole generation (tool rounds included) stays on one model: thought
+     * signatures from one model aren't valid for another.
+     */
+    public <T> T withModelFallback(List<String> models, Function<String, T> call) {
+        AppException last = new AppException(ErrorCode.AI_UNAVAILABLE);
+        for (String model : models) {
+            try {
+                return call.apply(model);
+            } catch (AppException e) {
+                ErrorCode code = e.getErrorCode();
+                if (code != ErrorCode.AI_OVERLOADED && code != ErrorCode.AI_QUOTA_EXCEEDED) {
+                    throw e;
+                }
+                last = e;
+                log.info("{} is unavailable ({}), trying the next model", model, code);
+            }
+        }
+        throw last;
+    }
+
+    /**
      * Sends one request (Anthropic Messages shape) and returns the answer in the same shape, whatever the provider.
-     * Any failure becomes {@link ErrorCode#AI_UNAVAILABLE}.
+     * A 5xx from the provider is retried twice on the same model; failures become {@link ErrorCode#AI_OVERLOADED}
+     * (5xx), {@link ErrorCode#AI_QUOTA_EXCEEDED} (429) or {@link ErrorCode#AI_UNAVAILABLE} (anything else).
      */
     public JsonNode createMessage(ObjectNode request) {
         if (!isEnabled()) {
             throw new AppException(ErrorCode.AI_UNAVAILABLE);
         }
-        try {
-            JsonNode response = provider == Provider.ANTHROPIC ? anthropic(request) : openAiCompatible(request);
-            if (response == null
-                    || !response.path("content").isArray()
-                    || "error".equals(response.path("stop_reason").asText())) {
+        String model = request.path("model").asText();
+        for (int attempt = 0; ; attempt++) {
+            try {
+                JsonNode response = provider == Provider.ANTHROPIC ? anthropic(request) : openAiCompatible(request);
+                if (response == null
+                        || !response.path("content").isArray()
+                        || "error".equals(response.path("stop_reason").asText())) {
+                    throw new AppException(ErrorCode.AI_UNAVAILABLE);
+                }
+                return response;
+            } catch (RestClientResponseException e) {
+                int status = e.getStatusCode().value();
+                if (status >= 500 && attempt < RETRY_DELAYS_MS.length) {
+                    log.info("{} {} answered {} - retrying", provider, model, status);
+                    pause(RETRY_DELAYS_MS[attempt]);
+                    continue;
+                }
+                log.warn("{} {} rejected a request ({}): {}", provider, model, status, e.getResponseBodyAsString());
+                throw new AppException(
+                        status == 429
+                                ? ErrorCode.AI_QUOTA_EXCEEDED
+                                : status >= 500 ? ErrorCode.AI_OVERLOADED : ErrorCode.AI_UNAVAILABLE);
+            } catch (RestClientException | JsonProcessingException e) {
+                log.warn("Cannot reach {}: {}", provider, e.getMessage());
                 throw new AppException(ErrorCode.AI_UNAVAILABLE);
             }
-            return response;
-        } catch (RestClientResponseException e) {
-            log.warn("{} rejected a request ({}): {}", provider, e.getStatusCode(), e.getResponseBodyAsString());
-            throw new AppException(ErrorCode.AI_UNAVAILABLE);
-        } catch (RestClientException | JsonProcessingException e) {
-            log.warn("Cannot reach {}: {}", provider, e.getMessage());
+        }
+    }
+
+    private static void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new AppException(ErrorCode.AI_UNAVAILABLE);
         }
+    }
+
+    /** Primary, then the configured fallbacks ("none" = no fallback), else the provider's; no duplicates. */
+    private static List<String> chain(String primary, String configured, List<String> providerDefaults) {
+        Set<String> models = new LinkedHashSet<>();
+        if (!primary.isEmpty()) {
+            models.add(primary);
+        }
+        if (configured != null && !configured.isBlank()) {
+            if (!"none".equalsIgnoreCase(configured.strip())) {
+                Arrays.stream(configured.split(","))
+                        .map(String::strip)
+                        .filter(s -> !s.isEmpty())
+                        .forEach(models::add);
+            }
+        } else {
+            models.addAll(providerDefaults);
+        }
+        return List.copyOf(models);
     }
 
     private JsonNode anthropic(ObjectNode request) throws JsonProcessingException {

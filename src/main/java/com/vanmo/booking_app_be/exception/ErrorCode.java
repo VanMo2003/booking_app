@@ -23,7 +23,10 @@ public enum ErrorCode {
     REGISTRATION_NOT_PENDING(1013, "Registration is not waiting for review", HttpStatus.BAD_REQUEST),
     CUSTOMER_PROFILE_REQUIRED(1014, "Create your customer profile before chatting", HttpStatus.BAD_REQUEST),
     AI_UNAVAILABLE(1015, "AI assistant is unavailable right now", HttpStatus.SERVICE_UNAVAILABLE),
-    AI_RATE_LIMITED(1016, "Too many AI requests, try again in a few minutes", HttpStatus.TOO_MANY_REQUESTS);
+    AI_RATE_LIMITED(1016, "Too many AI requests, try again in a few minutes", HttpStatus.TOO_MANY_REQUESTS),
+    // The provider's own answers, after retries and fallback models were tried.
+    AI_OVERLOADED(1017, "AI model is overloaded, try again shortly", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_QUOTA_EXCEEDED(1018, "AI quota exceeded, try again later", HttpStatus.TOO_MANY_REQUESTS);
 
     private int code;
     private String message;

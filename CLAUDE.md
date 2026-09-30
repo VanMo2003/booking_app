@@ -259,7 +259,12 @@ Two features, both grounded in database data rather than model knowledge:
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),
 `OpenAiCompat` translates to/from Chat Completions. It carries the model's tool-calling assistant turn
 through verbatim in a private `_openai_raw` block because Gemini 3 rejects a follow-up turn without
-its thought signatures. No key → `isEnabled()` false, `GET /ai/status` says so, endpoints throw
+its thought signatures. A provider 5xx is retried twice on the same model; a model still overloaded
+(`AI_OVERLOADED`, 1017) or out of quota (`AI_QUOTA_EXCEEDED`, 1018 - quotas are per model) makes
+`AiClient.withModelFallback` rerun the *whole* generation on the next model of the chain
+(`gemini-3.8-flash > gemini-3.5-flash > gemini-2.5-flash`, search `gemini-3.5-flash-lite >
+gemini-2.5-flash-lite`; override with `AI_*_FALLBACK_MODELS`). Never switch models mid tool loop:
+signatures don't carry over. No key → `isEnabled()` false, `GET /ai/status` says so, endpoints throw
 `AI_UNAVAILABLE` (1015, 503). `AiRateLimiter` caps calls per account/IP in memory (`AI_RATE_LIMITED`,
 1016, 429). To test without a key, point `AI_BASE_URL` at a local stub that serves `/chat/completions`
 (or `/v1/messages` for anthropic); there is no real-model test in the repo.

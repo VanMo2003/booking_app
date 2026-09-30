@@ -146,7 +146,17 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
    lọc cơ sở và phòng trống do BE làm trên dữ liệu thật. Điều kiện không dùng được (ngày đã qua, tiện ích
    không cơ sở nào có) được bỏ kèm ghi chú `notes`.
 
-Mã lỗi: `1015 AI_UNAVAILABLE` (503 — chưa có key hoặc nhà cung cấp lỗi/hết lượt), `1016 AI_RATE_LIMITED` (429).
+**Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
+experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi
+2,5 s), vẫn lỗi hoặc gặp `429` (hết lượt — mỗi model có hạn mức riêng) thì chuyển sang model dự phòng:
+trợ lý `gemini-3.8-flash` → `gemini-3.5-flash` → `gemini-2.5-flash`, tìm kiếm `gemini-3.5-flash-lite` →
+`gemini-2.5-flash-lite`. Một lượt trả lời (kể cả các vòng gọi công cụ) luôn ở trên một model. Đổi chuỗi
+dự phòng bằng `AI_ASSISTANT_FALLBACK_MODELS` / `AI_FAST_FALLBACK_MODELS` (danh sách cách nhau bởi dấu
+phẩy, `none` = tắt).
+
+Mã lỗi: `1015 AI_UNAVAILABLE` (503 — chưa có key hoặc lỗi khác), `1016 AI_RATE_LIMITED` (429 — giới hạn
+của chính app), `1017 AI_OVERLOADED` (503 — mọi model đều quá tải), `1018 AI_QUOTA_EXCEEDED` (429 — mọi
+model đều hết lượt).
 
 ### Đăng ký chủ khách sạn và xét duyệt
 

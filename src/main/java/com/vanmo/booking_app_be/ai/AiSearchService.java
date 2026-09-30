@@ -143,7 +143,13 @@ public class AiSearchService {
             amenities.addAll(knowledge.amenityNames(hotel.getId()));
             categories.add(hotel.getCategory());
         }
-        ObjectNode request = ai.newRequest(ai.getFastModel(), 512);
+        return ai.withModelFallback(
+                ai.getFastModels(), model -> understand(model, query, today, amenities, categories));
+    }
+
+    private JsonNode understand(
+            String model, String query, LocalDate today, Set<String> amenities, Set<String> categories) {
+        ObjectNode request = ai.newRequest(model, 512);
         request.putArray("system").add(ai.textBlock(SYSTEM, false));
         ArrayNode tools = request.putArray("tools");
         tools.add(tool);

@@ -67,6 +67,10 @@ ai:
   # chỉ tách bộ lọc tìm kiếm.
   assistant-model: ${AI_ASSISTANT_MODEL:}
   fast-model: ${AI_FAST_MODEL:}
+  # Model thử tiếp khi model chính quá tải (503) hoặc hết lượt (429), cách nhau bởi dấu phẩy; "none" = tắt.
+  # Để trống = mặc định: gemini-3.5-flash,gemini-2.5-flash (trợ lý) và gemini-2.5-flash-lite (tìm kiếm).
+  assistant-fallback-models: ${AI_ASSISTANT_FALLBACK_MODELS:}
+  fast-fallback-models: ${AI_FAST_FALLBACK_MODELS:}
   timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
   # Cơ sở bật "tự trả lời": khách nhắn mà sau chừng này giây chưa ai của cơ sở trả lời thì trợ lý trả lời.
   auto-reply-delay-seconds: ${AI_AUTO_REPLY_DELAY_SECONDS:90}

@@ -258,9 +258,14 @@ public class ChatAssistant {
 
     // ---- The model loop ----
 
+    /** Tries the assistant model, then its fallbacks when the provider is overloaded or out of quota. */
     Reply generate(Long hotelId, List<ChatMessage> history, Mode mode) {
+        return ai.withModelFallback(ai.getAssistantModels(), model -> generate(model, hotelId, history, mode));
+    }
+
+    private Reply generate(String model, Long hotelId, List<ChatMessage> history, Mode mode) {
         LocalDate today = LocalDate.now(ZONE);
-        ObjectNode request = ai.newRequest(ai.getAssistantModel(), 1024);
+        ObjectNode request = ai.newRequest(model, 1024);
         ArrayNode system = request.putArray("system");
         system.add(ai.textBlock(RULES, false));
         // The fact sheet is the same for every turn of the branch: cache it.
