@@ -1,0 +1,52 @@
+package com.vanmo.booking_app_be.dto.request;
+
+import java.math.BigDecimal;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class TourCreateRequest {
+    @NotBlank
+    @Size(max = 255)
+    String name;
+
+    String description;
+
+    /** Per guest. */
+    @NotNull
+    @Positive
+    BigDecimal price;
+
+    @Size(max = 100)
+    String duration;
+
+    @Size(max = 255)
+    String departure;
+
+    @Size(max = 1000)
+    String includes;
+
+    @Min(1)
+    Integer maxGuests;
+
+    @Size(max = 1000)
+    String pathImage;
+
+    @Builder.Default
+    boolean available = true;
+
+    @NotNull
+    Long hotelId;
+}

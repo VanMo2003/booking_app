@@ -85,8 +85,8 @@ Three levels, each tied to an `Account` by role:
    (`@ManyToOne`, not unique — one manager can run several `Hotel` rows). `Room`, `Amenity`,
    `Service`, `HotelImage`, `Employee`, and `Booking` all hang off `Hotel` exactly as before this
    hierarchy was added — none of those FK names or the `/hotels`, `/rooms?hotelId=` etc. REST
-   contracts changed. `Dish` (the branch's food menu, see *Food menu*) hangs off `Hotel` the same
-   way.
+   contracts changed. `Dish` (the branch's food menu, see *Food menu*) and `Tour` (see *Tours*)
+   hang off `Hotel` the same way.
 3. **`Employee`** (`STAFF`) — already scoped to exactly one `Hotel` via `Employee.hotel`; created
    exclusively through `POST /employees` (which internally creates the backing `STAFF` `Account`),
    never directly via `POST /accounts`.
@@ -108,6 +108,18 @@ so `{"available": false}` alone toggles "sold out"; a blank `pathImage` clears t
 list by `DishCategory` declaration order (the menu's reading order), then name — keep new enum
 values in that order. Dishes are menu-only: nothing links them to bookings or billing. `CUSTOMER` is
 unaffected by this hierarchy (global accounts, can book at any branch).
+
+### Tours
+
+`Tour` (`tours` table: name, description, `price` per guest, free-text `duration`/`departure`/
+`includes`, nullable `maxGuests` = no limit, `pathImage`, `available`) follows the *Food menu* pattern
+exactly: `Hotel.tours` cascade + orphanRemoval, `TourController` (`/tours`) public reads in
+`PUBLIC_ENDPOINT_GET`, writes through `AccessGuard.requireBranchManagerEditor` + `@PreAuthorize`
+(owner/manager only), partial `PUT`, single-part `file` image upload. `TourUpdateRequest` has two
+"clear" conventions the mapper can't express with IGNORE: `maxGuests: 0` → null (no limit) and a
+blank string clears a text field or the photo (`TourServiceImpl.blankToNull`). The list sorts
+available tours first, then price, then name. There is no tour booking entity: guests ask through
+chat, and `HotelKnowledge` feeds the tours into the chat receptionist (see *AI features*).
 
 ### Auth & authorization
 
@@ -239,7 +251,9 @@ refuses `ADMIN` too (chats are private; admins aren't "read everything" here). O
 Two features, both grounded in database data rather than model knowledge:
 
 - **Chat receptionist** (`ChatAssistant`): the system prompt carries `HotelKnowledge.factSheet(hotelId)`
-  (room types/prices, amenities, services, menu - public browse data only, never bookings or customers)
+  (room types/prices, amenities, services, menu, tours with paused ones marked "TẠM NGỪNG" - public
+  browse data only, never bookings or customers; a rule tells it to suggest 1-3 matching tours when
+  the guest asks about sightseeing, food or a multi-day stay, and to hand tour bookings to staff)
   and the model gets two tools: `find_available_rooms` (a real availability lookup, same rule as the
   hotel detail page) and `handoff_to_staff` (sets `Conversation.needsStaff` + `handoffReason`, shown
   only on the hotel side, cleared when a person on the team replies). Guest text goes inside
@@ -336,7 +350,7 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
 `SecurityConfig.PUBLIC_ENDPOINT_GET` allowlists the anonymous browse surface (`/hotels`,
 `/hotels/detail/{id}`, `/hotels/category`, `/hotels/search`, `/rooms`, `/rooms/{id}`,
 `/rooms/available`, `/amenities/hotel/{hotelId}`, `/amenities/room`, `/services`, `/dishes`,
-`/dishes/{id}`) so a visitor can
+`/dishes/{id}`, `/tours`, `/tours/{id}`) so a visitor can
 browse without logging in; everything that writes or is account-scoped still needs a token. The
 matching service methods intentionally carry no `AccessGuard` call — if you add a new browse
 endpoint, it needs both halves (no guard *and* an allowlist entry) or it will 401 anonymously.

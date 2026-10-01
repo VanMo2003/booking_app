@@ -73,6 +73,9 @@ public class Hotel {
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<Dish> dishes;
 
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<Tour> tours;
+
     boolean active;
 
     HotelStatus status;

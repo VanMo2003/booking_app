@@ -58,7 +58,7 @@ Việc kiểm tra quyền theo phân cấp trên nằm ở `AccessGuard` (packag
 service — không phải chỉ role-check đơn thuần mà còn xác thực quan hệ sở hữu (chain ↔ owner,
 branch ↔ manager, staff ↔ branch của họ) và trạng thái duyệt của chủ khách sạn.
 
-Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Dish (món ăn), Booking,
+Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Dish (món ăn), Tour, Booking,
 BookingRoom, BookingService (dịch vụ đi kèm), Customer, Employee, Position, Payroll, Feedback,
 Payment, Report, Notification, DeviceToken, Conversation + ChatMessage (nhắn tin), Account (auth).
 
@@ -80,6 +80,25 @@ Nhân viên và quản trị viên chỉ xem (`403`). `PUT` chỉ đổi các tr
 `{"available": false}` để đánh dấu tạm hết; `pathImage: ""` để gỡ ảnh. Ảnh có thể là link ngoài
 (`https://...`) hoặc đường dẫn `/uploads/...` sau khi tải lên. Danh sách trả về đã sắp theo nhóm món
 rồi theo tên. Chưa có đặt món/tính tiền món vào đơn đặt phòng.
+
+### Tour tham quan
+
+Mỗi cơ sở giới thiệu các tour do khách sạn tổ chức (`Tour`: tên, mô tả/lịch trình, giá **mỗi khách**,
+thời lượng, giờ khởi hành, giá đã gồm, số khách tối đa, ảnh, đang nhận khách/tạm ngừng), xoá cơ sở thì
+xoá theo tour. Quyền giống thực đơn:
+
+| Thao tác | Endpoint | Ai được gọi |
+|---|---|---|
+| Xem tour | `GET /tours?hotelId=`, `GET /tours/{id}` | Công khai, không cần đăng nhập |
+| Thêm tour | `POST /tours` | `HOTEL_OWNER` của chuỗi / `HOTEL_MANAGER` của cơ sở |
+| Sửa tour (sửa một phần) | `PUT /tours/{id}` | như trên |
+| Tải ảnh từ máy | `POST /tours/{id}/image` (multipart, part `file`) | như trên |
+| Xoá tour | `DELETE /tours/{id}` | như trên |
+
+`PUT` chỉ đổi các trường được gửi: `{"available": false}` để tạm ngừng, `maxGuests: 0` để bỏ giới
+hạn số khách, chuỗi rỗng để xoá mô tả/thời lượng/giờ khởi hành/giá đã gồm/ảnh. Danh sách trả về đặt
+tour đang nhận khách lên trước, rồi theo giá, rồi theo tên. Chưa đặt tour trực tiếp trong app: khách
+hỏi qua chat, trợ lý AI gợi ý tour (xem *Tích hợp AI*) và chuyển nhân viên xác nhận.
 
 ### Nhắn tin khách hàng ↔ khách sạn
 
@@ -131,10 +150,13 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
 
 1. **Trợ lý lễ tân trong chat** (`ai/ChatAssistant`):
    - AI chỉ biết **hồ sơ cơ sở** lấy từ DB (`ai/HotelKnowledge`: loại phòng và giá, tiện ích, dịch vụ,
-     thực đơn) và **tra phòng trống thật** qua công cụ `find_available_rooms` — không tự bịa giá hay
-     phòng. Việc cần người (đặt/huỷ/đổi đơn, thanh toán, khiếu nại, câu hỏi hồ sơ không có) → công cụ
-     `handoff_to_staff`: cuộc trò chuyện được gắn `needsStaff` + lý do cho đội ngũ cơ sở (khách không
-     thấy).
+     thực đơn, tour tham quan) và **tra phòng trống thật** qua công cụ `find_available_rooms` — không
+     tự bịa giá hay phòng. Việc cần người (đặt/huỷ/đổi đơn, thanh toán, khiếu nại, câu hỏi hồ sơ không
+     có) → công cụ `handoff_to_staff`: cuộc trò chuyện được gắn `needsStaff` + lý do cho đội ngũ cơ sở
+     (khách không thấy).
+   - **Gợi ý tour:** khách hỏi đi chơi, tham quan, ăn uống quanh khu vực hoặc nói sẽ ở vài ngày thì
+     trợ lý gợi ý 1–3 tour phù hợp của cơ sở (tên, giá mỗi khách, thời lượng, giờ khởi hành), không
+     gợi ý tour tạm ngừng. Khách muốn đặt tour → trợ lý hỏi ngày, số khách rồi chuyển nhân viên.
    - **Gợi ý trả lời:** `POST /ai/conversations/{id}/suggest-reply` (chủ/quản lý/nhân viên của cơ sở)
      trả bản nháp, **không gửi gì cho khách**.
    - **Tự trả lời:** chủ khách sạn/quản lý bật bằng `PUT /ai/branches/{hotelId}/settings
@@ -172,7 +194,7 @@ model đều hết lượt).
    trong email mở `GET /app-links/owner-status`, trang này chuyển điện thoại sang deep link
    `bookingapp://owner-status` của app.
 5. Bị từ chối thì sửa theo lý do và gửi lại (quay về bước 3). Được duyệt thì chủ khách sạn tự tạo
-   quản lý, mở cơ sở, thêm phòng, tiện ích, dịch vụ, thực đơn món ăn.
+   quản lý, mở cơ sở, thêm phòng, tiện ích, dịch vụ, thực đơn món ăn, tour tham quan.
 
 ## Yêu cầu môi trường
 

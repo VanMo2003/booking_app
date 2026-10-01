@@ -24,6 +24,7 @@ import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Room;
 import com.vanmo.booking_app_be.entity.RoomAmenity;
 import com.vanmo.booking_app_be.entity.Service;
+import com.vanmo.booking_app_be.entity.Tour;
 import com.vanmo.booking_app_be.entity.enums.DishCategory;
 import com.vanmo.booking_app_be.entity.enums.RoomStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
@@ -34,6 +35,7 @@ import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.ServiceRepository;
+import com.vanmo.booking_app_be.repository.TourRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -55,6 +57,7 @@ public class HotelKnowledge {
     private final RoomAmenityRepository roomAmenityRepository;
     private final ServiceRepository serviceRepository;
     private final DishRepository dishRepository;
+    private final TourRepository tourRepository;
     private final BookingRoomRepository bookingRoomRepository;
 
     /** A room free for a stay (or, without dates, just a room that isn't under maintenance). */
@@ -163,9 +166,44 @@ public class HotelKnowledge {
                         .collect(Collectors.joining("; ")))
                 .append('\n'));
 
+        out.append("\nTour tham quan (giá mỗi khách, đặt qua nhân viên khách sạn):\n");
+        List<Tour> tours = tourRepository.findAllByHotel_Id(hotelId);
+        if (tours.isEmpty()) {
+            out.append("- (chưa có)\n");
+        }
+        tours.stream()
+                .sorted(Comparator.comparing((Tour t) -> !t.isAvailable()).thenComparing(Tour::getPrice))
+                .forEach(tour -> out.append(tourLine(tour)).append('\n'));
+
         out.append(
                 "\nChưa có trong hệ thống: giờ nhận/trả phòng, chính sách huỷ và hoàn tiền, khuyến mãi, phí phụ thu.\n");
         return out.toString();
+    }
+
+    /** "- Food tour phố cổ: 450.000 ₫/khách; 4 giờ; khởi hành 18:00 hằng ngày; gồm …; tối đa 10 khách. Mô tả…" */
+    private static String tourLine(Tour tour) {
+        StringBuilder line = new StringBuilder("- ").append(tour.getName());
+        if (!tour.isAvailable()) {
+            line.append(" (TẠM NGỪNG, không nhận khách)");
+        }
+        line.append(": ").append(money(tour.getPrice())).append("/khách");
+        if (tour.getDuration() != null) {
+            line.append("; ").append(tour.getDuration());
+        }
+        if (tour.getDeparture() != null) {
+            line.append("; khởi hành ").append(tour.getDeparture());
+        }
+        if (tour.getIncludes() != null) {
+            line.append("; gồm ").append(tour.getIncludes());
+        }
+        if (tour.getMaxGuests() != null) {
+            line.append("; tối đa ").append(tour.getMaxGuests()).append(" khách");
+        }
+        if (tour.getDescription() != null) {
+            String description = tour.getDescription().replaceAll("\\s+", " ");
+            line.append(". ").append(description.length() > 300 ? description.substring(0, 300) + "…" : description);
+        }
+        return line.toString();
     }
 
     /**

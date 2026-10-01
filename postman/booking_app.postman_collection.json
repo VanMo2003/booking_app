@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Booking App API",
-    "description": "Bo test day du cho booking_app_be: chay tuan tu tu tren xuong (Collection Runner) de xay dung du lieu qua tung buoc - admin -> owner -> chain -> manager -> branch -> staff -> room/amenity/service/dish -> customer -> booking -> chat -> AI -> report, kem cac test kiem tra phan quyen (AccessGuard). Moi bien duoc luu tu dong vao Collection Variables qua script Tests cua tung request, khong can chinh tay. Chat realtime dung WebSocket ws://localhost:8080/booking-app/api/v1/ws/chat?token=<accessToken> (Postman: New > WebSocket); Collection Runner chi chay phan REST.",
+    "description": "Bo test day du cho booking_app_be: chay tuan tu tu tren xuong (Collection Runner) de xay dung du lieu qua tung buoc - admin -> owner -> chain -> manager -> branch -> staff -> room/amenity/service/dish/tour -> customer -> booking -> chat -> AI -> report, kem cac test kiem tra phan quyen (AccessGuard). Moi bien duoc luu tu dong vao Collection Variables qua script Tests cua tung request, khong can chinh tay. Chat realtime dung WebSocket ws://localhost:8080/booking-app/api/v1/ws/chat?token=<accessToken> (Postman: New > WebSocket); Collection Runner chi chay phan REST.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -191,6 +191,10 @@
     },
     {
       "key": "conversationId",
+      "value": ""
+    },
+    {
+      "key": "tourId",
       "value": ""
     }
   ],
@@ -1352,7 +1356,7 @@
       ]
     },
     {
-      "name": "02 - Catalog: RoomType, Room, Amenity, Service, Dish",
+      "name": "02 - Catalog: RoomType, Room, Amenity, Service, Dish, Tour",
       "item": [
         {
           "name": "Admin creates RoomType",
@@ -2723,6 +2727,383 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"x\",\n  \"price\": 1000,\n  \"category\": \"OTHER\",\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Manager creates Tour for branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Food tour pho co buoi toi\",\n  \"description\": \"Di bo qua cac ngo pho co, 8 mon dac san\",\n  \"price\": 450000,\n  \"duration\": \"4 gio\",\n  \"departure\": \"18:00 hang ngay\",\n  \"includes\": \"Huong dan vien, 8 mon an, nuoc uong\",\n  \"maxGuests\": 10,\n  \"pathImage\": \"https://images.unsplash.com/photo-1528127269322-539801943592?w=1200&q=75&auto=format&fit=crop\",\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data;",
+                  "pm.test('available by default', () => pm.expect(t.available).to.eql(true));",
+                  "pm.test('linked to branch', () => pm.expect(t.hotelId).to.eql(Number(pm.collectionVariables.get('hotelId'))));",
+                  "pm.test('guest limit kept', () => pm.expect(t.maxGuests).to.eql(10));",
+                  "pm.collectionVariables.set('tourId', t.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner pauses Tour and removes guest limit (partial PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available\": false,\n  \"maxGuests\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data;",
+                  "pm.test('paused', () => pm.expect(t.available).to.eql(false));",
+                  "pm.test('maxGuests 0 means no limit', () => pm.expect(t.maxGuests).to.be.undefined);",
+                  "pm.test('other fields kept', () => { pm.expect(t.price).to.eql(450000); pm.expect(t.duration).to.eql('4 gio'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Manager reopens Tour and clears includes",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available\": true,\n  \"includes\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data;",
+                  "pm.test('reopened', () => pm.expect(t.available).to.eql(true));",
+                  "pm.test('includes cleared', () => pm.expect(t.includes).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Tour image upload (manager, multipart - attach a file manually)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Chon 1 file anh tour"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}/image",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}",
+                "image"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff creates Tour -> 403 (tours are owner/manager only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tour cua le tan\",\n  \"price\": 100000,\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tour with negative price -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tour sai gia\",\n  \"price\": -1,\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Tour by id (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Tours by hotel (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours?hotelId={{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().data.map(t => t.id);",
+                  "pm.test('list contains the tour', () => pm.expect(ids).to.include(Number(pm.collectionVariables.get('tourId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Anonymous creates Tour -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"x\",\n  \"price\": 1000,\n  \"hotelId\": {{hotelId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -8160,6 +8541,51 @@
           ]
         },
         {
+          "name": "Admin creates a Tour -> 403 (admin is review-only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tour cua admin\",\n  \"price\": 10000,\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Chat: cust_two cannot read cust_one's conversation -> 403",
           "request": {
             "method": "GET",
@@ -8751,6 +9177,28 @@
               "path": [
                 "roomAmenitys",
                 "{{roomAmenityId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Tour",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}"
               ]
             }
           }

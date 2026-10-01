@@ -41,6 +41,8 @@ public class SecurityConfig {
         "/services",
         "/dishes",
         "/dishes/{id}",
+        "/tours",
+        "/tours/{id}",
         "/app-links/{target}",
         "/ai/status"
     };
