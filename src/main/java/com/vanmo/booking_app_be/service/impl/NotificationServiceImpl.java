@@ -60,6 +60,16 @@ public class NotificationServiceImpl implements NotificationService {
         send(accountRepository.findAllByRole(Role.ADMIN), type, message, link, referenceId);
     }
 
+    @Override
+    public void notifyAccounts(
+            List<Account> accounts,
+            NotificationType type,
+            NotificationMessages.Message message,
+            String link,
+            Long referenceId) {
+        send(accounts, type, message, link, referenceId);
+    }
+
     private void send(
             List<Account> recipients,
             NotificationType type,

@@ -24,4 +24,8 @@ public final class AppLinks {
     public static String chat(Long conversationId) {
         return deepLink("chat/" + conversationId);
     }
+
+    public static String tourBooking(Long tourBookingId) {
+        return deepLink("tour-bookings/" + tourBookingId);
+    }
 }

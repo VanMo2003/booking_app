@@ -166,7 +166,8 @@ public class HotelKnowledge {
                         .collect(Collectors.joining("; ")))
                 .append('\n'));
 
-        out.append("\nTour tham quan (giá mỗi khách, đặt qua nhân viên khách sạn):\n");
+        out.append("\nTour tham quan (giá mỗi khách, thanh toán tại khách sạn; lên đơn bằng create_tour_booking"
+                + " với mã tour):\n");
         List<Tour> tours = tourRepository.findAllByHotel_Id(hotelId);
         if (tours.isEmpty()) {
             out.append("- (chưa có)\n");
@@ -182,7 +183,8 @@ public class HotelKnowledge {
 
     /** "- Food tour phố cổ: 450.000 ₫/khách; 4 giờ; khởi hành 18:00 hằng ngày; gồm …; tối đa 10 khách. Mô tả…" */
     private static String tourLine(Tour tour) {
-        StringBuilder line = new StringBuilder("- ").append(tour.getName());
+        StringBuilder line =
+                new StringBuilder("- [mã ").append(tour.getId()).append("] ").append(tour.getName());
         if (!tour.isAvailable()) {
             line.append(" (TẠM NGỪNG, không nhận khách)");
         }

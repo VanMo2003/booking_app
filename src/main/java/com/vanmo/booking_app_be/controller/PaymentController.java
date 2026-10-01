@@ -85,7 +85,7 @@ public class PaymentController {
         boolean success = "00".equals(responseCode) && "00".equals(transactionStatus);
 
         if (success) {
-            bookingService.updatePaymentStatus(bookingId, PaymentStatus.PAID);
+            bookingService.markPaidByVnPay(bookingId);
         } else {
             bookingService.updatePaymentStatus(bookingId, PaymentStatus.UNPAID);
         }

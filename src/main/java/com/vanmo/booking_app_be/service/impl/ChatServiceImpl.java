@@ -1,10 +1,7 @@
 package com.vanmo.booking_app_be.service.impl;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -294,13 +291,7 @@ public class ChatServiceImpl implements ChatService {
 
     /** Owner of the chain, manager of the branch and its staff - everyone who answers this branch's chat. */
     private List<String> teamAccountIds(Hotel hotel) {
-        Set<String> ids = new LinkedHashSet<>();
-        ids.add(hotel.getHotelChain().getAccount().getId());
-        ids.add(hotel.getAccount().getId());
-        for (Employee employee : employeeRepository.findAllByHotelId(hotel.getId())) {
-            ids.add(employee.getAccount().getId());
-        }
-        return new ArrayList<>(ids);
+        return accessGuard.branchTeam(hotel).stream().map(Account::getId).toList();
     }
 
     /** @param senderAccountId null for the assistant */

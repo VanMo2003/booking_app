@@ -1,5 +1,7 @@
 package com.vanmo.booking_app_be.service;
 
+import java.util.List;
+
 import com.vanmo.booking_app_be.dto.request.DeviceTokenRequest;
 import com.vanmo.booking_app_be.dto.response.NotificationCountResponse;
 import com.vanmo.booking_app_be.dto.response.NotificationResponse;
@@ -18,6 +20,14 @@ public interface NotificationService {
             Long referenceId);
 
     void notifyAdmins(NotificationType type, NotificationMessages.Message message, String link, Long referenceId);
+
+    /** {@link #notify} for several accounts at once, e.g. a branch's whole team. */
+    void notifyAccounts(
+            List<Account> accounts,
+            NotificationType type,
+            NotificationMessages.Message message,
+            String link,
+            Long referenceId);
 
     PageResponse<NotificationResponse> getMine(int page, int size);
 

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
 import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
+import com.vanmo.booking_app_be.dto.request.PaymentMethodChangeRequest;
 import com.vanmo.booking_app_be.dto.response.BookingResponse;
 import com.vanmo.booking_app_be.dto.response.ListBookingResponse;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
@@ -71,6 +72,13 @@ public class BookingController {
     @PutMapping("/{id}/complete")
     public ApiResponse<BookingResponse> completeBooking(@PathVariable Long id) {
         return ApiResponse.ok(bookingService.completeBooking(id));
+    }
+
+    /** The booking's customer or branch team picks another payment method; paid or closed bookings keep theirs. */
+    @PutMapping("/{id}/payment-method")
+    public ApiResponse<BookingResponse> changePaymentMethod(
+            @PathVariable Long id, @Valid @RequestBody PaymentMethodChangeRequest req) {
+        return ApiResponse.ok(bookingService.changePaymentMethod(id, req.getPaymentMethod()));
     }
 
     @PutMapping("/{id}/payment-status")

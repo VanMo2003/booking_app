@@ -1,6 +1,9 @@
 package com.vanmo.booking_app_be.security;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -159,6 +162,20 @@ public class AccessGuard {
             throw new AppException(ErrorCode.UN_AUTHORIZED);
         }
         return branchStaffOrAbove(current, hotelId);
+    }
+
+    /** Owner of the chain, manager of the branch and its staff: the people who answer for the branch. */
+    public List<Account> branchTeam(Hotel hotel) {
+        Map<String, Account> team = new LinkedHashMap<>();
+        Account owner = hotel.getHotelChain().getAccount();
+        team.put(owner.getId(), owner);
+        if (hotel.getAccount() != null) {
+            team.putIfAbsent(hotel.getAccount().getId(), hotel.getAccount());
+        }
+        for (Employee employee : employeeRepository.findAllByHotelId(hotel.getId())) {
+            team.putIfAbsent(employee.getAccount().getId(), employee.getAccount());
+        }
+        return new ArrayList<>(team.values());
     }
 
     /** Branches whose chat this account answers: an owner's whole chain, a manager's branches, a staff member's one. */

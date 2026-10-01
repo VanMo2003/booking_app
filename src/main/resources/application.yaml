@@ -73,7 +73,7 @@ ai:
   fast-fallback-models: ${AI_FAST_FALLBACK_MODELS:}
   timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
   # Cơ sở bật "tự trả lời": khách nhắn mà sau chừng này giây chưa ai của cơ sở trả lời thì trợ lý trả lời.
-  auto-reply-delay-seconds: ${AI_AUTO_REPLY_DELAY_SECONDS:90}
+  auto-reply-delay-seconds: ${AI_AUTO_REPLY_DELAY_SECONDS:10}
 
 vnpay:
   tmnCode : ${VNPAY_TMN_CODE:}

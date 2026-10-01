@@ -87,13 +87,7 @@ public class BookingServiceImpl implements BookingService {
             booking.setHandledBy(caller);
         }
 
-        if (booking.getPaymentMethod() == PaymentMethod.VN_PAY) {
-            booking.setPaymentStatus(PaymentStatus.PENDING);
-            booking.setPaymentExpireAt(LocalDateTime.now().plusMinutes(15));
-        } else {
-            booking.setPaymentStatus(PaymentStatus.UNPAID);
-            booking.setPaymentExpireAt(null);
-        }
+        applyPaymentMethod(booking, booking.getPaymentMethod());
 
         bookingRepository.save(booking);
         BookingResponse bookingResponse = bookingMapper.toResponse(booking);
@@ -147,7 +141,12 @@ public class BookingServiceImpl implements BookingService {
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + id));
         requireBookingAccess(entity);
+        PaymentMethod previousMethod = entity.getPaymentMethod();
         bookingMapper.updateEntity(entity, req);
+        // A new method on an unpaid booking needs its matching payment state (no VNPay timer on a cash booking).
+        if (entity.getPaymentMethod() != previousMethod && entity.getPaymentStatus() != PaymentStatus.PAID) {
+            applyPaymentMethod(entity, entity.getPaymentMethod());
+        }
         return bookingMapper.toResponse(bookingRepository.save(entity));
     }
 
@@ -289,6 +288,48 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
+    public BookingResponse changePaymentMethod(Long bookingId, String paymentMethod) {
+        PaymentMethod method = parsePaymentMethod(paymentMethod);
+        Booking booking = bookingRepository
+                .findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+        requireBookingEditor(booking);
+
+        if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new AppException(ErrorCode.PAYMENT_METHOD_LOCKED, "Paid bookings keep their payment method");
+        }
+        if (booking.getBookingStatus() == BookingStatus.COMPLETED
+                || booking.getBookingStatus() == BookingStatus.CANCELED) {
+            throw new AppException(ErrorCode.PAYMENT_METHOD_LOCKED, "Closed bookings keep their payment method");
+        }
+
+        // Same method again is a no-op: re-picking VNPay must not restart a running payment window.
+        if (booking.getPaymentMethod() != method) {
+            applyPaymentMethod(booking, method);
+            bookingRepository.saveAndFlush(booking);
+        }
+        return convertToBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse markPaidByVnPay(Long bookingId) {
+        Booking booking = bookingRepository
+                .findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
+        requireBookingAccess(booking);
+
+        // The guest may have switched to cash after opening the VNPay page; the money still came through VNPay.
+        booking.setPaymentMethod(PaymentMethod.VN_PAY);
+        booking.setPaymentStatus(PaymentStatus.PAID);
+        booking.setPaidAt(LocalDateTime.now());
+
+        bookingRepository.saveAndFlush(booking);
+        return convertToBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
     public void markExpiredPendingPaymentsAsFailed() {
         List<Booking> expiredBookings = bookingRepository.findByPaymentStatusAndPaymentExpireAtBefore(
                 PaymentStatus.PENDING, java.time.LocalDateTime.now());
@@ -343,6 +384,39 @@ public class BookingServiceImpl implements BookingService {
             return;
         }
         accessGuard.requireBranchStaffOrAbove(booking.getHotel().getId());
+    }
+
+    /** {@link #requireBookingAccess} for writes: the booking's own customer or the branch team, not the read-only admin. */
+    private void requireBookingEditor(Booking booking) {
+        if (accessGuard.currentAccount().getRole() == Role.CUSTOMER) {
+            requireBookingAccess(booking);
+            return;
+        }
+        accessGuard.requireBranchEditor(booking.getHotel().getId());
+    }
+
+    /**
+     * The payment state that goes with a method: VNPay holds the booking 15 minutes for the online payment, cash and
+     * bank transfer are settled at the hotel, so they wait unpaid with no deadline.
+     */
+    private static void applyPaymentMethod(Booking booking, PaymentMethod method) {
+        booking.setPaymentMethod(method);
+        booking.setPaidAt(null);
+        if (method == PaymentMethod.VN_PAY) {
+            booking.setPaymentStatus(PaymentStatus.PENDING);
+            booking.setPaymentExpireAt(LocalDateTime.now().plusMinutes(15));
+        } else {
+            booking.setPaymentStatus(PaymentStatus.UNPAID);
+            booking.setPaymentExpireAt(null);
+        }
+    }
+
+    private static PaymentMethod parsePaymentMethod(String raw) {
+        try {
+            return PaymentMethod.valueOf(raw.trim());
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Unknown payment method: " + raw);
+        }
     }
 
     BookingResponse convertToBookingResponse(Booking booking) {

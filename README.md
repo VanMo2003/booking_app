@@ -58,7 +58,7 @@ Việc kiểm tra quyền theo phân cấp trên nằm ở `AccessGuard` (packag
 service — không phải chỉ role-check đơn thuần mà còn xác thực quan hệ sở hữu (chain ↔ owner,
 branch ↔ manager, staff ↔ branch của họ) và trạng thái duyệt của chủ khách sạn.
 
-Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Dish (món ăn), Tour, Booking,
+Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Dish (món ăn), Tour, TourBooking, Booking,
 BookingRoom, BookingService (dịch vụ đi kèm), Customer, Employee, Position, Payroll, Feedback,
 Payment, Report, Notification, DeviceToken, Conversation + ChatMessage (nhắn tin), Account (auth).
 
@@ -81,11 +81,28 @@ Nhân viên và quản trị viên chỉ xem (`403`). `PUT` chỉ đổi các tr
 (`https://...`) hoặc đường dẫn `/uploads/...` sau khi tải lên. Danh sách trả về đã sắp theo nhóm món
 rồi theo tên. Chưa có đặt món/tính tiền món vào đơn đặt phòng.
 
+### Đổi phương thức thanh toán
+
+Đơn chưa thanh toán và còn mở (chờ xác nhận / đã xác nhận) đổi được phương thức bằng
+`PUT /bookings/{id}/payment-method` `{"paymentMethod": "CASH" | "BANK_TRANSFER" | "VN_PAY"}`. Khách
+chỉ đổi được đơn của mình; chủ khách sạn, quản lý, nhân viên của cơ sở cũng đổi được; quản trị viên
+chỉ xem.
+
+| Đổi sang | Trạng thái thanh toán sau khi đổi |
+|---|---|
+| `VN_PAY` | `PENDING`, giữ đơn 15 phút để thanh toán online (quá hạn → `FAILED`, thanh toán lại được) |
+| `CASH`, `BANK_TRANSFER` | `UNPAID`, không có hạn — trả tại khách sạn, lễ tân ghi nhận khi nhận tiền |
+
+Đơn đã thanh toán, đã hoàn tất hoặc đã huỷ trả `400` mã `1019`. Gửi lại đúng phương thức đang dùng
+thì không đổi gì (không làm mới hạn VNPay). Khách đã mở trang VNPay rồi đổi sang tiền mặt nhưng vẫn
+trả tiền xong trên VNPay thì đơn được ghi `VN_PAY` + đã thanh toán. Sửa đơn (`PUT /bookings/{id}`) mà
+đổi phương thức cũng áp dụng đúng quy tắc trên.
+
 ### Tour tham quan
 
 Mỗi cơ sở giới thiệu các tour do khách sạn tổ chức (`Tour`: tên, mô tả/lịch trình, giá **mỗi khách**,
-thời lượng, giờ khởi hành, giá đã gồm, số khách tối đa, ảnh, đang nhận khách/tạm ngừng), xoá cơ sở thì
-xoá theo tour. Quyền giống thực đơn:
+thời lượng, giờ khởi hành, giá đã gồm, số chỗ mỗi chuyến, ảnh, đang nhận khách/tạm ngừng), xoá cơ sở
+thì xoá theo tour. Quyền giống thực đơn:
 
 | Thao tác | Endpoint | Ai được gọi |
 |---|---|---|
@@ -97,8 +114,31 @@ xoá theo tour. Quyền giống thực đơn:
 
 `PUT` chỉ đổi các trường được gửi: `{"available": false}` để tạm ngừng, `maxGuests: 0` để bỏ giới
 hạn số khách, chuỗi rỗng để xoá mô tả/thời lượng/giờ khởi hành/giá đã gồm/ảnh. Danh sách trả về đặt
-tour đang nhận khách lên trước, rồi theo giá, rồi theo tên. Chưa đặt tour trực tiếp trong app: khách
-hỏi qua chat, trợ lý AI gợi ý tour (xem *Tích hợp AI*) và chuyển nhân viên xác nhận.
+tour đang nhận khách lên trước, rồi theo giá, rồi theo tên.
+
+#### Đơn tour
+
+Khách đặt tour qua tin nhắn: trợ lý AI gửi tóm tắt, khách nhắn "Đồng ý" thì trợ lý lên đơn (xem
+*Tích hợp AI*). Đơn tour (`TourBooking`) thanh toán tại khách sạn, chốt tên tour và giá lúc đặt (sửa hay
+xoá tour sau đó không đổi đơn cũ). Trạng thái: `PENDING` (chờ khách sạn xác nhận) → `CONFIRMED` →
+`COMPLETED`; đơn còn mở thì khách hoặc khách sạn huỷ được (`CANCELED`).
+
+| Thao tác | Endpoint | Ai gọi |
+|---|---|---|
+| Đặt tour cho mình | `POST /tour-bookings` `{tourId, tourDate, guests, note}` | Khách hàng (có hồ sơ) |
+| Đơn tour của tôi | `GET /tour-bookings/me` | Khách hàng |
+| Đơn tour của cơ sở | `GET /tour-bookings?hotelId=&status=` | Chủ / quản lý / nhân viên cơ sở (quản trị viên chỉ xem) |
+| Chi tiết | `GET /tour-bookings/{id}` | Khách của đơn, đội ngũ cơ sở |
+| Xác nhận / hoàn tất | `PUT /tour-bookings/{id}/confirm`, `/complete` | Chủ / quản lý / nhân viên cơ sở |
+| Huỷ | `PUT /tour-bookings/{id}/cancel` `{reason}` | Khách của đơn (lý do tuỳ chọn) hoặc đội ngũ cơ sở (bắt buộc lý do) |
+
+- Kiểm tra khi đặt: tour đang nhận khách, ngày đi từ hôm nay đến 1 năm tới, 1–50 khách mỗi đơn, và
+  `maxGuests` là **số chỗ mỗi chuyến** — tổng khách các đơn còn mở cùng ngày không vượt quá. Lỗi trả
+  `400` mã `1020` kèm câu tiếng Việt ("Tour … ngày 18/10/2026 chỉ còn 1 chỗ.").
+- Khách đặt lại đúng tour, ngày, số khách thì nhận lại đơn đang mở (không tạo trùng); khác số khách thì báo
+  đã có đơn.
+- **Thông báo** (trong app + đẩy FCM, deep link `bookingapp://tour-bookings/{id}`): đơn mới hoặc khách
+  huỷ → chủ khách sạn, quản lý và nhân viên của cơ sở; khách sạn xác nhận hoặc huỷ (kèm lý do) → khách.
 
 ### Nhắn tin khách hàng ↔ khách sạn
 
@@ -156,7 +196,13 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
      (khách không thấy).
    - **Gợi ý tour:** khách hỏi đi chơi, tham quan, ăn uống quanh khu vực hoặc nói sẽ ở vài ngày thì
      trợ lý gợi ý 1–3 tour phù hợp của cơ sở (tên, giá mỗi khách, thời lượng, giờ khởi hành), không
-     gợi ý tour tạm ngừng. Khách muốn đặt tour → trợ lý hỏi ngày, số khách rồi chuyển nhân viên.
+     gợi ý tour tạm ngừng.
+   - **Lên đơn tour (công cụ `create_tour_booking`), 2 bước:** (1) đủ tour, ngày đi, số khách thì trợ lý
+     gửi tóm tắt kèm tổng tiền và mời khách nhắn "Đồng ý"; (2) khách đồng ý thì trợ lý lên đơn, báo mã đơn,
+     khách sạn nhận thông báo. Máy chủ tự chặn: tin mới nhất của khách phải là lời đồng ý ("đồng ý", "ok",
+     "xác nhận", "chốt", "được"… — không dấu cũng nhận) thì mới tạo đơn, nên model bỏ qua bước tóm tắt
+     cũng không đặt được. Trợ lý thấy các đơn tour gần đây của khách ở cơ sở nên trả lời được "đơn của tôi
+     xác nhận chưa" và không đặt trùng. Đổi ngày/số khách → chuyển nhân viên; huỷ → khách tự huỷ trong app.
    - **Gợi ý trả lời:** `POST /ai/conversations/{id}/suggest-reply` (chủ/quản lý/nhân viên của cơ sở)
      trả bản nháp, **không gửi gì cho khách**.
    - **Tự trả lời:** chủ khách sạn/quản lý bật bằng `PUT /ai/branches/{hotelId}/settings

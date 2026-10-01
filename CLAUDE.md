@@ -118,8 +118,21 @@ exactly: `Hotel.tours` cascade + orphanRemoval, `TourController` (`/tours`) publ
 (owner/manager only), partial `PUT`, single-part `file` image upload. `TourUpdateRequest` has two
 "clear" conventions the mapper can't express with IGNORE: `maxGuests: 0` → null (no limit) and a
 blank string clears a text field or the photo (`TourServiceImpl.blankToNull`). The list sorts
-available tours first, then price, then name. There is no tour booking entity: guests ask through
-chat, and `HotelKnowledge` feeds the tours into the chat receptionist (see *AI features*).
+available tours first, then price, then name.
+
+`TourBooking` (`tour_bookings`) is a guest's tour order, paid at the hotel: it copies `tourName` and
+`unitPrice` at booking time and keeps `tour_id` with `ON DELETE SET NULL` (also `conversation_id`,
+`handled_by_account_id`); hotel and customer cascade. `TourBookingServiceImpl.place` is the one place
+an order is created - `POST /tour-bookings` (customer for themselves) and the assistant's
+`placeFromChat` both go through it: tour available, date today..+365 days (Vietnam time), 1-50 guests,
+`Tour.maxGuests` is seats **per departure** summed over open (PENDING/CONFIRMED) orders that day, and the
+same guest/tour/day returns the open order instead of a duplicate (different head count → error). Errors
+are `TOUR_BOOKING_INVALID` (1020) with a Vietnamese message, because the same text is fed back to the
+model. Confirm/complete/cancel: branch team via `requireBranchEditor` (admin read-only); the guest may
+cancel their own open order; a hotel-side cancel needs a reason. Notifications go through
+`NotificationService.notifyAccounts(accessGuard.branchTeam(hotel), …)` - owner, manager and staff,
+the same list the chat fan-out uses - or to the guest's account, with deep link
+`AppLinks.tourBooking(id)`.
 
 ### Auth & authorization
 
@@ -251,14 +264,18 @@ refuses `ADMIN` too (chats are private; admins aren't "read everything" here). O
 Two features, both grounded in database data rather than model knowledge:
 
 - **Chat receptionist** (`ChatAssistant`): the system prompt carries `HotelKnowledge.factSheet(hotelId)`
-  (room types/prices, amenities, services, menu, tours with paused ones marked "TẠM NGỪNG" - public
-  browse data only, never bookings or customers; a rule tells it to suggest 1-3 matching tours when
-  the guest asks about sightseeing, food or a multi-day stay, and to hand tour bookings to staff)
-  and the model gets two tools: `find_available_rooms` (a real availability lookup, same rule as the
+  (room types/prices, amenities, services, menu, tours as `[mã id]` lines with paused ones marked
+  "TẠM NGỪNG" - public browse data only; the user prompt adds the guest's last 5 tour orders at the
+  branch) and the rules make tour ordering two turns: send a summary and ask for "Đồng ý", then call
+  `create_tour_booking`. `ChatAssistant.bookTour` refuses the call unless the newest message is the
+  guest's and `looksLikeConsent` matches it (accent-insensitive word list), so a model that skips the
+  summary books nothing; the tool runs in both suggest and auto-reply mode. Besides
+  `create_tour_booking` the model gets `find_available_rooms` (a real availability lookup, same rule as the
   hotel detail page) and `handoff_to_staff` (sets `Conversation.needsStaff` + `handoffReason`, shown
   only on the hotel side, cleared when a person on the team replies). Guest text goes inside
   `<conversation>` tags and the rules tell the model it is data, not instructions. Two entry points:
-  `POST /ai/conversations/{id}/suggest-reply` (team member gets a draft, nothing is sent) and
+  `POST /ai/conversations/{id}/suggest-reply` (team member gets a draft and nothing is sent to the
+  guest, but if the guest already agreed to a tour summary the order is placed and the draft says so) and
   auto-reply - when `Hotel.aiAutoReply` is on, `ChatEventListener` calls
   `ChatAssistant.onCustomerMessage` for every guest message; after `ai.auto-reply-delay-seconds` it
   answers only if that message is still the newest (staff didn't answer, guest didn't write again),
@@ -288,6 +305,15 @@ signatures don't carry over. No key → `isEnabled()` false, `GET /ai/status` sa
 VNPay sandbox integration (`VNPayConfig`, `VNPayUtil`, `PaymentServiceImpl`,
 `PaymentController#vn-pay-callback`). Bookings carry a `PaymentStatus`; the scheduler above expires
 bookings left in a pending-payment state past their window.
+
+The payment state is tied to the method by `BookingServiceImpl.applyPaymentMethod`: `VN_PAY` →
+`PENDING` with a 15-minute `paymentExpireAt`, `CASH`/`BANK_TRANSFER` → `UNPAID` with no deadline.
+Create, `PUT /bookings/{id}/payment-method` (the booking's customer or the branch team, admin refused;
+`PAYMENT_METHOD_LOCKED` 1019 once paid, completed or cancelled; re-sending the current method is a
+no-op so a running VNPay window is not restarted) and a method change through `PUT /bookings/{id}`
+all go through it - never set `paymentMethod` alone. A successful VNPay callback uses
+`markPaidByVnPay`, which also stamps the method back to `VN_PAY`, because a guest can switch to cash
+after opening the VNPay page and still finish paying there.
 
 ### Multipart / file uploads
 

@@ -26,7 +26,10 @@ public enum ErrorCode {
     AI_RATE_LIMITED(1016, "Too many AI requests, try again in a few minutes", HttpStatus.TOO_MANY_REQUESTS),
     // The provider's own answers, after retries and fallback models were tried.
     AI_OVERLOADED(1017, "AI model is overloaded, try again shortly", HttpStatus.SERVICE_UNAVAILABLE),
-    AI_QUOTA_EXCEEDED(1018, "AI quota exceeded, try again later", HttpStatus.TOO_MANY_REQUESTS);
+    AI_QUOTA_EXCEEDED(1018, "AI quota exceeded, try again later", HttpStatus.TOO_MANY_REQUESTS),
+    PAYMENT_METHOD_LOCKED(1019, "Payment method can no longer be changed", HttpStatus.BAD_REQUEST),
+    // Message is Vietnamese and specific: it is shown to the guest and fed back to the AI receptionist as is.
+    TOUR_BOOKING_INVALID(1020, "Tour booking is not valid", HttpStatus.BAD_REQUEST);
 
     private int code;
     private String message;

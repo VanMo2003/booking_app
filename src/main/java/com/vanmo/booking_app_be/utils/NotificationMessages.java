@@ -1,11 +1,19 @@
 package com.vanmo.booking_app_be.utils;
 
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.time.format.DateTimeFormatter;
+
 import com.vanmo.booking_app_be.entity.HotelChain;
+import com.vanmo.booking_app_be.entity.TourBooking;
 
 /** Vietnamese copy of the notifications shown in the app and pushed to phones, kept in one place. */
 public final class NotificationMessages {
 
     public record Message(String title, String body) {}
+
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private NotificationMessages() {}
 
@@ -43,6 +51,57 @@ public final class NotificationMessages {
     public static Message chatToHotel(String customerName, String hotelName, String content) {
         String sender = isBlank(customerName) ? "Khách hàng" : customerName;
         return new Message(sender + " · " + hotelName, preview(content));
+    }
+
+    /** For the branch team: who ordered what, so the push alone is enough to act on. */
+    public static Message tourBookingCreated(TourBooking booking) {
+        String guest = isBlank(booking.getCustomer().getFullName())
+                ? "Khách hàng"
+                : booking.getCustomer().getFullName();
+        return new Message(
+                "Đơn tour mới #" + booking.getId() + " · " + booking.getHotel().getName(),
+                guest + " đặt " + tourSummary(booking) + (booking.isCreatedByAi() ? " qua trợ lý AI" : "")
+                        + ". Chờ khách sạn xác nhận.");
+    }
+
+    public static Message tourBookingConfirmed(TourBooking booking) {
+        return new Message(
+                "Khách sạn đã xác nhận tour",
+                booking.getHotel().getName() + " xác nhận " + tourSummary(booking) + ". Thanh toán tại khách sạn.");
+    }
+
+    public static Message tourBookingCanceledByHotel(TourBooking booking) {
+        return new Message(
+                "Đơn tour #" + booking.getId() + " đã bị huỷ",
+                booking.getHotel().getName() + " huỷ " + tourSummary(booking) + reasonSuffix(booking));
+    }
+
+    public static Message tourBookingCanceledByCustomer(TourBooking booking) {
+        String guest = isBlank(booking.getCustomer().getFullName())
+                ? "Khách hàng"
+                : booking.getCustomer().getFullName();
+        return new Message(
+                "Khách huỷ đơn tour #" + booking.getId() + " · "
+                        + booking.getHotel().getName(),
+                guest + " huỷ " + tourSummary(booking) + reasonSuffix(booking));
+    }
+
+    /** "Vịnh Hạ Long 1 ngày · 18/10/2026 · 2 khách (2.580.000 ₫)" */
+    private static String tourSummary(TourBooking booking) {
+        return booking.getTourName() + " · " + booking.getTourDate().format(DAY) + " · " + booking.getGuests()
+                + " khách (" + money(booking.getTotalAmount()) + ")";
+    }
+
+    private static String reasonSuffix(TourBooking booking) {
+        return isBlank(booking.getCancelReason())
+                ? "."
+                : ". Lý do: " + booking.getCancelReason().strip();
+    }
+
+    private static String money(BigDecimal amount) {
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+        symbols.setGroupingSeparator('.');
+        return new DecimalFormat("#,##0", symbols).format(amount) + " ₫";
     }
 
     public static String preview(String content) {

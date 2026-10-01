@@ -29,6 +29,10 @@ public interface BookingService {
 
     BookingResponse updatePaymentStatus(Long bookingId, PaymentStatus paymentStatus);
 
+    BookingResponse changePaymentMethod(Long bookingId, String paymentMethod);
+
+    BookingResponse markPaidByVnPay(Long bookingId);
+
     void markExpiredPendingPaymentsAsFailed();
 
     BookingResponse resetPendingPayment(Long bookingId);
