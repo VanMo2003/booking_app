@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import com.vanmo.booking_app_be.entity.HotelChain;
 import com.vanmo.booking_app_be.entity.TourBooking;
@@ -89,7 +90,19 @@ public final class NotificationMessages {
     /** "Vịnh Hạ Long 1 ngày · 18/10/2026 · 2 khách (2.580.000 ₫)" */
     private static String tourSummary(TourBooking booking) {
         return booking.getTourName() + " · " + booking.getTourDate().format(DAY) + " · " + booking.getGuests()
-                + " khách (" + money(booking.getTotalAmount()) + ")";
+                + " khách" + rooms(booking) + " (" + money(booking.getTotalAmount()) + ")";
+    }
+
+    /** " · phòng 101, 102" for a tour sold with rooms. */
+    private static String rooms(TourBooking booking) {
+        if (booking.getBooking() == null || booking.getBooking().getBookingRooms() == null) {
+            return "";
+        }
+        List<String> numbers = booking.getBooking().getBookingRooms().stream()
+                .map(link -> link.getRoom().getRoomNumber())
+                .sorted()
+                .toList();
+        return numbers.isEmpty() ? "" : " · phòng " + String.join(", ", numbers);
     }
 
     private static String reasonSuffix(TourBooking booking) {

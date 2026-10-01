@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.dto.response;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
 
 import com.vanmo.booking_app_be.entity.enums.ChatSide;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
@@ -35,7 +36,14 @@ public class TourBookingResponse {
     LocalDate tourDate;
     int guests;
     BigDecimal unitPrice;
+    BigDecimal tourAmount;
+    BigDecimal roomAmount;
     BigDecimal totalAmount;
+    /** The room booking made with the order, null for a tour without rooms. */
+    Long bookingId;
+
+    LocalDate stayCheckout;
+    List<TourRoomResponse> rooms;
     TourBookingStatus status;
     String note;
     String cancelReason;

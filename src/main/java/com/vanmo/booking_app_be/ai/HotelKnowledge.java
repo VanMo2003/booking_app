@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,7 @@ import com.vanmo.booking_app_be.entity.Room;
 import com.vanmo.booking_app_be.entity.RoomAmenity;
 import com.vanmo.booking_app_be.entity.Service;
 import com.vanmo.booking_app_be.entity.Tour;
+import com.vanmo.booking_app_be.entity.TourRoom;
 import com.vanmo.booking_app_be.entity.enums.DishCategory;
 import com.vanmo.booking_app_be.entity.enums.RoomStatus;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
@@ -36,6 +38,7 @@ import com.vanmo.booking_app_be.repository.RoomAmenityRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.ServiceRepository;
 import com.vanmo.booking_app_be.repository.TourRepository;
+import com.vanmo.booking_app_be.repository.TourRoomRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -58,6 +61,7 @@ public class HotelKnowledge {
     private final ServiceRepository serviceRepository;
     private final DishRepository dishRepository;
     private final TourRepository tourRepository;
+    private final TourRoomRepository tourRoomRepository;
     private final BookingRoomRepository bookingRoomRepository;
 
     /** A room free for a stay (or, without dates, just a room that isn't under maintenance). */
@@ -166,15 +170,20 @@ public class HotelKnowledge {
                         .collect(Collectors.joining("; ")))
                 .append('\n'));
 
-        out.append("\nTour tham quan (giá mỗi khách, thanh toán tại khách sạn; lên đơn bằng create_tour_booking"
-                + " với mã tour):\n");
+        out.append(
+                "\nTour tham quan (giá mỗi khách, thanh toán tại khách sạn; tour kèm phòng thì khách chọn phòng"
+                        + " của gói, ở từ ngày đi tour; tra phòng trống bằng find_tour_rooms, lên đơn bằng create_tour_booking):\n");
         List<Tour> tours = tourRepository.findAllByHotel_Id(hotelId);
         if (tours.isEmpty()) {
             out.append("- (chưa có)\n");
         }
+        Map<Long, List<Room>> packageRooms = tourRoomRepository.findAllByTour_Hotel_Id(hotelId).stream()
+                .collect(Collectors.groupingBy(
+                        link -> link.getTour().getId(), Collectors.mapping(TourRoom::getRoom, Collectors.toList())));
         tours.stream()
                 .sorted(Comparator.comparing((Tour t) -> !t.isAvailable()).thenComparing(Tour::getPrice))
-                .forEach(tour -> out.append(tourLine(tour)).append('\n'));
+                .forEach(tour -> out.append(tourLine(tour, packageRooms.getOrDefault(tour.getId(), List.of())))
+                        .append('\n'));
 
         out.append(
                 "\nChưa có trong hệ thống: giờ nhận/trả phòng, chính sách huỷ và hoàn tiền, khuyến mãi, phí phụ thu.\n");
@@ -182,7 +191,7 @@ public class HotelKnowledge {
     }
 
     /** "- Food tour phố cổ: 450.000 ₫/khách; 4 giờ; khởi hành 18:00 hằng ngày; gồm …; tối đa 10 khách. Mô tả…" */
-    private static String tourLine(Tour tour) {
+    private static String tourLine(Tour tour, List<Room> rooms) {
         StringBuilder line =
                 new StringBuilder("- [mã ").append(tour.getId()).append("] ").append(tour.getName());
         if (!tour.isAvailable()) {
@@ -199,7 +208,27 @@ public class HotelKnowledge {
             line.append("; gồm ").append(tour.getIncludes());
         }
         if (tour.getMaxGuests() != null) {
-            line.append("; tối đa ").append(tour.getMaxGuests()).append(" khách");
+            line.append("; ").append(tour.getMaxGuests()).append(" chỗ mỗi chuyến");
+        }
+        if (!rooms.isEmpty()) {
+            int nights = tour.getStayNights() == null ? 1 : tour.getStayNights();
+            // "kèm 1 đêm phòng (khách chọn): Phòng Standard 101, 102 – 600.000 ₫/đêm; Phòng Gia đình 103 – …"
+            Map<String, List<Room>> byKind = rooms.stream()
+                    .sorted(Comparator.comparing(Room::getPrice).thenComparing(Room::getRoomNumber))
+                    .collect(Collectors.groupingBy(
+                            room -> room.getRoomType().getName() + "|"
+                                    + room.getPrice().toPlainString(),
+                            LinkedHashMap::new,
+                            Collectors.toList()));
+            line.append("; kèm ").append(nights).append(" đêm phòng (khách chọn): ");
+            line.append(byKind.values().stream()
+                    .map(group -> group.getFirst().getRoomType().getName() + " "
+                            + group.stream().map(Room::getRoomNumber).collect(Collectors.joining(", "))
+                            + " (" + group.getFirst().getCapacity() + " người) – "
+                            + money(group.getFirst().getPrice()) + "/đêm")
+                    .collect(Collectors.joining("; ")));
+        } else {
+            line.append("; không kèm phòng");
         }
         if (tour.getDescription() != null) {
             String description = tour.getDescription().replaceAll("\\s+", " ");

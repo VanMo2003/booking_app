@@ -120,9 +120,21 @@ exactly: `Hotel.tours` cascade + orphanRemoval, `TourController` (`/tours`) publ
 blank string clears a text field or the photo (`TourServiceImpl.blankToNull`). The list sorts
 available tours first, then price, then name.
 
+A tour is sold as a **tour + stay package**: `TourRoom` (`tour_rooms`, unique tour/room, both FKs
+`ON DELETE CASCADE`) lists the branch rooms the package uses and `Tour.stayNights` (column default 1) the
+nights from the tour date. `TourServiceImpl.setRooms` writes only the difference (re-inserting a pair
+removed in the same flush would hit the unique key - Hibernate inserts before deletes). Public
+`GET /tours/{id}/rooms/available?date=` (`TourBookingService.availableRooms`) applies the hotel-page rule:
+not MAINTENANCE and not in an overlapping PENDING/CONFIRMED booking.
+
 `TourBooking` (`tour_bookings`) is a guest's tour order, paid at the hotel: it copies `tourName` and
 `unitPrice` at booking time and keeps `tour_id` with `ON DELETE SET NULL` (also `conversation_id`,
-`handled_by_account_id`); hotel and customer cascade. `TourBookingServiceImpl.place` is the one place
+`handled_by_account_id`, `booking_id`); hotel and customer cascade. For a tour with rooms the guest must
+pick package rooms that are free for the whole stay and sleep everyone; `place` then creates a normal
+`Booking` (`bookRooms`: CASH/UNPAID, note "Phòng kèm đơn tour #id") so availability, the desk and reports
+see it, stores `tourAmount`/`roomAmount`/`stayCheckout`, and confirm/cancel of the tour order push the
+same status to that booking. `BookingServiceImpl.cancelBooking` refuses a booking that belongs to an open
+tour order (1020) - cancel the tour order instead. `TourBookingServiceImpl.place` is the one place
 an order is created - `POST /tour-bookings` (customer for themselves) and the assistant's
 `placeFromChat` both go through it: tour available, date today..+365 days (Vietnam time), 1-50 guests,
 `Tour.maxGuests` is seats **per departure** summed over open (PENDING/CONFIRMED) orders that day, and the
@@ -265,9 +277,10 @@ Two features, both grounded in database data rather than model knowledge:
 
 - **Chat receptionist** (`ChatAssistant`): the system prompt carries `HotelKnowledge.factSheet(hotelId)`
   (room types/prices, amenities, services, menu, tours as `[mã id]` lines with paused ones marked
-  "TẠM NGỪNG" - public browse data only; the user prompt adds the guest's last 5 tour orders at the
-  branch) and the rules make tour ordering two turns: send a summary and ask for "Đồng ý", then call
-  `create_tour_booking`. `ChatAssistant.bookTour` refuses the call unless the newest message is the
+  "TẠM NGỪNG" and each package's rooms/nights - public browse data only; the user prompt adds the guest's
+  last 5 tour orders at the branch) and the rules make tour ordering two turns: look up free package rooms
+  with `find_tour_rooms`, send a summary (rooms, stay, tour + room amounts) and ask for "Đồng ý", then
+  call `create_tour_booking` with the room numbers. `ChatAssistant.bookTour` refuses the call unless the newest message is the
   guest's and `looksLikeConsent` matches it (accent-insensitive word list), so a model that skips the
   summary books nothing; the tool runs in both suggest and auto-reply mode. Besides
   `create_tour_booking` the model gets `find_available_rooms` (a real availability lookup, same rule as the

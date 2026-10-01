@@ -1,6 +1,7 @@
 package com.vanmo.booking_app_be.dto.request;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -28,4 +29,7 @@ public class TourBookingCreateRequest {
 
     @Size(max = 500)
     String note;
+
+    /** Rooms of the tour package for the stay; required when the tour comes with rooms. */
+    Set<Long> roomIds;
 }

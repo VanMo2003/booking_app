@@ -43,6 +43,7 @@ public class SecurityConfig {
         "/dishes/{id}",
         "/tours",
         "/tours/{id}",
+        "/tours/{id}/rooms/available",
         "/app-links/{target}",
         "/ai/status"
     };

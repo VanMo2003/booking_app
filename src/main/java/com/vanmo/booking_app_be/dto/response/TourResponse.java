@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.dto.response;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -26,6 +27,10 @@ public class TourResponse {
     Integer maxGuests;
     String pathImage;
     boolean available;
+    Integer stayNights;
+    /** Rooms the package uses, cheapest first; empty when the tour is sold without a room. */
+    List<TourRoomResponse> rooms;
+
     Long hotelId;
     Date onCreate;
     Date onUpdate;

@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.vanmo.booking_app_be.dto.request.TourBookingCreateRequest;
 import com.vanmo.booking_app_be.dto.response.TourBookingResponse;
+import com.vanmo.booking_app_be.dto.response.TourRoomAvailabilityResponse;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 
 public interface TourBookingService {
@@ -16,7 +17,11 @@ public interface TourBookingService {
      * check: the assistant runs outside any request. Asking again for the same tour, date and head count returns the
      * open order instead of a second one ({@link Placed#created()} false).
      */
-    Placed placeFromChat(Long conversationId, Long tourId, LocalDate tourDate, int guests, String note);
+    Placed placeFromChat(
+            Long conversationId, Long tourId, LocalDate tourDate, int guests, List<String> roomNumbers, String note);
+
+    /** The stay that goes with the tour from this date, and which of its rooms are free for it. */
+    TourRoomAvailabilityResponse availableRooms(Long tourId, LocalDate tourDate);
 
     List<TourBookingResponse> getMine();
 

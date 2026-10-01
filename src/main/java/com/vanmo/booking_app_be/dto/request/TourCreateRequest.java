@@ -1,7 +1,9 @@
 package com.vanmo.booking_app_be.dto.request;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -43,6 +45,14 @@ public class TourCreateRequest {
 
     @Size(max = 1000)
     String pathImage;
+
+    /** Nights of the stay included with the tour; 1 when left out. */
+    @Min(1)
+    @Max(30)
+    Integer stayNights;
+
+    /** Rooms of the branch the package uses; empty = the tour is sold without a room. */
+    Set<Long> roomIds;
 
     @Builder.Default
     boolean available = true;

@@ -1,9 +1,11 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,8 @@ import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.TourCreateRequest;
 import com.vanmo.booking_app_be.dto.request.TourUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.TourResponse;
+import com.vanmo.booking_app_be.dto.response.TourRoomAvailabilityResponse;
+import com.vanmo.booking_app_be.service.TourBookingService;
 import com.vanmo.booking_app_be.service.TourService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +30,7 @@ public class TourController {
     private static final String TOUR_EDITORS = "hasAnyAuthority('ROLE_HOTEL_OWNER', 'ROLE_HOTEL_MANAGER')";
 
     private final TourService tourService;
+    private final TourBookingService tourBookingService;
 
     @PostMapping
     @PreAuthorize(TOUR_EDITORS)
@@ -48,6 +53,14 @@ public class TourController {
     @GetMapping("/{id}")
     public ApiResponse<TourResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(tourService.getById(id));
+    }
+
+    /** Public: the stay sold with the tour from {@code date} and which of the package's rooms are still free. */
+    @GetMapping("/{id}/rooms/available")
+    public ApiResponse<TourRoomAvailabilityResponse> availableRooms(
+            @PathVariable Long id,
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ApiResponse.ok(tourBookingService.availableRooms(id, date));
     }
 
     @GetMapping

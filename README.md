@@ -102,40 +102,58 @@ trả tiền xong trên VNPay thì đơn được ghi `VN_PAY` + đã thanh toá
 
 Mỗi cơ sở giới thiệu các tour do khách sạn tổ chức (`Tour`: tên, mô tả/lịch trình, giá **mỗi khách**,
 thời lượng, giờ khởi hành, giá đã gồm, số chỗ mỗi chuyến, ảnh, đang nhận khách/tạm ngừng), xoá cơ sở
-thì xoá theo tour. Quyền giống thực đơn:
+thì xoá theo tour.
+
+**Tour là gói tour + phòng:** khách sạn gắn cho mỗi tour các phòng cụ thể của cơ sở (`roomIds` — tour
+bình dân gắn phòng Standard, tour cao cấp gắn Deluxe/Suite…) và số đêm ở (`stayNights`, mặc định 1).
+Đặt tour = đặt luôn phòng: nhận phòng đúng ngày đi tour, ở `stayNights` đêm, khách chọn trong các phòng
+của gói còn trống đêm đó. Tổng tiền = giá tour × số khách + giá phòng × số đêm. Tour không gắn phòng thì
+chỉ đặt tour. Quyền giống thực đơn:
 
 | Thao tác | Endpoint | Ai được gọi |
 |---|---|---|
-| Xem tour | `GET /tours?hotelId=`, `GET /tours/{id}` | Công khai, không cần đăng nhập |
+| Xem tour (kèm `stayNights`, `rooms`) | `GET /tours?hotelId=`, `GET /tours/{id}` | Công khai, không cần đăng nhập |
+| Phòng của gói còn trống cho ngày đi | `GET /tours/{id}/rooms/available?date=YYYY-MM-DD` | Công khai |
 | Thêm tour | `POST /tours` | `HOTEL_OWNER` của chuỗi / `HOTEL_MANAGER` của cơ sở |
 | Sửa tour (sửa một phần) | `PUT /tours/{id}` | như trên |
 | Tải ảnh từ máy | `POST /tours/{id}/image` (multipart, part `file`) | như trên |
 | Xoá tour | `DELETE /tours/{id}` | như trên |
 
 `PUT` chỉ đổi các trường được gửi: `{"available": false}` để tạm ngừng, `maxGuests: 0` để bỏ giới
-hạn số khách, chuỗi rỗng để xoá mô tả/thời lượng/giờ khởi hành/giá đã gồm/ảnh. Danh sách trả về đặt
+hạn số khách, chuỗi rỗng để xoá mô tả/thời lượng/giờ khởi hành/giá đã gồm/ảnh, `roomIds` thay toàn bộ
+phòng của gói (`[]` = bỏ hết, phòng phải thuộc cơ sở). Danh sách trả về đặt
 tour đang nhận khách lên trước, rồi theo giá, rồi theo tên.
 
 #### Đơn tour
 
-Khách đặt tour qua tin nhắn: trợ lý AI gửi tóm tắt, khách nhắn "Đồng ý" thì trợ lý lên đơn (xem
-*Tích hợp AI*). Đơn tour (`TourBooking`) thanh toán tại khách sạn, chốt tên tour và giá lúc đặt (sửa hay
-xoá tour sau đó không đổi đơn cũ). Trạng thái: `PENDING` (chờ khách sạn xác nhận) → `CONFIRMED` →
-`COMPLETED`; đơn còn mở thì khách hoặc khách sạn huỷ được (`CANCELED`).
+Khách đặt tour trong app (chọn ngày, số khách, phòng) hoặc qua tin nhắn: trợ lý AI tra phòng trống,
+gửi tóm tắt, khách nhắn "Đồng ý" thì trợ lý lên đơn (xem *Tích hợp AI*). Đơn tour (`TourBooking`) thanh
+toán tại khách sạn, chốt tên tour và giá lúc đặt (sửa hay xoá tour sau đó không đổi đơn cũ). Trạng
+thái: `PENDING` (chờ khách sạn xác nhận) → `CONFIRMED` → `COMPLETED`; đơn còn mở thì khách hoặc khách
+sạn huỷ được (`CANCELED`).
+
+**Đơn phòng đi kèm:** tour có phòng thì khi đặt, BE tạo luôn một đơn đặt phòng thường (`Booking`,
+`bookingId` trong đơn tour): nhận phòng ngày đi tour, trả phòng sau `stayNights` đêm, các phòng khách
+chọn, tiền mặt/chưa thanh toán, ghi chú "Phòng kèm đơn tour #…". Phòng vì vậy bị giữ với khách khác và
+lễ tân nhận/trả phòng như mọi đơn (khách đổi được sang VNPay). Xác nhận đơn tour → đơn phòng xác nhận
+theo; huỷ đơn tour → đơn phòng huỷ theo. Không huỷ riêng được đơn phòng của đơn tour đang mở (`400`
+`1020`: "Phòng này thuộc đơn tour #…").
 
 | Thao tác | Endpoint | Ai gọi |
 |---|---|---|
-| Đặt tour cho mình | `POST /tour-bookings` `{tourId, tourDate, guests, note}` | Khách hàng (có hồ sơ) |
+| Đặt tour cho mình | `POST /tour-bookings` `{tourId, tourDate, guests, roomIds, note}` | Khách hàng (có hồ sơ) |
 | Đơn tour của tôi | `GET /tour-bookings/me` | Khách hàng |
 | Đơn tour của cơ sở | `GET /tour-bookings?hotelId=&status=` | Chủ / quản lý / nhân viên cơ sở (quản trị viên chỉ xem) |
 | Chi tiết | `GET /tour-bookings/{id}` | Khách của đơn, đội ngũ cơ sở |
 | Xác nhận / hoàn tất | `PUT /tour-bookings/{id}/confirm`, `/complete` | Chủ / quản lý / nhân viên cơ sở |
 | Huỷ | `PUT /tour-bookings/{id}/cancel` `{reason}` | Khách của đơn (lý do tuỳ chọn) hoặc đội ngũ cơ sở (bắt buộc lý do) |
 
-- Kiểm tra khi đặt: tour đang nhận khách, ngày đi từ hôm nay đến 1 năm tới, 1–50 khách mỗi đơn, và
-  `maxGuests` là **số chỗ mỗi chuyến** — tổng khách các đơn còn mở cùng ngày không vượt quá. Lỗi trả
-  `400` mã `1020` kèm câu tiếng Việt ("Tour … ngày 18/10/2026 chỉ còn 1 chỗ.").
-- Khách đặt lại đúng tour, ngày, số khách thì nhận lại đơn đang mở (không tạo trùng); khác số khách thì báo
+- Kiểm tra khi đặt: tour đang nhận khách, ngày đi từ hôm nay đến 1 năm tới, 1–50 khách mỗi đơn,
+  `maxGuests` là **số chỗ mỗi chuyến** (tổng khách các đơn còn mở cùng ngày không vượt quá); tour có phòng
+  thì bắt buộc chọn phòng, phòng phải thuộc gói, còn trống cả kỳ ở (không bảo trì, không trùng đơn chờ
+  xác nhận/đã xác nhận) và đủ chỗ cho số khách. Lỗi trả `400` mã `1020` kèm câu tiếng Việt ("Phòng 101 đã
+  có khách từ 18/10/2026 đến 19/10/2026. Hãy chọn phòng khác.").
+- Khách đặt lại đúng tour, ngày, số khách, phòng thì nhận lại đơn đang mở (không tạo trùng); khác thì báo
   đã có đơn.
 - **Thông báo** (trong app + đẩy FCM, deep link `bookingapp://tour-bookings/{id}`): đơn mới hoặc khách
   huỷ → chủ khách sạn, quản lý và nhân viên của cơ sở; khách sạn xác nhận hoặc huỷ (kèm lý do) → khách.
@@ -197,8 +215,9 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
    - **Gợi ý tour:** khách hỏi đi chơi, tham quan, ăn uống quanh khu vực hoặc nói sẽ ở vài ngày thì
      trợ lý gợi ý 1–3 tour phù hợp của cơ sở (tên, giá mỗi khách, thời lượng, giờ khởi hành), không
      gợi ý tour tạm ngừng.
-   - **Lên đơn tour (công cụ `create_tour_booking`), 2 bước:** (1) đủ tour, ngày đi, số khách thì trợ lý
-     gửi tóm tắt kèm tổng tiền và mời khách nhắn "Đồng ý"; (2) khách đồng ý thì trợ lý lên đơn, báo mã đơn,
+   - **Lên đơn tour (công cụ `find_tour_rooms` + `create_tour_booking`), 2 bước:** (1) đủ tour, ngày đi,
+     số khách thì trợ lý tra phòng của gói còn trống (tour kèm phòng), cho khách chọn hoặc gợi ý phòng rẻ
+     nhất đủ chỗ, gửi tóm tắt gồm phòng, ngày nhận/trả, tiền tour + tiền phòng và mời khách nhắn "Đồng ý"; (2) khách đồng ý thì trợ lý lên đơn, báo mã đơn,
      khách sạn nhận thông báo. Máy chủ tự chặn: tin mới nhất của khách phải là lời đồng ý ("đồng ý", "ok",
      "xác nhận", "chốt", "được"… — không dấu cũng nhận) thì mới tạo đơn, nên model bỏ qua bước tóm tắt
      cũng không đặt được. Trợ lý thấy các đơn tour gần đây của khách ở cơ sở nên trả lời được "đơn của tôi

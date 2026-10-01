@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.service.impl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
 import jakarta.transaction.Transactional;
@@ -19,6 +20,7 @@ import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.entity.enums.Role;
+import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
@@ -47,6 +49,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingServiceMapper bookingServiceMapper;
     private final BookingRoomRepository bookingRoomRepository;
     private final AccessGuard accessGuard;
+    private final TourBookingRepository tourBookingRepository;
 
     @Override
     @Transactional
@@ -240,6 +243,15 @@ public class BookingServiceImpl implements BookingService {
         Booking booking =
                 bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
         requireBookingAccess(booking);
+        // Rooms sold with a tour go with the tour order: cancelling that order frees them (and tells the other side).
+        tourBookingRepository
+                .findFirstByBooking_IdAndStatusIn(
+                        id, EnumSet.of(TourBookingStatus.PENDING, TourBookingStatus.CONFIRMED))
+                .ifPresent(tour -> {
+                    throw new AppException(
+                            ErrorCode.TOUR_BOOKING_INVALID,
+                            "Phòng này thuộc đơn tour #" + tour.getId() + ". Huỷ đơn tour để huỷ cả phòng.");
+                });
         if (booking.getBookingStatus().equals(BookingStatus.COMPLETED)) {
             throw new ResourceNotFoundException("Booking already completed");
         } else {

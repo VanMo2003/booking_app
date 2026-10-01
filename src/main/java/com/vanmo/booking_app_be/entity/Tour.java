@@ -2,6 +2,8 @@ package com.vanmo.booking_app_be.entity;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -13,9 +15,9 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 /**
- * A sightseeing tour a branch offers its guests (city walk, day trip to Hạ Long…). Shown on the hotel page and known
- * to the chat assistant; booking a tour still goes through the hotel's staff. Written by the branch's owner or
- * manager only.
+ * A sightseeing tour a branch offers its guests (city walk, day trip to Hạ Long…), sold as a package with a stay: the
+ * hotel attaches the rooms the package uses ({@link TourRoom}) and how many nights, and a tour order books one of them
+ * from the tour date. A tour without rooms is booked on its own. Written by the branch's owner or manager only.
  */
 @Entity
 @Getter
@@ -53,8 +55,17 @@ public class Tour {
     @Column(length = 1000)
     String includes;
 
-    /** Largest group; null = not limited. */
+    /** Seats per departure, shared by every open order that day; null = not limited. */
     Integer maxGuests;
+
+    /** Nights of the stay that comes with the tour, from the tour date. */
+    @Builder.Default
+    @Column(columnDefinition = "int default 1")
+    Integer stayNights = 1;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<TourRoom> tourRooms = new HashSet<>();
 
     /** Uploaded file (`/uploads/...`) or an external image URL. */
     @Column(length = 1000)

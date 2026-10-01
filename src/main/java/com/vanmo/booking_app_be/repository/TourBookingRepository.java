@@ -27,6 +27,8 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
     Optional<TourBooking> findFirstByCustomer_IdAndTour_IdAndTourDateAndStatusIn(
             Long customerId, Long tourId, LocalDate tourDate, Collection<TourBookingStatus> statuses);
 
+    Optional<TourBooking> findFirstByBooking_IdAndStatusIn(Long bookingId, Collection<TourBookingStatus> statuses);
+
     /** Seats already taken on one departure. */
     @Query("select coalesce(sum(b.guests), 0) from TourBooking b "
             + "where b.tour.id = :tourId and b.tourDate = :tourDate and b.status in :statuses")

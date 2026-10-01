@@ -73,9 +73,31 @@ public class TourBooking {
     @Column(nullable = false, precision = 12)
     BigDecimal unitPrice;
 
+    /** unitPrice × guests. */
+    @Column(precision = 14)
+    BigDecimal tourAmount;
+
+    /** The rooms' nights; zero for a tour without rooms. */
+    @Column(precision = 14)
+    BigDecimal roomAmount;
+
+    /** tourAmount + roomAmount. */
     @NotNull
     @Column(nullable = false, precision = 14)
     BigDecimal totalAmount;
+
+    /**
+     * The room booking made with the order (check-in on the tour date, the tour's nights, the rooms the guest chose).
+     * It is a normal {@link Booking}, so the rooms are blocked for others and the front desk checks the guest in and
+     * out as usual; confirming or cancelling the tour order does the same to it. Null for a tour without rooms.
+     */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    Booking booking;
+
+    /** End of the stay (the stay starts on the tour date); null without rooms. */
+    LocalDate stayCheckout;
 
     @NotNull
     @Enumerated(EnumType.STRING)

@@ -19,5 +19,7 @@ public interface TourBookingMapper {
     @Mapping(source = "customer.fullName", target = "customerName")
     @Mapping(source = "customer.phoneNumber", target = "customerPhone")
     @Mapping(source = "conversation.id", target = "conversationId")
+    @Mapping(source = "booking.id", target = "bookingId")
+    @Mapping(target = "rooms", ignore = true)
     TourBookingResponse toResponse(TourBooking booking);
 }

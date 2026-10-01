@@ -1,7 +1,9 @@
 package com.vanmo.booking_app_be.dto.request;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -44,4 +46,11 @@ public class TourUpdateRequest {
     String pathImage;
 
     Boolean available;
+
+    @Min(1)
+    @Max(30)
+    Integer stayNights;
+
+    /** Replaces the package's rooms; null keeps them, empty removes them all. */
+    Set<Long> roomIds;
 }

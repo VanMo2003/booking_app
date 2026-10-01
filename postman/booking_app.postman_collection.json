@@ -212,6 +212,14 @@
     {
       "key": "tourDate2",
       "value": ""
+    },
+    {
+      "key": "tourRoomBookingId",
+      "value": ""
+    },
+    {
+      "key": "tourRoomBookingId2",
+      "value": ""
     }
   ],
   "item": [
@@ -2787,7 +2795,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Food tour pho co buoi toi\",\n  \"description\": \"Di bo qua cac ngo pho co, 8 mon dac san\",\n  \"price\": 450000,\n  \"duration\": \"4 gio\",\n  \"departure\": \"18:00 hang ngay\",\n  \"includes\": \"Huong dan vien, 8 mon an, nuoc uong\",\n  \"maxGuests\": 10,\n  \"pathImage\": \"https://images.unsplash.com/photo-1528127269322-539801943592?w=1200&q=75&auto=format&fit=crop\",\n  \"hotelId\": {{hotelId}}\n}",
+              "raw": "{\n  \"name\": \"Food tour pho co buoi toi\",\n  \"description\": \"Di bo qua cac ngo pho co, 8 mon dac san\",\n  \"price\": 450000,\n  \"duration\": \"4 gio\",\n  \"departure\": \"18:00 hang ngay\",\n  \"includes\": \"Huong dan vien, 8 mon an, nuoc uong\",\n  \"maxGuests\": 10,\n  \"stayNights\": 1,\n  \"roomIds\": [{{roomId}}],\n  \"pathImage\": \"https://images.unsplash.com/photo-1528127269322-539801943592?w=1200&q=75&auto=format&fit=crop\",\n  \"hotelId\": {{hotelId}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2806,6 +2814,7 @@
                   "pm.test('available by default', () => pm.expect(t.available).to.eql(true));",
                   "pm.test('linked to branch', () => pm.expect(t.hotelId).to.eql(Number(pm.collectionVariables.get('hotelId'))));",
                   "pm.test('guest limit kept', () => pm.expect(t.maxGuests).to.eql(10));",
+                  "pm.test('package room attached', () => pm.expect(t.rooms.map(r => r.roomId)).to.include(Number(pm.collectionVariables.get('roomId'))));",
                   "pm.collectionVariables.set('tourId', t.id);"
                 ]
               }
@@ -6523,7 +6532,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate}}\",\n  \"guests\": 2,\n  \"note\": \"Don tai sanh\"\n}",
+              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate}}\",\n  \"guests\": 2,\n  \"roomIds\": [{{roomId}}],\n  \"note\": \"Don tai sanh\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -6549,9 +6558,11 @@
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const t = pm.response.json().data;",
                   "pm.test('waits for the branch', () => pm.expect(t.status).to.eql('PENDING'));",
-                  "pm.test('total = price x guests', () => pm.expect(t.totalAmount).to.eql(900000));",
+                  "pm.test('tour 450.000 x 2 + room 550.000 x 1 night', () => pm.expect(t.totalAmount).to.eql(1450000));",
+                  "pm.test('room booking made with it', () => pm.expect(t.bookingId > 0).to.eql(true));",
                   "pm.test('placed in the app, not by AI', () => pm.expect(t.createdByAi).to.eql(false));",
-                  "pm.collectionVariables.set('tourBookingId', t.id);"
+                  "pm.collectionVariables.set('tourBookingId', t.id);",
+                  "pm.collectionVariables.set('tourRoomBookingId', t.bookingId);"
                 ]
               }
             }
@@ -6582,7 +6593,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate}}\",\n  \"guests\": 2,\n  \"note\": \"Don tai sanh\"\n}",
+              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate}}\",\n  \"guests\": 2,\n  \"roomIds\": [{{roomId}}],\n  \"note\": \"Don tai sanh\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -6598,6 +6609,44 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "pm.test('no duplicate', () => pm.expect(pm.response.json().data.id).to.eql(Number(pm.collectionVariables.get('tourBookingId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET free package rooms of the Tour (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}/rooms/available?date={{tourDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}",
+                "rooms",
+                "available"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{tourDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json().data;",
+                  "pm.test('room booked by the tour order is taken', () => pm.expect(s.rooms.map(r => r.roomId)).to.not.include(Number(pm.collectionVariables.get('roomId'))));"
                 ]
               }
             }
@@ -6748,6 +6797,40 @@
           ]
         },
         {
+          "name": "Room booking of the tour is confirmed too",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{tourRoomBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{tourRoomBookingId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('confirmed with the tour', () => pm.expect(pm.response.json().data.bookingStatus).to.eql('CONFIRMED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Manager completes the tour booking",
           "request": {
             "method": "PUT",
@@ -6807,7 +6890,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate2}}\",\n  \"guests\": 1\n}",
+              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate2}}\",\n  \"guests\": 1,\n  \"roomIds\": [{{roomId}}]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -6831,7 +6914,43 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('tourBookingId2', pm.response.json().data.id);"
+                  "pm.collectionVariables.set('tourBookingId2', pm.response.json().data.id);",
+                  "pm.collectionVariables.set('tourRoomBookingId2', pm.response.json().data.bookingId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Room booking of a tour cannot be cancelled alone -> 400 (1020)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{custOneToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{tourRoomBookingId2}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{tourRoomBookingId2}}",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code 1020', () => pm.expect(pm.response.json().code).to.eql(1020));"
                 ]
               }
             }
@@ -6881,6 +7000,40 @@
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const t = pm.response.json().data;",
                   "pm.test('cancelled by the guest', () => { pm.expect(t.status).to.eql('CANCELED'); pm.expect(t.canceledBy).to.eql('CUSTOMER'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Room booking of the cancelled tour is cancelled too",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{tourRoomBookingId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{tourRoomBookingId2}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('cancelled with the tour', () => pm.expect(pm.response.json().data.bookingStatus).to.eql('CANCELED'));"
                 ]
               }
             }
@@ -8661,7 +8814,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate}}\",\n  \"guests\": 2,\n  \"note\": \"Don tai sanh\"\n}",
+              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate}}\",\n  \"guests\": 2,\n  \"roomIds\": [{{roomId}}],\n  \"note\": \"Don tai sanh\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9933,6 +10086,50 @@
               "path": [
                 "bookingRooms",
                 "{{bookingRoomId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete tour room booking 1",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{tourRoomBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{tourRoomBookingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete tour room booking 2",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{tourRoomBookingId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{tourRoomBookingId2}}"
               ]
             }
           }
