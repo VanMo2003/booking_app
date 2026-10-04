@@ -228,7 +228,13 @@ managed by admins.
   `google-auth-library-oauth2-http`) to the account's `DeviceToken`s, which the app registers with
   `POST /notifications/devices` and removes with `DELETE /notifications/devices?token=` before
   logout. Without `FIREBASE_CREDENTIALS` the sender is disabled and only the inbox works; tokens FCM
-  reports as unregistered are deleted.
+  reports as unregistered are deleted. Every message carries a `notification` block (the OS shows it
+  while the app is in the background or killed - no Dart background handler needed), `android.priority:
+  high` and `android.notification.channel_id = booking_app_alerts`, the high-importance channel the
+  Flutter app creates in `MainActivity.kt` - keep `FcmPushNotificationSender.ANDROID_CHANNEL_ID` and the
+  app in sync (`FcmPushNotificationSenderTest` pins the payload shape). Chat pushes skip accounts with an
+  open socket (`ChatSessionRegistry.isOnline`); `WebSocketConfig` sets a 70 s idle timeout (the app pings
+  every 25 s) so a phone that dropped off without a close frame stops counting as online.
 - Approve/reject publishes `OwnerReviewedEvent`; `OwnerReviewMailListener` sends the HTML result
   email through `MailServiceImpl` (Spring Mail, `MAIL_*` variables). Without `MAIL_USERNAME` the
   mail is only logged.

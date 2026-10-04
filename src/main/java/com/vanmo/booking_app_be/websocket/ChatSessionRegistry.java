@@ -44,7 +44,9 @@ public class ChatSessionRegistry {
 
     /** Has the app open right now - used to skip push notifications for people already looking at the chat. */
     public boolean isOnline(String accountId) {
-        return accountId != null && sessions.containsKey(accountId);
+        // A socket closed under us (network gone) may still be listed until its close callback runs.
+        return accountId != null
+                && sessions.getOrDefault(accountId, Map.of()).values().stream().anyMatch(WebSocketSession::isOpen);
     }
 
     public void send(Collection<String> accountIds, String payload) {

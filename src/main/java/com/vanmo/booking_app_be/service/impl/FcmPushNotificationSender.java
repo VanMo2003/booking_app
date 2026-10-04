@@ -31,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 public class FcmPushNotificationSender implements PushNotificationSender {
 
     private static final String SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
+    /** Must match the channel the Flutter app creates in MainActivity.kt. */
+    static final String ANDROID_CHANNEL_ID = "booking_app_alerts";
 
     private final RestClient restClient = RestClient.create();
     private final GoogleCredentials credentials;
@@ -79,19 +81,27 @@ public class FcmPushNotificationSender implements PushNotificationSender {
         return stale;
     }
 
-    private static Map<String, Object> message(String token, String title, String body, Map<String, String> data) {
+    static Map<String, Object> message(String token, String title, String body, Map<String, String> data) {
         Map<String, String> notification = new HashMap<>();
         notification.put("title", title);
         if (body != null) {
             notification.put("body", body);
         }
         Map<String, Object> android = new HashMap<>();
+        // High priority wakes a phone in Doze, so the notification shows while the app is in the background or closed.
         android.put("priority", "high");
+        Map<String, Object> androidNotification = new HashMap<>();
+        // Created by the app (MainActivity) with high importance: pops up on screen with sound, not silently in the
+        // tray.
+        androidNotification.put("channel_id", ANDROID_CHANNEL_ID);
+        androidNotification.put("notification_priority", "PRIORITY_HIGH");
+        androidNotification.put("default_sound", true);
         // A "tag" groups notifications on Android: a newer one with the same tag replaces the older (chat threads).
         if (data != null && data.get("tag") != null) {
-            android.put("notification", Map.of("tag", data.get("tag")));
+            androidNotification.put("tag", data.get("tag"));
             android.put("collapse_key", data.get("tag"));
         }
+        android.put("notification", androidNotification);
         return Map.of(
                 "token",
                 token,
@@ -100,7 +110,9 @@ public class FcmPushNotificationSender implements PushNotificationSender {
                 "data",
                 data == null ? Map.of() : data,
                 "android",
-                android);
+                android,
+                "apns",
+                Map.of("payload", Map.of("aps", Map.of("sound", "default"))));
     }
 
     private synchronized String accessToken() {

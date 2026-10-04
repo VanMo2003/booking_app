@@ -339,6 +339,12 @@ ghi log.
    `/app/secrets/<tên-file>.json`). Log khởi động không còn dòng `FIREBASE_CREDENTIALS is not set`
    là đã bật.
 
+Thông báo hiện cả khi app **chạy nền hoặc đã tắt**: mọi push (tin nhắn, đơn tour, xét duyệt hồ sơ)
+gửi kèm khối `notification`, `priority: high`, vào kênh Android `booking_app_alerts` mà app tạo sẵn ở
+mức ưu tiên cao (bật lên đầu màn hình, có âm thanh). Tin nhắn chat chỉ đẩy cho người **không** đang mở
+app (không có WebSocket); socket im lặng quá 70 giây — điện thoại rớt mạng hay bị hệ điều hành tắt mà
+không kịp đóng — bị BE đóng để người đó không bị bỏ sót push.
+
 ## Biến môi trường chính
 
 | Biến | Mặc định | Ý nghĩa |
