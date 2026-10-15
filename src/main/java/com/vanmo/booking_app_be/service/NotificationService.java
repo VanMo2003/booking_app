@@ -6,6 +6,7 @@ import com.vanmo.booking_app_be.dto.request.DeviceTokenRequest;
 import com.vanmo.booking_app_be.dto.response.NotificationCountResponse;
 import com.vanmo.booking_app_be.dto.response.NotificationResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.TestPushResponse;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.enums.NotificationType;
 import com.vanmo.booking_app_be.utils.NotificationMessages;
@@ -38,6 +39,12 @@ public interface NotificationService {
     void markAllRead();
 
     void registerDevice(DeviceTokenRequest req);
+
+    /**
+     * Pushes a test notification to the caller's own devices after {@code delaySeconds} (0-60), so they can close
+     * the app and check that notifications still arrive. Push only - nothing is added to the inbox.
+     */
+    TestPushResponse sendTestPush(int delaySeconds);
 
     void unregisterDevice(String token);
 }

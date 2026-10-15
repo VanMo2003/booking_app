@@ -3,6 +3,8 @@ package com.vanmo.booking_app_be.service.impl;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import jakarta.transaction.Transactional;
 
@@ -16,11 +18,13 @@ import com.vanmo.booking_app_be.dto.request.DeviceTokenRequest;
 import com.vanmo.booking_app_be.dto.response.NotificationCountResponse;
 import com.vanmo.booking_app_be.dto.response.NotificationResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.TestPushResponse;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.DeviceToken;
 import com.vanmo.booking_app_be.entity.Notification;
 import com.vanmo.booking_app_be.entity.enums.NotificationType;
 import com.vanmo.booking_app_be.entity.enums.Role;
+import com.vanmo.booking_app_be.event.PushNotificationListener;
 import com.vanmo.booking_app_be.event.PushRequestedEvent;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.NotificationMapper;
@@ -29,6 +33,8 @@ import com.vanmo.booking_app_be.repository.DeviceTokenRepository;
 import com.vanmo.booking_app_be.repository.NotificationRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.NotificationService;
+import com.vanmo.booking_app_be.service.PushNotificationSender;
+import com.vanmo.booking_app_be.utils.AppLinks;
 import com.vanmo.booking_app_be.utils.NotificationMessages;
 
 import lombok.RequiredArgsConstructor;
@@ -43,6 +49,8 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationMapper notificationMapper;
     private final AccessGuard accessGuard;
     private final ApplicationEventPublisher eventPublisher;
+    private final PushNotificationSender pushNotificationSender;
+    private final PushNotificationListener pushNotificationListener;
 
     @Override
     public void notify(
@@ -137,6 +145,32 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void markAllRead() {
         notificationRepository.markAllRead(accessGuard.currentAccount().getId());
+    }
+
+    @Override
+    public TestPushResponse sendTestPush(int delaySeconds) {
+        Account current = accessGuard.currentAccount();
+        int delay = Math.max(0, Math.min(delaySeconds, 60));
+        int devices = deviceTokenRepository
+                .findTokensByAccountIds(List.of(current.getId()))
+                .size();
+        boolean enabled = pushNotificationSender.isEnabled();
+        if (enabled && devices > 0) {
+            NotificationMessages.Message message = NotificationMessages.testPush();
+            PushRequestedEvent event = new PushRequestedEvent(
+                    List.of(current.getId()),
+                    message.title(),
+                    message.body(),
+                    Map.of("type", "TEST_PUSH", "link", AppLinks.deepLink(AppLinks.NOTIFICATIONS)));
+            // Later, so the tester has time to swipe the app away; straight to the sender, no inbox row.
+            CompletableFuture.delayedExecutor(delay, TimeUnit.SECONDS)
+                    .execute(() -> pushNotificationListener.onPushRequested(event));
+        }
+        return TestPushResponse.builder()
+                .pushEnabled(enabled)
+                .devices(devices)
+                .delaySeconds(delay)
+                .build();
     }
 
     @Transactional

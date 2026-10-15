@@ -235,6 +235,10 @@ managed by admins.
   app in sync (`FcmPushNotificationSenderTest` pins the payload shape). Chat pushes skip accounts with an
   open socket (`ChatSessionRegistry.isOnline`); `WebSocketConfig` sets a 70 s idle timeout (the app pings
   every 25 s) so a phone that dropped off without a close frame stops counting as online.
+  `POST /notifications/devices/test` (`NotificationService.sendTestPush`) pushes a test notification to
+  the caller's own tokens after a delay via `CompletableFuture.delayedExecutor` straight into
+  `PushNotificationListener` (no inbox row), so the app's setup screen can check delivery with the app
+  swiped away (Xiaomi & co. drop it unless Autostart is on - that part is device settings, not code).
 - Approve/reject publishes `OwnerReviewedEvent`; `OwnerReviewMailListener` sends the HTML result
   email through `MailServiceImpl` (Spring Mail, `MAIL_*` variables). Without `MAIL_USERNAME` the
   mail is only logged.

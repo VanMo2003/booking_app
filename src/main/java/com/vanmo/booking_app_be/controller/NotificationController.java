@@ -9,6 +9,7 @@ import com.vanmo.booking_app_be.dto.request.DeviceTokenRequest;
 import com.vanmo.booking_app_be.dto.response.NotificationCountResponse;
 import com.vanmo.booking_app_be.dto.response.NotificationResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.TestPushResponse;
 import com.vanmo.booking_app_be.service.NotificationService;
 
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,12 @@ public class NotificationController {
     public ApiResponse<Void> registerDevice(@Valid @RequestBody DeviceTokenRequest req) {
         notificationService.registerDevice(req);
         return ApiResponse.ok(null);
+    }
+
+    /** Test push to the caller's own devices after a delay (default 10 s), to check delivery with the app closed. */
+    @PostMapping("/devices/test")
+    public ApiResponse<TestPushResponse> sendTestPush(@RequestParam(defaultValue = "10") int delaySeconds) {
+        return ApiResponse.ok(notificationService.sendTestPush(delaySeconds));
     }
 
     /** Called before logout so the device stops receiving this account's pushes. */

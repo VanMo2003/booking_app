@@ -345,6 +345,11 @@ mức ưu tiên cao (bật lên đầu màn hình, có âm thanh). Tin nhắn ch
 app (không có WebSocket); socket im lặng quá 70 giây — điện thoại rớt mạng hay bị hệ điều hành tắt mà
 không kịp đóng — bị BE đóng để người đó không bị bỏ sót push.
 
+Thử nhận thông báo: `POST /notifications/devices/test?delaySeconds=10` gửi "Thông báo thử" tới các thiết
+bị của chính tài khoản đang đăng nhập sau `delaySeconds` giây (0–60), không thêm vào hộp thông báo; trả
+`{pushEnabled, devices, delaySeconds}` (`pushEnabled: false` = BE chưa có `FIREBASE_CREDENTIALS`,
+`devices: 0` = máy chưa đăng ký token).
+
 ## Biến môi trường chính
 
 | Biến | Mặc định | Ý nghĩa |

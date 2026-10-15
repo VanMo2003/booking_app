@@ -18,6 +18,13 @@ public final class NotificationMessages {
 
     private NotificationMessages() {}
 
+    /** The "Gửi thông báo thử" button: proves pushes reach this phone even with the app closed. */
+    public static Message testPush() {
+        return new Message(
+                "Thông báo thử",
+                "Máy đã nhận được thông báo khi app chạy nền hoặc đã tắt — bạn sẽ không bỏ lỡ tin nhắn và đơn mới.");
+    }
+
     public static Message ownerSubmitted(HotelChain chain, boolean resubmitted) {
         if (resubmitted) {
             return new Message(

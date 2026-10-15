@@ -981,6 +981,49 @@
           }
         },
         {
+          "name": "Owner sends a test push to own devices (delay 0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/devices/test?delaySeconds=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "devices",
+                "test"
+              ],
+              "query": [
+                {
+                  "key": "delaySeconds",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().data;",
+                  "pm.test('device registered just before is counted', () => pm.expect(r.devices).to.eql(1));",
+                  "pm.test('delay echoed', () => pm.expect(r.delaySeconds).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Owner unregisters the device token",
           "event": [
             {
