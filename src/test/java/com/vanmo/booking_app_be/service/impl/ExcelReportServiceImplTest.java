@@ -99,6 +99,10 @@ class ExcelReportServiceImplTest {
             assertThat(kpi.getRow(8).getCell(3).getStringCellValue()).isEqualTo("–");
             assertThat(kpi.getRow(10).getCell(3).getStringCellValue()).isEqualTo("+2.50 điểm");
 
+            // one spelling of "huỷ" across sheets, like the app
+            Sheet overview = book.getSheet("Tổng quan");
+            assertThat(overview.getRow(10).getCell(0).getStringCellValue()).isEqualTo("Tỷ lệ huỷ (%)");
+
             Sheet shares = book.getSheet("Thanh toán & kênh bán");
             assertThat(shares.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Tiền mặt");
             assertThat(shares.getRow(4).getCell(0).getStringCellValue()).isEqualTo("Kênh bán");

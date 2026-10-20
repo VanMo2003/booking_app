@@ -113,8 +113,8 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         r = writeRow(sheet, r, header, "Tỷ lệ lấp đầy (%)", occupancy.getOccupancyRate());
         r = writeRow(sheet, r, header, "Tổng số đơn", cancellation.getTotalBooking());
         r = writeRow(sheet, r, header, "Đơn hoàn tất", cancellation.getCompletedBooking());
-        r = writeRow(sheet, r, header, "Đơn bị hủy", cancellation.getCanceledBooking());
-        writeRow(sheet, r, header, "Tỷ lệ hủy (%)", cancellation.getCancellationRate());
+        r = writeRow(sheet, r, header, "Đơn bị huỷ", cancellation.getCanceledBooking());
+        writeRow(sheet, r, header, "Tỷ lệ huỷ (%)", cancellation.getCancellationRate());
         autoSize(sheet, 2);
     }
 
