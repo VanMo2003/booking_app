@@ -402,6 +402,8 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   The older time-series endpoints stay booking-only so existing clients' numbers don't move.
   `/reports/revenue-by-tour` reuses the same `TourSaleRow`s via `RevenueFigures.byTour` (grouped by
   tour id, or by the kept name once the tour was deleted).
+  `/reports/chain/branches` runs the same per-period rows once per branch (current + previous), then
+  `RevenueFigures.rankBranches` fills each branch's share of the chain total and sorts by revenue.
 
 ### Public browsing
 

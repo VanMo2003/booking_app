@@ -83,4 +83,8 @@ public interface ReportService {
     List<RevenueByTourDTO> getRevenueByTour(Long hotelId, LocalDate from, LocalDate to);
 
     List<RevenueByTourDTO> getRevenueByTourForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    // ---- the chain's branches side by side over [from, to] ----
+
+    List<BranchPerformanceDTO> getBranchPerformanceForChain(Long hotelChainId, LocalDate from, LocalDate to);
 }

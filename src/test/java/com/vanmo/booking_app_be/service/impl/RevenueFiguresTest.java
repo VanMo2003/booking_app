@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
+import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -183,5 +184,53 @@ class RevenueFiguresTest {
         assertThat(haLong.getPackageRoomAmount()).isEqualByComparingTo("1000000");
         assertThat(haLong.getAiOrders()).isEqualTo(1);
         assertThat(rows.get(2).getTourId()).isNull();
+    }
+
+    @Test
+    void branchesAreRankedByRevenueWithTheirShareAndGrowth() {
+        RevenueFigures.PeriodRows emptyBefore =
+                rows(OCT_1.minusDays(10), OCT_1.minusDays(1), List.of(), 0, List.of(), List.of(), 0);
+        BranchPerformanceDTO small = RevenueFigures.branch(
+                6L,
+                "Hoàn Kiếm",
+                rows(OCT_1, OCT_10, List.of(booking(1_000_000, PaymentMethod.CASH, null)), 0, List.of(), List.of(), 0),
+                rows(
+                        OCT_1.minusDays(10),
+                        OCT_1.minusDays(1),
+                        List.of(booking(500_000, PaymentMethod.CASH, null)),
+                        0,
+                        List.of(),
+                        List.of(),
+                        0));
+        BranchPerformanceDTO big = RevenueFigures.branch(
+                7L,
+                "Đà Nẵng",
+                rows(
+                        OCT_1,
+                        OCT_10,
+                        List.of(booking(2_000_000, PaymentMethod.CASH, null)),
+                        0,
+                        List.of(tour(1_000_000, 0, 2, false)),
+                        List.of(),
+                        0),
+                emptyBefore);
+
+        List<BranchPerformanceDTO> ranked = RevenueFigures.rankBranches(List.of(small, big));
+
+        assertThat(ranked).extracting(BranchPerformanceDTO::getHotelId).containsExactly(7L, 6L);
+        assertThat(ranked).extracting(BranchPerformanceDTO::getRevenueShare).containsExactly(75d, 25d);
+        assertThat(ranked.get(1).getRevenueGrowth()).isEqualTo(100d);
+        assertThat(ranked.get(1).getPreviousRevenue()).isEqualByComparingTo("500000");
+        // nothing earned before: no growth figure rather than an infinite one
+        assertThat(ranked.get(0).getRevenueGrowth()).isNull();
+    }
+
+    @Test
+    void aChainThatEarnedNothingHasZeroShares() {
+        RevenueFigures.PeriodRows nothing = rows(OCT_1, OCT_10, List.of(), 0, List.of(), List.of(), 0);
+        List<BranchPerformanceDTO> ranked =
+                RevenueFigures.rankBranches(List.of(RevenueFigures.branch(6L, "A", nothing, nothing)));
+
+        assertThat(ranked.get(0).getRevenueShare()).isZero();
     }
 }

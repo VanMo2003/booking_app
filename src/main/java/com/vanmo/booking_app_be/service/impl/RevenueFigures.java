@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
+import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -163,6 +164,40 @@ final class RevenueFigures {
         }
         return byKey.values().stream()
                 .sorted(Comparator.comparing(RevenueByTourDTO::getTourRevenue).reversed())
+                .toList();
+    }
+
+    /** One branch's row of the chain comparison; the share is filled in by {@link #rankBranches}. */
+    static BranchPerformanceDTO branch(Long hotelId, String hotelName, PeriodRows current, PeriodRows previous) {
+        RevenuePeriodDTO now = period(current);
+        BigDecimal before = period(previous).getTotalRevenue();
+        return BranchPerformanceDTO.builder()
+                .hotelId(hotelId)
+                .hotelName(hotelName)
+                .current(now)
+                .previousRevenue(before)
+                .revenueGrowth(growth(now.getTotalRevenue(), before))
+                .build();
+    }
+
+    /** Fills each branch's share of the chain's revenue and puts the biggest earner first. */
+    static List<BranchPerformanceDTO> rankBranches(List<BranchPerformanceDTO> branches) {
+        BigDecimal total = sum(branches.stream().map(b -> b.getCurrent().getTotalRevenue()));
+        for (BranchPerformanceDTO branch : branches) {
+            branch.setRevenueShare(
+                    total.signum() == 0
+                            ? 0d
+                            : branch.getCurrent()
+                                    .getTotalRevenue()
+                                    .multiply(HUNDRED)
+                                    .divide(total, 2, RoundingMode.HALF_UP)
+                                    .doubleValue());
+        }
+        return branches.stream()
+                .sorted(Comparator.comparing(
+                                (BranchPerformanceDTO b) -> b.getCurrent().getTotalRevenue())
+                        .reversed()
+                        .thenComparing(BranchPerformanceDTO::getHotelName, Comparator.nullsLast(String::compareTo)))
                 .toList();
     }
 

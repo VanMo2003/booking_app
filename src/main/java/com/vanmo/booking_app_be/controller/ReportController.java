@@ -276,6 +276,14 @@ public class ReportController {
         return ApiResponse.ok(reportService.getRevenueByTourForChain(hotelChainId, from, to));
     }
 
+    @GetMapping("/chain/branches")
+    public ApiResponse<List<BranchPerformanceDTO>> branchPerformanceForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getBranchPerformanceForChain(hotelChainId, from, to));
+    }
+
     // ---- Excel export ----
 
     @GetMapping("/export")

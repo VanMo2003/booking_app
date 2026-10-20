@@ -273,6 +273,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ; so với kỳ liền trước cùng số ngày; chia theo phương thức thanh toán và kênh bán (khách tự đặt / tại quầy / tour). `from`, `to` tính cả hai đầu |
 | Doanh thu theo thời gian | `GET /reports/daily`, `/weekly`, `/weekly-in-month`, `/monthly`, `/monthly/last-5-months`, `/yearly` | Chỉ đơn phòng (đã gồm dịch vụ) |
 | Lấp đầy | `GET /reports/occupancy`, `/occupancy/daily` | `[from, to)`; theo ngày tối đa 92 ngày, chỉ cấp cơ sở |
+| So sánh cơ sở (chỉ cấp chuỗi) | `GET /reports/chain/branches?hotelChainId=&from=&to=` | Mỗi cơ sở: KPI như tổng quan, doanh thu kỳ trước, % tăng trưởng, tỷ trọng trong doanh thu chuỗi; nhiều doanh thu nhất trước |
 | Doanh thu theo tour | `GET /reports/revenue-by-tour?from=&to=` | Đơn tour hoàn tất gộp theo tour: số đơn, số khách, tiền tour, tiền phòng gói (chỉ tham khảo), số đơn do AI lên |
 | Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | |
 | Xuất Excel | `GET /reports/export` | Nhiều sheet |
