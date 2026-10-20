@@ -71,4 +71,10 @@ public interface ReportService {
     List<StaffPerformanceDTO> getStaffPerformanceForChain(Long hotelChainId, LocalDate from, LocalDate to);
 
     CancellationRateResponse getCancellationRateForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    // ---- revenue summary: the period's KPIs next to the period just before it ----
+
+    RevenueSummaryResponse getRevenueSummary(Long hotelId, LocalDate from, LocalDate to);
+
+    RevenueSummaryResponse getRevenueSummaryForChain(Long hotelChainId, LocalDate from, LocalDate to);
 }

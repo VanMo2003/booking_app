@@ -393,6 +393,13 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
 - **Occupancy and room-night maths happen in Java**, not SQL (`BookedRoomNightRow` +
   `ReportServiceImpl.nightsWithin`), to avoid DB-specific date arithmetic. `occupancy/daily` is
   capped at 92 days (`MAX_DAILY_RANGE`).
+- **`/reports/summary` is the only revenue figure that includes tours.** It fetches plain rows
+  (`CompletedBookingRow`, `TourSaleRow`, `BookedRoomNightRow`) for the period and the equal-length
+  period before it, and `RevenueFigures` (pure, unit-tested in `RevenueFiguresTest`) does the sums:
+  room revenue = booking totals − service lines, tours add `tourAmount` only (the package rooms are
+  their own `Booking` and earn at checkout), ADR/RevPAR in whole đồng, growth `null` when the
+  previous period was 0. Its `from`/`to` are inclusive (single day allowed), unlike `occupancy`.
+  The older time-series endpoints stay booking-only so existing clients' numbers don't move.
 
 ### Public browsing
 

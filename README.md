@@ -261,6 +261,25 @@ model đều hết lượt).
 5. Bị từ chối thì sửa theo lý do và gửi lại (quay về bước 3). Được duyệt thì chủ khách sạn tự tạo
    quản lý, mở cơ sở, thêm phòng, tiện ích, dịch vụ, thực đơn món ăn, tour tham quan.
 
+### Báo cáo doanh thu
+
+Mỗi báo cáo có hai bản: cấp cơ sở `/reports/...?hotelId=` (chủ chuỗi hoặc quản lý cơ sở) và cấp chuỗi
+`/reports/chain/...?hotelChainId=` (chủ chuỗi). Doanh thu chỉ tính đơn **hoàn tất**: đơn phòng ghi
+nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của gói tour nằm ở đơn phòng đi kèm nên chỉ
+được tính một lần, khi khách trả phòng.
+
+| Báo cáo | Endpoint | Ghi chú |
+|---|---|---|
+| Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ; so với kỳ liền trước cùng số ngày; chia theo phương thức thanh toán và kênh bán (khách tự đặt / tại quầy / tour). `from`, `to` tính cả hai đầu |
+| Doanh thu theo thời gian | `GET /reports/daily`, `/weekly`, `/weekly-in-month`, `/monthly`, `/monthly/last-5-months`, `/yearly` | Chỉ đơn phòng (đã gồm dịch vụ) |
+| Lấp đầy | `GET /reports/occupancy`, `/occupancy/daily` | `[from, to)`; theo ngày tối đa 92 ngày, chỉ cấp cơ sở |
+| Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | |
+| Xuất Excel | `GET /reports/export` | Nhiều sheet |
+
+Cách tính trong tổng quan: tiền phòng = tổng đơn − dòng dịch vụ; ADR = tiền phòng / đêm đã bán; RevPAR =
+tiền phòng / (số phòng × số ngày). Mức tăng trưởng là % so với kỳ trước, bị bỏ khỏi JSON khi kỳ trước
+bằng 0; lấp đầy so bằng điểm phần trăm (`occupancyChange`).
+
 ## Yêu cầu môi trường
 
 - JDK 21

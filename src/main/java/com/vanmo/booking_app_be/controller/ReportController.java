@@ -242,6 +242,24 @@ public class ReportController {
         return ApiResponse.ok(reportService.getCancellationRateForChain(hotelChainId, from, to));
     }
 
+    // ---- revenue summary: KPIs next to the previous period ----
+
+    @GetMapping("/summary")
+    public ApiResponse<RevenueSummaryResponse> revenueSummary(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueSummary(hotelId, from, to));
+    }
+
+    @GetMapping("/chain/summary")
+    public ApiResponse<RevenueSummaryResponse> revenueSummaryForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueSummaryForChain(hotelChainId, from, to));
+    }
+
     // ---- Excel export ----
 
     @GetMapping("/export")

@@ -23,6 +23,7 @@ import com.vanmo.booking_app_be.entity.Employee;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Report;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
@@ -34,6 +35,7 @@ import com.vanmo.booking_app_be.repository.EmployeeRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.ReportRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
+import com.vanmo.booking_app_be.repository.TourBookingRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.ReportService;
 
@@ -53,6 +55,7 @@ public class ReportServiceImpl implements ReportService {
     private final RoomRepository roomRepository;
     private final EmployeeRepository employeeRepository;
     private final HotelRepository hotelRepository;
+    private final TourBookingRepository tourBookingRepository;
     private final AccessGuard accessGuard;
 
     @Override
@@ -310,6 +313,51 @@ public class ReportServiceImpl implements ReportService {
         return cancellationRate(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
     }
 
+    // ---------------- revenue summary ----------------
+
+    @Override
+    public RevenueSummaryResponse getRevenueSummary(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return revenueSummary(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public RevenueSummaryResponse getRevenueSummaryForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return revenueSummary(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    /** [from, to] against the period of the same number of days that ends the day before. */
+    private RevenueSummaryResponse revenueSummary(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        long days = ChronoUnit.DAYS.between(from, to) + 1;
+        LocalDate previousTo = from.minusDays(1);
+        LocalDate previousFrom = previousTo.minusDays(days - 1);
+        long totalRooms = roomRepository.countByHotel_IdIn(hotelIds);
+        return RevenueFigures.summary(
+                periodRows(hotelIds, totalRooms, from, to), periodRows(hotelIds, totalRooms, previousFrom, previousTo));
+    }
+
+    private RevenueFigures.PeriodRows periodRows(List<Long> hotelIds, long totalRooms, LocalDate from, LocalDate to) {
+        LocalDate end = to.plusDays(1);
+        long occupiedRoomNights = bookingRoomRepository.findBookedRoomNights(hotelIds, from, end).stream()
+                .mapToLong(r -> nightsWithin(r, from, end))
+                .sum();
+        BigDecimal serviceRevenue = RevenueFigures.sum(
+                bookingServiceRepository.revenueByService(hotelIds, BookingStatus.COMPLETED, from, to).stream()
+                        .map(RevenueByServiceDTO::getTotalRevenue));
+        return new RevenueFigures.PeriodRows(
+                from,
+                to,
+                bookingRepository.findSales(hotelIds, BookingStatus.COMPLETED, from, to),
+                serviceRevenue,
+                tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to),
+                bookingRoomRepository.findRoomNightsByStatus(hotelIds, BookingStatus.COMPLETED, from, to),
+                totalRooms,
+                occupiedRoomNights,
+                bookingRepository.countBookings(hotelIds, from, to),
+                bookingRepository.countBookingsByStatus(hotelIds, BookingStatus.CANCELED, from, to));
+    }
+
     private OccupancyResponse occupancy(List<Long> hotelIds, LocalDate from, LocalDate to) {
         requireRange(from, to);
         long nights = ChronoUnit.DAYS.between(from, to);
@@ -413,6 +461,13 @@ public class ReportServiceImpl implements ReportService {
     private void requireRange(LocalDate from, LocalDate to) {
         if (from == null || to == null || !from.isBefore(to)) {
             throw new AppException(ErrorCode.BAD_REQUEST, "'from' phải trước 'to'");
+        }
+    }
+
+    /** Both ends inclusive, so a single day is a valid period. */
+    private void requireInclusiveRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "'from' không được sau 'to'");
         }
     }
 

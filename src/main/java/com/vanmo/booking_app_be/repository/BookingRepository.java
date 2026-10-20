@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByMonthDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByYearDTO;
@@ -243,6 +244,24 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 		AND b.checkinDate BETWEEN :from AND :to
 	""")
     long countBookingsByStatus(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** Bookings in a status whose check-out falls in [from, to] - the raw rows of the revenue summary. */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.CompletedBookingRow(
+			b.id, b.totalAmount, b.paymentMethod, acc.id
+		)
+		FROM Booking b
+		LEFT JOIN b.handledBy acc
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkoutDate BETWEEN :from AND :to
+	""")
+    List<CompletedBookingRow> findSales(
             @Param("hotelIds") List<Long> hotelIds,
             @Param("status") BookingStatus status,
             @Param("from") LocalDate from,
