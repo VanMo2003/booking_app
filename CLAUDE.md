@@ -409,6 +409,9 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   orders (`findUpcoming`), on the same days the revenue reports will count them once completed.
   `outstanding*` is every COMPLETED booking not marked PAID (`completeBooking` never touches the
   payment status, so this is the front desk's to-collect list).
+- The `.xlsx` exports reuse the same service methods (so the same guards): "KPI so với kỳ trước",
+  "Thanh toán & kênh bán", "Doanh thu theo tour", and for chains "So sánh cơ sở" right after the KPIs.
+  `ExcelReportServiceImplTest` mocks `ReportService` and reads the workbook back.
 
 ### Public browsing
 
