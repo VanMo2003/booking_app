@@ -87,4 +87,10 @@ public interface ReportService {
     // ---- the chain's branches side by side over [from, to] ----
 
     List<BranchPerformanceDTO> getBranchPerformanceForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    // ---- revenue still to come over the next `days` days, money still to collect ----
+
+    RevenueOutlookResponse getRevenueOutlook(Long hotelId, int days);
+
+    RevenueOutlookResponse getRevenueOutlookForChain(Long hotelChainId, int days);
 }

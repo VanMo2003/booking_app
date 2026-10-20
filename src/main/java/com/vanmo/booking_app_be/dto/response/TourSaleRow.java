@@ -1,6 +1,7 @@
 package com.vanmo.booking_app_be.dto.response;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -23,6 +24,7 @@ public class TourSaleRow {
     BigDecimal roomAmount;
     BigDecimal totalAmount;
     Boolean createdByAi;
+    LocalDate tourDate;
 
     /** Orders placed before tours had rooms only stored the total. */
     public BigDecimal tourRevenue() {

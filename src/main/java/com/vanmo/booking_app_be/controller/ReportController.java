@@ -284,6 +284,20 @@ public class ReportController {
         return ApiResponse.ok(reportService.getBranchPerformanceForChain(hotelChainId, from, to));
     }
 
+    // ---- revenue still to come and money still to collect ----
+
+    @GetMapping("/outlook")
+    public ApiResponse<RevenueOutlookResponse> revenueOutlook(
+            @RequestParam Long hotelId, @RequestParam(defaultValue = "30") int days) {
+        return ApiResponse.ok(reportService.getRevenueOutlook(hotelId, days));
+    }
+
+    @GetMapping("/chain/outlook")
+    public ApiResponse<RevenueOutlookResponse> revenueOutlookForChain(
+            @RequestParam Long hotelChainId, @RequestParam(defaultValue = "30") int days) {
+        return ApiResponse.ok(reportService.getRevenueOutlookForChain(hotelChainId, days));
+    }
+
     // ---- Excel export ----
 
     @GetMapping("/export")

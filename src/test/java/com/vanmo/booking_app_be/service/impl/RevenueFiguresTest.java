@@ -11,12 +11,16 @@ import org.junit.jupiter.api.Test;
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
+import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 
 class RevenueFiguresTest {
 
@@ -39,7 +43,8 @@ class RevenueFiguresTest {
                 BigDecimal.valueOf(tourAmount),
                 BigDecimal.valueOf(roomAmount),
                 BigDecimal.valueOf(tourAmount + roomAmount),
-                ai);
+                ai,
+                OCT_1);
     }
 
     private static RevenueFigures.PeriodRows rows(
@@ -100,7 +105,7 @@ class RevenueFiguresTest {
 
     @Test
     void oldTourOrdersWithoutTourAmountCountTheirTotal() {
-        TourSaleRow legacy = new TourSaleRow(7L, "Sapa", 2, null, null, BigDecimal.valueOf(700_000), false);
+        TourSaleRow legacy = new TourSaleRow(7L, "Sapa", 2, null, null, BigDecimal.valueOf(700_000), false, OCT_1);
         RevenuePeriodDTO period =
                 RevenueFigures.period(rows(OCT_1, OCT_10, List.of(), 0, List.of(legacy), List.of(), 0));
 
@@ -167,10 +172,10 @@ class RevenueFiguresTest {
     @Test
     void toursAreGroupedPerTourWithAiOrdersCountedAndBiggestFirst() {
         TourSaleRow sapa = new TourSaleRow(
-                9L, "Sapa", 4, BigDecimal.valueOf(2_000_000), null, BigDecimal.valueOf(2_000_000), false);
+                9L, "Sapa", 4, BigDecimal.valueOf(2_000_000), null, BigDecimal.valueOf(2_000_000), false, OCT_1);
         // a deleted tour keeps its name on the orders
         TourSaleRow deleted = new TourSaleRow(
-                null, "Ninh Bình", 1, BigDecimal.valueOf(300_000), null, BigDecimal.valueOf(300_000), false);
+                null, "Ninh Bình", 1, BigDecimal.valueOf(300_000), null, BigDecimal.valueOf(300_000), false, OCT_1);
 
         List<RevenueByTourDTO> rows = RevenueFigures.byTour(
                 List.of(tour(900_000, 1_000_000, 3, true), sapa, tour(450_000, 0, 1, false), deleted));
@@ -232,5 +237,50 @@ class RevenueFiguresTest {
                 RevenueFigures.rankBranches(List.of(RevenueFigures.branch(6L, "A", nothing, nothing)));
 
         assertThat(ranked.get(0).getRevenueShare()).isZero();
+    }
+
+    private static OpenBookingRow open(long amount, BookingStatus status, PaymentStatus payment, LocalDate checkout) {
+        return new OpenBookingRow(1L, BigDecimal.valueOf(amount), status, payment, checkout);
+    }
+
+    @Test
+    void outlookSpreadsOpenBookingsAndToursOverTheWindowAndFlagsWhatIsLate() {
+        LocalDate today = OCT_10;
+        LocalDate end = today.plusDays(6);
+        TourSaleRow upcomingTour = new TourSaleRow(
+                7L,
+                "Hạ Long",
+                2,
+                BigDecimal.valueOf(900_000),
+                BigDecimal.valueOf(550_000),
+                BigDecimal.valueOf(1_450_000),
+                false,
+                today.plusDays(2));
+
+        RevenueOutlookResponse outlook = RevenueFigures.outlook(
+                today,
+                end,
+                List.of(
+                        open(1_200_000, BookingStatus.CONFIRMED, PaymentStatus.PAID, today),
+                        open(800_000, BookingStatus.PENDING, PaymentStatus.UNPAID, today.plusDays(2)),
+                        // checked out two days ago on paper, still open
+                        open(500_000, BookingStatus.CONFIRMED, PaymentStatus.UNPAID, today.minusDays(2))),
+                List.of(upcomingTour),
+                List.of(open(300_000, BookingStatus.COMPLETED, PaymentStatus.UNPAID, OCT_1)));
+
+        assertThat(outlook.getByDate()).hasSize(7);
+        assertThat(outlook.getByDate().get(0).getBookingRevenue()).isEqualByComparingTo("1200000");
+        assertThat(outlook.getByDate().get(2).getBookingRevenue()).isEqualByComparingTo("800000");
+        assertThat(outlook.getByDate().get(2).getTourRevenue()).isEqualByComparingTo("900000");
+        assertThat(outlook.getBookingRevenue()).isEqualByComparingTo("2000000");
+        assertThat(outlook.getBookings()).isEqualTo(2);
+        assertThat(outlook.getPrepaidRevenue()).isEqualByComparingTo("1200000");
+        assertThat(outlook.getAwaitingConfirmationRevenue()).isEqualByComparingTo("800000");
+        assertThat(outlook.getTourRevenue()).isEqualByComparingTo("900000");
+        assertThat(outlook.getTotalExpected()).isEqualByComparingTo("2900000");
+        assertThat(outlook.getOverdueRevenue()).isEqualByComparingTo("500000");
+        assertThat(outlook.getOverdueBookings()).isEqualTo(1);
+        assertThat(outlook.getOutstandingAmount()).isEqualByComparingTo("300000");
+        assertThat(outlook.getOutstandingBookings()).isEqualTo(1);
     }
 }

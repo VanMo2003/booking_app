@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByMonthDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByYearDTO;
@@ -266,4 +268,39 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("status") BookingStatus status,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
+
+    /**
+     * Bookings in one of the statuses checking out on or before :to - open stays still to earn, including the overdue
+     * ones whose check-out day already passed.
+     */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.OpenBookingRow(
+			b.id, b.totalAmount, b.bookingStatus, b.paymentStatus, b.checkoutDate
+		)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus IN :statuses
+		AND b.checkoutDate <= :to
+	""")
+    List<OpenBookingRow> findOpen(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("statuses") Collection<BookingStatus> statuses,
+            @Param("to") LocalDate to);
+
+    /** Bookings in a status whose payment was never recorded as :paid. */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.OpenBookingRow(
+			b.id, b.totalAmount, b.bookingStatus, b.paymentStatus, b.checkoutDate
+		)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.paymentStatus <> :paid
+	""")
+    List<OpenBookingRow> findUnpaid(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("paid") PaymentStatus paid);
 }

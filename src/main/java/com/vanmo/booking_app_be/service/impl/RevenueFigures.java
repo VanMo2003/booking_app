@@ -15,12 +15,17 @@ import java.util.stream.Stream;
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
+import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
+import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 
 /** The revenue summary's arithmetic, kept apart from the queries so it can be checked on plain rows. */
 final class RevenueFigures {
@@ -199,6 +204,81 @@ final class RevenueFigures {
                         .reversed()
                         .thenComparing(BranchPerformanceDTO::getHotelName, Comparator.nullsLast(String::compareTo)))
                 .toList();
+    }
+
+    /**
+     * Revenue still to come over [from, to] and money still to collect.
+     *
+     * @param open open bookings checking out on or before {@code to}; earlier check-outs are overdue
+     * @param tours open tour orders departing in [from, to]
+     * @param unpaidCompleted completed bookings never marked as paid
+     */
+    static RevenueOutlookResponse outlook(
+            LocalDate from,
+            LocalDate to,
+            List<OpenBookingRow> open,
+            List<TourSaleRow> tours,
+            List<OpenBookingRow> unpaidCompleted) {
+        Map<LocalDate, ExpectedRevenueDTO> byDate = new LinkedHashMap<>();
+        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+            byDate.put(day, new ExpectedRevenueDTO(day, BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L));
+        }
+        // slices double as count + amount accumulators
+        RevenueShareDTO booked = slice("BOOKED");
+        RevenueShareDTO prepaid = slice("PREPAID");
+        RevenueShareDTO awaiting = slice("AWAITING");
+        RevenueShareDTO overdue = slice("OVERDUE");
+        for (OpenBookingRow row : open) {
+            if (row.getCheckoutDate().isBefore(from)) {
+                add(overdue, row.getTotalAmount());
+                continue;
+            }
+            ExpectedRevenueDTO day = byDate.get(row.getCheckoutDate());
+            if (day == null) {
+                continue;
+            }
+            BigDecimal amount = row.getTotalAmount() == null ? BigDecimal.ZERO : row.getTotalAmount();
+            day.setBookingRevenue(day.getBookingRevenue().add(amount));
+            day.setBookings(day.getBookings() + 1);
+            add(booked, amount);
+            if (row.getPaymentStatus() == PaymentStatus.PAID) {
+                add(prepaid, amount);
+            }
+            if (row.getBookingStatus() == BookingStatus.PENDING) {
+                add(awaiting, amount);
+            }
+        }
+        RevenueShareDTO tourTotal = slice(TOUR);
+        for (TourSaleRow row : tours) {
+            ExpectedRevenueDTO day = byDate.get(row.getTourDate());
+            if (day == null) {
+                continue;
+            }
+            day.setTourRevenue(day.getTourRevenue().add(row.tourRevenue()));
+            day.setTours(day.getTours() + 1);
+            add(tourTotal, row.tourRevenue());
+        }
+        RevenueShareDTO outstanding = slice("OUTSTANDING");
+        unpaidCompleted.forEach(row -> add(outstanding, row.getTotalAmount()));
+
+        return RevenueOutlookResponse.builder()
+                .from(from)
+                .to(to)
+                .totalExpected(booked.getRevenue().add(tourTotal.getRevenue()))
+                .bookingRevenue(booked.getRevenue())
+                .bookings(booked.getCount())
+                .prepaidRevenue(prepaid.getRevenue())
+                .prepaidBookings(prepaid.getCount())
+                .awaitingConfirmationRevenue(awaiting.getRevenue())
+                .awaitingConfirmationBookings(awaiting.getCount())
+                .tourRevenue(tourTotal.getRevenue())
+                .tours(tourTotal.getCount())
+                .byDate(List.copyOf(byDate.values()))
+                .overdueRevenue(overdue.getRevenue())
+                .overdueBookings(overdue.getCount())
+                .outstandingAmount(outstanding.getRevenue())
+                .outstandingBookings(outstanding.getCount())
+                .build();
     }
 
     /** Percentage change, 2 decimals; null when there was nothing before to compare with. */

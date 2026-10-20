@@ -404,6 +404,11 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   tour id, or by the kept name once the tour was deleted).
   `/reports/chain/branches` runs the same per-period rows once per branch (current + previous), then
   `RevenueFigures.rankBranches` fills each branch's share of the chain total and sorts by revenue.
+- **`/reports/outlook` looks forward from `LocalDate.now()`** (`days` 1–90): open = PENDING/CONFIRMED
+  bookings (`findOpen`, check-out ≤ window end — earlier check-outs are reported as overdue) and tour
+  orders (`findUpcoming`), on the same days the revenue reports will count them once completed.
+  `outstanding*` is every COMPLETED booking not marked PAID (`completeBooking` never touches the
+  payment status, so this is the front desk's to-collect list).
 
 ### Public browsing
 

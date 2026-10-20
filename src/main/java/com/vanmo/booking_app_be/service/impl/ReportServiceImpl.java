@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ import com.vanmo.booking_app_be.entity.Employee;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Report;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
@@ -46,6 +48,7 @@ import lombok.RequiredArgsConstructor;
 public class ReportServiceImpl implements ReportService {
 
     private static final int MAX_DAILY_RANGE = 92;
+    private static final int MAX_OUTLOOK_DAYS = 90;
 
     private final ReportRepository reportRepository;
     private final ReportMapper reportMapper;
@@ -360,6 +363,33 @@ public class ReportServiceImpl implements ReportService {
                 })
                 .toList();
         return RevenueFigures.rankBranches(branches);
+    }
+
+    @Override
+    public RevenueOutlookResponse getRevenueOutlook(Long hotelId, int days) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return revenueOutlook(List.of(hotelId), days);
+    }
+
+    @Override
+    public RevenueOutlookResponse getRevenueOutlookForChain(Long hotelChainId, int days) {
+        return revenueOutlook(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), days);
+    }
+
+    /** Today and the next days - 1 days. */
+    private RevenueOutlookResponse revenueOutlook(List<Long> hotelIds, int days) {
+        if (days < 1 || days > MAX_OUTLOOK_DAYS) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Số ngày dự kiến phải từ 1 đến " + MAX_OUTLOOK_DAYS);
+        }
+        LocalDate from = LocalDate.now();
+        LocalDate to = from.plusDays(days - 1L);
+        return RevenueFigures.outlook(
+                from,
+                to,
+                bookingRepository.findOpen(hotelIds, EnumSet.of(BookingStatus.PENDING, BookingStatus.CONFIRMED), to),
+                tourBookingRepository.findUpcoming(
+                        hotelIds, EnumSet.of(TourBookingStatus.PENDING, TourBookingStatus.CONFIRMED), from, to),
+                bookingRepository.findUnpaid(hotelIds, BookingStatus.COMPLETED, PaymentStatus.PAID));
     }
 
     /** [from, to] against the period of the same number of days that ends the day before. */
