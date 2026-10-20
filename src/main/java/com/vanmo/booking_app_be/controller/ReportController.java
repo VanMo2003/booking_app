@@ -260,6 +260,22 @@ public class ReportController {
         return ApiResponse.ok(reportService.getRevenueSummaryForChain(hotelChainId, from, to));
     }
 
+    @GetMapping("/revenue-by-tour")
+    public ApiResponse<List<RevenueByTourDTO>> revenueByTour(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueByTour(hotelId, from, to));
+    }
+
+    @GetMapping("/chain/revenue-by-tour")
+    public ApiResponse<List<RevenueByTourDTO>> revenueByTourForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRevenueByTourForChain(hotelChainId, from, to));
+    }
+
     // ---- Excel export ----
 
     @GetMapping("/export")

@@ -77,4 +77,10 @@ public interface ReportService {
     RevenueSummaryResponse getRevenueSummary(Long hotelId, LocalDate from, LocalDate to);
 
     RevenueSummaryResponse getRevenueSummaryForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    // ---- completed tour orders per tour (tour date in [from, to]) ----
+
+    List<RevenueByTourDTO> getRevenueByTour(Long hotelId, LocalDate from, LocalDate to);
+
+    List<RevenueByTourDTO> getRevenueByTourForChain(Long hotelChainId, LocalDate from, LocalDate to);
 }

@@ -8807,6 +8807,106 @@
           ]
         },
         {
+          "name": "GET revenue by tour (manager)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/revenue-by-tour?hotelId={{hotelId}}&from={{tourDate}}&to={{tourDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "revenue-by-tour"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{tourDate}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{tourDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().data;",
+                  "pm.test('one tour with its completed order', () => { pm.expect(rows.length).to.eql(1); pm.expect(rows[0].orders).to.eql(1); pm.expect(rows[0].guests).to.eql(2); });",
+                  "pm.test('tour revenue 450.000 x 2, package room shown apart', () => { pm.expect(rows[0].tourRevenue).to.eql(900000); pm.expect(rows[0].packageRoomAmount).to.eql(550000); });",
+                  "pm.test('placed in the app', () => pm.expect(rows[0].aiOrders).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET chain revenue by tour (owner)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/chain/revenue-by-tour?hotelChainId={{chainId}}&from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "chain",
+                "revenue-by-tour"
+              ],
+              "query": [
+                {
+                  "key": "hotelChainId",
+                  "value": "{{chainId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the tour is listed', () => pm.expect(pm.response.json().data[0].tourRevenue).to.eql(900000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Export branch report to Excel (.xlsx)",
           "request": {
             "method": "GET",

@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import java.util.stream.Stream;
 
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
@@ -135,6 +137,33 @@ final class RevenueFigures {
             add(tour, row.tourRevenue());
         }
         return withShares(List.of(selfService, frontDesk, tour));
+    }
+
+    /**
+     * Completed tour orders per tour, biggest earner first. Orders of a deleted tour (null id) are grouped by the name
+     * they kept, so two branches' tours with the same name stay apart while they exist.
+     */
+    static List<RevenueByTourDTO> byTour(List<TourSaleRow> tours) {
+        Map<String, RevenueByTourDTO> byKey = new LinkedHashMap<>();
+        for (TourSaleRow row : tours) {
+            String key = row.getTourId() != null ? "id:" + row.getTourId() : "name:" + row.getTourName();
+            RevenueByTourDTO acc = byKey.computeIfAbsent(
+                    key,
+                    k -> new RevenueByTourDTO(
+                            row.getTourId(), row.getTourName(), 0L, 0L, BigDecimal.ZERO, BigDecimal.ZERO, 0L));
+            acc.setOrders(acc.getOrders() + 1);
+            acc.setGuests(acc.getGuests() + (row.getGuests() == null ? 0 : row.getGuests()));
+            acc.setTourRevenue(acc.getTourRevenue().add(row.tourRevenue()));
+            if (row.getRoomAmount() != null) {
+                acc.setPackageRoomAmount(acc.getPackageRoomAmount().add(row.getRoomAmount()));
+            }
+            if (Boolean.TRUE.equals(row.getCreatedByAi())) {
+                acc.setAiOrders(acc.getAiOrders() + 1);
+            }
+        }
+        return byKey.values().stream()
+                .sorted(Comparator.comparing(RevenueByTourDTO::getTourRevenue).reversed())
+                .toList();
     }
 
     /** Percentage change, 2 decimals; null when there was nothing before to compare with. */

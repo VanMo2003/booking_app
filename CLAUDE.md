@@ -400,6 +400,8 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   their own `Booking` and earn at checkout), ADR/RevPAR in whole đồng, growth `null` when the
   previous period was 0. Its `from`/`to` are inclusive (single day allowed), unlike `occupancy`.
   The older time-series endpoints stay booking-only so existing clients' numbers don't move.
+  `/reports/revenue-by-tour` reuses the same `TourSaleRow`s via `RevenueFigures.byTour` (grouped by
+  tour id, or by the kept name once the tour was deleted).
 
 ### Public browsing
 

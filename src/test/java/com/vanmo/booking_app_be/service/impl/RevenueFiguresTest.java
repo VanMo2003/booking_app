@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
@@ -160,5 +161,27 @@ class RevenueFiguresTest {
                 .extracting(RevenueShareDTO::getKey)
                 .containsExactly(RevenueFigures.SELF_SERVICE, RevenueFigures.FRONT_DESK, RevenueFigures.TOUR);
         assertThat(slices).extracting(RevenueShareDTO::getShare).containsExactly(60d, 20d, 20d);
+    }
+
+    @Test
+    void toursAreGroupedPerTourWithAiOrdersCountedAndBiggestFirst() {
+        TourSaleRow sapa = new TourSaleRow(
+                9L, "Sapa", 4, BigDecimal.valueOf(2_000_000), null, BigDecimal.valueOf(2_000_000), false);
+        // a deleted tour keeps its name on the orders
+        TourSaleRow deleted = new TourSaleRow(
+                null, "Ninh Bình", 1, BigDecimal.valueOf(300_000), null, BigDecimal.valueOf(300_000), false);
+
+        List<RevenueByTourDTO> rows = RevenueFigures.byTour(
+                List.of(tour(900_000, 1_000_000, 3, true), sapa, tour(450_000, 0, 1, false), deleted));
+
+        assertThat(rows).extracting(RevenueByTourDTO::getTourName).containsExactly("Sapa", "Hạ Long", "Ninh Bình");
+        RevenueByTourDTO haLong = rows.get(1);
+        assertThat(haLong.getTourId()).isEqualTo(7L);
+        assertThat(haLong.getOrders()).isEqualTo(2);
+        assertThat(haLong.getGuests()).isEqualTo(4);
+        assertThat(haLong.getTourRevenue()).isEqualByComparingTo("1350000");
+        assertThat(haLong.getPackageRoomAmount()).isEqualByComparingTo("1000000");
+        assertThat(haLong.getAiOrders()).isEqualTo(1);
+        assertThat(rows.get(2).getTourId()).isNull();
     }
 }

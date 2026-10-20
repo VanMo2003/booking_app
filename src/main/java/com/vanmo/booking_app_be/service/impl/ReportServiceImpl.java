@@ -326,6 +326,22 @@ public class ReportServiceImpl implements ReportService {
         return revenueSummary(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
     }
 
+    @Override
+    public List<RevenueByTourDTO> getRevenueByTour(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return revenueByTour(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public List<RevenueByTourDTO> getRevenueByTourForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return revenueByTour(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private List<RevenueByTourDTO> revenueByTour(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        return RevenueFigures.byTour(tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to));
+    }
+
     /** [from, to] against the period of the same number of days that ends the day before. */
     private RevenueSummaryResponse revenueSummary(List<Long> hotelIds, LocalDate from, LocalDate to) {
         requireInclusiveRange(from, to);
