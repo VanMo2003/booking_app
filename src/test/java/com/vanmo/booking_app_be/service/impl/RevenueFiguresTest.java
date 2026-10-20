@@ -141,6 +141,36 @@ class RevenueFiguresTest {
         assertThat(summary.getOccupancyChange()).isEqualTo(10d);
     }
 
+    private static RevenueFigures.Period previous(String from, String to) {
+        return RevenueFigures.previousPeriod(LocalDate.parse(from), LocalDate.parse(to));
+    }
+
+    private static RevenueFigures.Period period(String from, String to) {
+        return new RevenueFigures.Period(LocalDate.parse(from), LocalDate.parse(to));
+    }
+
+    @Test
+    void calendarRangesCompareWithTheSameStretchOneMonthOrYearEarlier() {
+        // month to date vs the same days of last month; a whole month vs the whole previous month
+        assertThat(previous("2026-10-01", "2026-10-20")).isEqualTo(period("2026-09-01", "2026-09-20"));
+        assertThat(previous("2026-09-01", "2026-09-30")).isEqualTo(period("2026-08-01", "2026-08-31"));
+        assertThat(previous("2026-03-01", "2026-03-31")).isEqualTo(period("2026-02-01", "2026-02-28"));
+        assertThat(previous("2026-03-01", "2026-03-30")).isEqualTo(period("2026-02-01", "2026-02-28"));
+        // January to date is still a month: compared with December
+        assertThat(previous("2026-01-01", "2026-01-15")).isEqualTo(period("2025-12-01", "2025-12-15"));
+        // year to date and whole years vs last year
+        assertThat(previous("2026-01-01", "2026-10-20")).isEqualTo(period("2025-01-01", "2025-10-20"));
+        assertThat(previous("2026-01-01", "2026-12-31")).isEqualTo(period("2025-01-01", "2025-12-31"));
+        assertThat(previous("2025-01-01", "2025-02-28")).isEqualTo(period("2024-01-01", "2024-02-29"));
+    }
+
+    @Test
+    void otherRangesCompareWithAsManyDaysJustBefore() {
+        assertThat(previous("2026-10-14", "2026-10-20")).isEqualTo(period("2026-10-07", "2026-10-13"));
+        assertThat(previous("2026-09-15", "2026-10-14")).isEqualTo(period("2026-08-16", "2026-09-14"));
+        assertThat(previous("2026-10-10", "2026-10-10")).isEqualTo(period("2026-10-09", "2026-10-09"));
+    }
+
     @Test
     void growthIsLeftOutWhenThePreviousPeriodEarnedNothing() {
         assertThat(RevenueFigures.growth(BigDecimal.TEN, BigDecimal.ZERO)).isNull();

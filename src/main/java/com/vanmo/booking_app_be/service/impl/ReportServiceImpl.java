@@ -349,8 +349,7 @@ public class ReportServiceImpl implements ReportService {
     public List<BranchPerformanceDTO> getBranchPerformanceForChain(Long hotelChainId, LocalDate from, LocalDate to) {
         requireChainAccess(hotelChainId);
         requireInclusiveRange(from, to);
-        LocalDate previousFrom = previousFrom(from, to);
-        LocalDate previousTo = from.minusDays(1);
+        RevenueFigures.Period previous = RevenueFigures.previousPeriod(from, to);
         List<BranchPerformanceDTO> branches = hotelRepository.findAllByHotelChain_Id(hotelChainId).stream()
                 .map(hotel -> {
                     List<Long> ids = List.of(hotel.getId());
@@ -359,7 +358,7 @@ public class ReportServiceImpl implements ReportService {
                             hotel.getId(),
                             hotel.getName(),
                             periodRows(ids, rooms, from, to),
-                            periodRows(ids, rooms, previousFrom, previousTo));
+                            periodRows(ids, rooms, previous.from(), previous.to()));
                 })
                 .toList();
         return RevenueFigures.rankBranches(branches);
@@ -392,19 +391,14 @@ public class ReportServiceImpl implements ReportService {
                 bookingRepository.findUnpaid(hotelIds, BookingStatus.COMPLETED, PaymentStatus.PAID));
     }
 
-    /** [from, to] against the period of the same number of days that ends the day before. */
+    /** [from, to] against its {@link RevenueFigures#previousPeriod previous period}. */
     private RevenueSummaryResponse revenueSummary(List<Long> hotelIds, LocalDate from, LocalDate to) {
         requireInclusiveRange(from, to);
         long totalRooms = roomRepository.countByHotel_IdIn(hotelIds);
+        RevenueFigures.Period previous = RevenueFigures.previousPeriod(from, to);
         return RevenueFigures.summary(
                 periodRows(hotelIds, totalRooms, from, to),
-                periodRows(hotelIds, totalRooms, previousFrom(from, to), from.minusDays(1)));
-    }
-
-    /** Start of the period just before [from, to] with as many days. */
-    private LocalDate previousFrom(LocalDate from, LocalDate to) {
-        long days = ChronoUnit.DAYS.between(from, to) + 1;
-        return from.minusDays(days);
+                periodRows(hotelIds, totalRooms, previous.from(), previous.to()));
     }
 
     private RevenueFigures.PeriodRows periodRows(List<Long> hotelIds, long totalRooms, LocalDate from, LocalDate to) {

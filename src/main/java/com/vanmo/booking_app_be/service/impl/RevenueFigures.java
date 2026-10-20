@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.service.impl;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Comparator;
@@ -60,6 +61,29 @@ final class RevenueFigures {
         long days() {
             return ChronoUnit.DAYS.between(from, to) + 1;
         }
+    }
+
+    /** Both ends inclusive. */
+    record Period(LocalDate from, LocalDate to) {}
+
+    /**
+     * The period [from, to] is compared with. Calendar-aligned ranges compare with the same stretch one calendar unit
+     * earlier, the way hotels read their books: a month or month-to-date with the same days of the previous month (a
+     * whole month with the whole previous month), a range from 1 January over several months with the same range last
+     * year. Any other range compares with the same number of days just before it.
+     */
+    static Period previousPeriod(LocalDate from, LocalDate to) {
+        boolean wholeMonthEnd = to.getDayOfMonth() == to.lengthOfMonth();
+        if (from.getDayOfMonth() == 1 && YearMonth.from(from).equals(YearMonth.from(to))) {
+            LocalDate start = from.minusMonths(1);
+            return new Period(start, wholeMonthEnd ? start.withDayOfMonth(start.lengthOfMonth()) : to.minusMonths(1));
+        }
+        if (from.getDayOfYear() == 1 && from.getYear() == to.getYear()) {
+            LocalDate end = to.minusYears(1);
+            return new Period(from.minusYears(1), wholeMonthEnd ? end.withDayOfMonth(end.lengthOfMonth()) : end);
+        }
+        long days = ChronoUnit.DAYS.between(from, to) + 1;
+        return new Period(from.minusDays(days), from.minusDays(1));
     }
 
     static RevenueSummaryResponse summary(PeriodRows currentRows, PeriodRows previousRows) {

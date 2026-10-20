@@ -394,8 +394,10 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   `ReportServiceImpl.nightsWithin`), to avoid DB-specific date arithmetic. `occupancy/daily` is
   capped at 92 days (`MAX_DAILY_RANGE`).
 - **`/reports/summary` is the only revenue figure that includes tours.** It fetches plain rows
-  (`CompletedBookingRow`, `TourSaleRow`, `BookedRoomNightRow`) for the period and the equal-length
-  period before it, and `RevenueFigures` (pure, unit-tested in `RevenueFiguresTest`) does the sums:
+  (`CompletedBookingRow`, `TourSaleRow`, `BookedRoomNightRow`) for the period and the period
+  `RevenueFigures.previousPeriod` picks (calendar-aligned: month-to-date/whole month vs the previous
+  month, multi-month ranges from 1 January vs last year; otherwise as many days just before), and
+  `RevenueFigures` (pure, unit-tested in `RevenueFiguresTest`) does the sums:
   room revenue = booking totals − service lines, tours add `tourAmount` only (the package rooms are
   their own `Booking` and earn at checkout), ADR/RevPAR in whole đồng, growth `null` when the
   previous period was 0. Its `from`/`to` are inclusive (single day allowed), unlike `occupancy`.

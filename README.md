@@ -270,7 +270,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 
 | Báo cáo | Endpoint | Ghi chú |
 |---|---|---|
-| Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ; so với kỳ liền trước cùng số ngày; chia theo phương thức thanh toán và kênh bán (khách tự đặt / tại quầy / tour). `from`, `to` tính cả hai đầu |
+| Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ; so với kỳ trước (xem bên dưới); chia theo phương thức thanh toán và kênh bán (khách tự đặt / tại quầy / tour). `from`, `to` tính cả hai đầu |
 | Doanh thu theo thời gian | `GET /reports/daily`, `/weekly`, `/weekly-in-month`, `/monthly`, `/monthly/last-5-months`, `/yearly` | Chỉ đơn phòng (đã gồm dịch vụ) |
 | Lấp đầy | `GET /reports/occupancy`, `/occupancy/daily` | `[from, to)`; theo ngày tối đa 92 ngày, chỉ cấp cơ sở |
 | Doanh thu dự kiến & tiền chưa thu | `GET /reports/outlook?days=30` | Từ hôm nay, tối đa 90 ngày: đơn chờ/đã xác nhận theo ngày trả phòng và tour chờ/đã xác nhận theo ngày đi (từng ngày), phần khách đã trả trước, phần còn chờ xác nhận; đơn quá ngày trả phòng chưa hoàn tất; đơn đã hoàn tất chưa ghi nhận thanh toán |
@@ -282,6 +282,13 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 Cách tính trong tổng quan: tiền phòng = tổng đơn − dòng dịch vụ; ADR = tiền phòng / đêm đã bán; RevPAR =
 tiền phòng / (số phòng × số ngày). Mức tăng trưởng là % so với kỳ trước, bị bỏ khỏi JSON khi kỳ trước
 bằng 0; lấp đầy so bằng điểm phần trăm (`occupancyChange`).
+
+Kỳ trước (`previous`, cũng dùng cho tăng trưởng của từng cơ sở) theo lịch khi có thể:
+
+- Khoảng trong một tháng bắt đầu từ mùng 1 → cùng các ngày của tháng trước (01–20/10 so với 01–20/09);
+  cả tháng so với cả tháng trước (09 so với 01–31/08).
+- Khoảng từ 1/1 kéo dài nhiều tháng → cùng kỳ năm trước (01/01–20/10/2026 so với 01/01–20/10/2025).
+- Khoảng khác → cùng số ngày ngay trước đó (14–20/10 so với 07–13/10).
 
 ## Yêu cầu môi trường
 
