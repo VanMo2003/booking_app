@@ -30,10 +30,13 @@ import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TopCustomerDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.ChatSide;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
+import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 
 class RevenueFiguresTest {
 
@@ -185,6 +188,21 @@ class RevenueFiguresTest {
         assertThat(top.get(0).getTours()).isEqualTo(1);
         assertThat(top.get(2).getTotalBooking()).isZero();
         assertThat(top.get(2).getTourSpend()).isEqualByComparingTo("1800000");
+    }
+
+    @Test
+    void tourCancellationsSayWhoCancelled() {
+        RevenueFigures.TourCancellations tours = RevenueFigures.tourCancellations(List.of(
+                new TourStatusCountRow(TourBookingStatus.COMPLETED, null, 5L),
+                new TourStatusCountRow(TourBookingStatus.CONFIRMED, null, 2L),
+                new TourStatusCountRow(TourBookingStatus.CANCELED, ChatSide.CUSTOMER, 2L),
+                new TourStatusCountRow(TourBookingStatus.CANCELED, ChatSide.HOTEL, 1L)));
+
+        assertThat(tours.orders()).isEqualTo(10);
+        assertThat(tours.canceled()).isEqualTo(3);
+        assertThat(tours.byGuest()).isEqualTo(2);
+        assertThat(tours.byHotel()).isEqualTo(1);
+        assertThat(tours.rate()).isEqualTo(30d);
     }
 
     @Test

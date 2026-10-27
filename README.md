@@ -282,6 +282,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | Doanh thu theo tour | `GET /reports/revenue-by-tour?from=&to=` | Đơn tour hoàn tất gộp theo tour: số đơn, số khách, tiền tour, tiền phòng gói (chỉ tham khảo), số đơn do AI lên |
 | Hiệu suất nhân viên | `GET /reports/staff-performance?from=&to=` | Mỗi tài khoản quầy/quản lý: số đơn đã nhận và giá trị (nhận phòng trong kỳ, chưa huỷ), số đơn của họ đã hoàn tất và doanh thu thật (trả phòng trong kỳ), số tour hoàn tất họ xử lý và tiền tour; xếp theo hoàn tất + tour |
 | Khách chi tiêu nhiều nhất | `GET /reports/top-customers?from=&to=&limit=` | Tổng chi tiêu = đơn phòng hoàn tất (trả phòng trong kỳ) + tour hoàn tất (ngày đi trong kỳ), kèm số đơn, số tour, tiền tour; khách chỉ đi tour cũng được xếp hạng |
+| Tỷ lệ huỷ | `GET /reports/cancellation-rate?from=&to=` | Đơn nhận phòng trong kỳ: tổng, huỷ, hoàn tất, tỷ lệ; giá trị đơn bị huỷ; đơn huỷ chia khách tự đặt / đặt tại quầy; đơn tour có ngày đi trong kỳ: số đơn, số huỷ, khách huỷ / khách sạn huỷ, tỷ lệ huỷ tour |
 | Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | |
 | Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên, **tiền chưa thu** (danh sách tại thời điểm xuất); bản chuỗi thêm **so sánh cơ sở** |
 

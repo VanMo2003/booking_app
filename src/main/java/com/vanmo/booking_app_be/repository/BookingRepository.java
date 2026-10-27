@@ -239,6 +239,22 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     long countBookings(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    /** Bookings in a status checking in during [from, to] that the front desk took (handledBy set). */
+    @Query(
+            """
+		SELECT COUNT(b.id)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkinDate BETWEEN :from AND :to
+		AND b.handledBy IS NOT NULL
+	""")
+    long countTakenAtDeskByStatus(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
     /** Customers with a booking in the status that checked out before :before - who counts as a returning guest. */
     @Query(
             """

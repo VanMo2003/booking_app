@@ -36,10 +36,13 @@ import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TopCustomerDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.ChatSide;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
+import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 
 /** The revenue summary's arithmetic, kept apart from the queries so it can be checked on plain rows. */
 final class RevenueFigures {
@@ -586,6 +589,33 @@ final class RevenueFigures {
                         .reversed())
                 .limit(limit)
                 .toList();
+    }
+
+    /** Tour orders of a period: all of them, the cancelled ones and who cancelled. */
+    record TourCancellations(long orders, long canceled, long byGuest, long byHotel) {
+        double rate() {
+            return RevenueFigures.rate(canceled, orders);
+        }
+    }
+
+    static TourCancellations tourCancellations(List<TourStatusCountRow> rows) {
+        long orders = 0;
+        long canceled = 0;
+        long byGuest = 0;
+        long byHotel = 0;
+        for (TourStatusCountRow row : rows) {
+            long count = row.getCount() == null ? 0 : row.getCount();
+            orders += count;
+            if (row.getStatus() == TourBookingStatus.CANCELED) {
+                canceled += count;
+                if (row.getCanceledBy() == ChatSide.CUSTOMER) {
+                    byGuest += count;
+                } else if (row.getCanceledBy() == ChatSide.HOTEL) {
+                    byHotel += count;
+                }
+            }
+        }
+        return new TourCancellations(orders, canceled, byGuest, byHotel);
     }
 
     /** What, if anything, to tell the branch about its goal this morning. */

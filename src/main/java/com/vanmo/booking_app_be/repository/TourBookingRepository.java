@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
 import com.vanmo.booking_app_be.entity.TourBooking;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 
@@ -50,6 +51,14 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
             @Param("status") TourBookingStatus status,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
+
+    /** Tour orders with tour date in [from, to], counted per status and, for cancellations, per side. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.TourStatusCountRow(b.status, b.canceledBy, count(b)) "
+            + "from TourBooking b "
+            + "where b.hotel.id in :hotelIds and b.tourDate between :from and :to "
+            + "group by b.status, b.canceledBy")
+    List<TourStatusCountRow> countByStatus(
+            @Param("hotelIds") Collection<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /** Tour orders in a status with tour date in [from, to], per guest. */
     @Query("select new com.vanmo.booking_app_be.dto.response.CustomerTourRow("
