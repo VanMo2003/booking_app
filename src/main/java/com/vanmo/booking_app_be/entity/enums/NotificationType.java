@@ -13,5 +13,7 @@ public enum NotificationType {
     /** Sent to the chain owner and branch manager the morning a branch reaches its month's revenue goal. */
     REVENUE_TARGET_REACHED,
     /** Sent to the chain owner and branch manager once, from mid-month, when the month projects below 80% of goal. */
-    REVENUE_TARGET_AT_RISK
+    REVENUE_TARGET_AT_RISK,
+    /** Monday 8:00 digest of the week before: chain owners get their chain, managers their branch. */
+    WEEKLY_REPORT
 }

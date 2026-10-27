@@ -1,9 +1,11 @@
 package com.vanmo.booking_app_be.service.impl;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -26,8 +28,10 @@ import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Employee;
 import com.vanmo.booking_app_be.entity.Hotel;
+import com.vanmo.booking_app_be.entity.HotelChain;
 import com.vanmo.booking_app_be.entity.Report;
 import com.vanmo.booking_app_be.entity.RevenueTarget;
+import com.vanmo.booking_app_be.entity.enums.ApprovalStatus;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.NotificationType;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
@@ -42,6 +46,7 @@ import com.vanmo.booking_app_be.repository.BookingRepository;
 import com.vanmo.booking_app_be.repository.BookingRoomRepository;
 import com.vanmo.booking_app_be.repository.BookingServiceRepository;
 import com.vanmo.booking_app_be.repository.EmployeeRepository;
+import com.vanmo.booking_app_be.repository.HotelChainRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.PayrollRepository;
 import com.vanmo.booking_app_be.repository.ReportRepository;
@@ -75,6 +80,7 @@ public class ReportServiceImpl implements ReportService {
     private final RevenueTargetRepository revenueTargetRepository;
     private final NotificationService notificationService;
     private final AccountRepository accountRepository;
+    private final HotelChainRepository hotelChainRepository;
     private final AccessGuard accessGuard;
 
     @Override
@@ -539,6 +545,71 @@ public class ReportServiceImpl implements ReportService {
     public int runRevenueTargetAlertsNow() {
         accessGuard.requireAdmin();
         return sendRevenueTargetAlerts();
+    }
+
+    @Override
+    @Transactional
+    public int sendWeeklyDigests() {
+        LocalDate from = LocalDate.now()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .minusWeeks(1);
+        LocalDate to = from.plusDays(6);
+        int sent = 0;
+        for (HotelChain chain : hotelChainRepository.findAllByApprovalStatus(ApprovalStatus.APPROVED)) {
+            List<Hotel> hotels = hotelRepository.findAllByHotelChain_Id(chain.getId());
+            if (hotels.isEmpty()) {
+                continue;
+            }
+            Account owner = chain.getAccount();
+            List<Long> chainHotelIds = hotels.stream().map(Hotel::getId).toList();
+            if (sendDigest(owner, chain.getName(), chainHotelIds, from, to, chain.getId())) {
+                sent++;
+            }
+            for (Hotel hotel : hotels) {
+                Account manager = hotel.getAccount();
+                if (manager != null
+                        && !manager.getId().equals(owner.getId())
+                        && sendDigest(manager, hotel.getName(), List.of(hotel.getId()), from, to, hotel.getId())) {
+                    sent++;
+                }
+            }
+        }
+        return sent;
+    }
+
+    @Override
+    @Transactional
+    public int runWeeklyDigestsNow() {
+        accessGuard.requireAdmin();
+        return sendWeeklyDigests();
+    }
+
+    /** One digest of [from, to] against the week before; false (nothing sent) for two quiet weeks. */
+    private boolean sendDigest(
+            Account recipient, String scopeName, List<Long> hotelIds, LocalDate from, LocalDate to, Long referenceId) {
+        long rooms = roomRepository.countByHotel_IdIn(hotelIds);
+        RevenueSummaryResponse summary = RevenueFigures.summary(
+                periodRows(hotelIds, rooms, from, to),
+                periodRows(hotelIds, rooms, from.minusWeeks(1), to.minusWeeks(1)));
+        if (RevenueFigures.quiet(summary)) {
+            return false;
+        }
+        RevenuePeriodDTO week = summary.getCurrent();
+        notificationService.notify(
+                recipient,
+                NotificationType.WEEKLY_REPORT,
+                NotificationMessages.weeklyReport(
+                        scopeName,
+                        from,
+                        to,
+                        week.getTotalRevenue(),
+                        summary.getRevenueGrowth(),
+                        week.getOccupancyRate(),
+                        week.getCompletedBookings(),
+                        week.getCanceledBookings()),
+                null,
+                referenceId);
+        return true;
     }
 
     @Override

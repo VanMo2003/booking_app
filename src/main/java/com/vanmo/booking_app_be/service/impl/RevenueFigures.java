@@ -618,6 +618,18 @@ final class RevenueFigures {
         return new TourCancellations(orders, canceled, byGuest, byHotel);
     }
 
+    /** Nothing completed, booked or earned in either week of a digest: not worth a notification. */
+    static boolean quiet(RevenueSummaryResponse summary) {
+        return idle(summary.getCurrent()) && idle(summary.getPrevious());
+    }
+
+    private static boolean idle(RevenuePeriodDTO period) {
+        return period.getCompletedBookings() == 0
+                && period.getCompletedTours() == 0
+                && period.getTotalBookings() == 0
+                && period.getTotalRevenue().signum() == 0;
+    }
+
     /** What, if anything, to tell the branch about its goal this morning. */
     enum TargetAlert {
         NONE,

@@ -342,6 +342,12 @@ public class ReportController {
         return ApiResponse.ok(reportService.setRevenueTarget(req));
     }
 
+    /** Admin: send the Monday digests now; returns how many went out. */
+    @PostMapping("/weekly-digest")
+    public ApiResponse<Integer> runWeeklyDigests() {
+        return ApiResponse.ok(reportService.runWeeklyDigestsNow());
+    }
+
     /** Admin: run the 8:00 goal check now; returns how many alerts went out. */
     @PostMapping("/targets/alerts")
     public ApiResponse<Integer> runRevenueTargetAlerts() {

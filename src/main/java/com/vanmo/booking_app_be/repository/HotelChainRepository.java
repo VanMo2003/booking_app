@@ -1,5 +1,7 @@
 package com.vanmo.booking_app_be.repository;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +14,8 @@ import com.vanmo.booking_app_be.entity.enums.ApprovalStatus;
 
 public interface HotelChainRepository extends JpaRepository<HotelChain, Long> {
     HotelChain findByAccount_Id(String accountId);
+
+    List<HotelChain> findAllByApprovalStatus(ApprovalStatus approvalStatus);
 
     Page<HotelChain> findAllByApprovalStatus(ApprovalStatus approvalStatus, Pageable pageable);
 

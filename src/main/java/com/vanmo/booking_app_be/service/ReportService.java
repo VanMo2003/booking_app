@@ -125,6 +125,16 @@ public interface ReportService {
     /** {@link #sendRevenueTargetAlerts} on demand, for admins (e.g. to demo it without waiting for 8:00). */
     int runRevenueTargetAlertsNow();
 
+    /**
+     * Monday digest of the week before (Monday to Sunday) against the week before that: each approved chain's owner
+     * gets the chain's figures, each branch manager their branch's. Weeks with no activity on either side are skipped.
+     * Run by the scheduler (no caller to check); returns how many digests went out.
+     */
+    int sendWeeklyDigests();
+
+    /** {@link #sendWeeklyDigests} on demand, for admins. */
+    int runWeeklyDigestsNow();
+
     // ---- completed bookings whose payment was never recorded ----
 
     List<ReceivableDTO> getReceivables(Long hotelId);

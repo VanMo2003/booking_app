@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.utils;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -17,6 +18,7 @@ public final class NotificationMessages {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
+    private static final DateTimeFormatter SHORT_DAY = DateTimeFormatter.ofPattern("dd/MM");
 
     private NotificationMessages() {}
 
@@ -133,6 +135,25 @@ public final class NotificationMessages {
                 "Nguy cơ hụt mục tiêu tháng " + month.format(MONTH) + " · " + hotelName,
                 "Dự kiến cả tháng chỉ " + money(projected) + " (" + Math.round(projectedRate) + "% mục tiêu "
                         + money(target) + "). Xem báo cáo để có kế hoạch kích cầu.");
+    }
+
+    /** Last week's figures for a chain or a branch, against the week before. */
+    public static Message weeklyReport(
+            String scopeName,
+            LocalDate from,
+            LocalDate to,
+            BigDecimal revenue,
+            Double revenueGrowth,
+            double occupancyRate,
+            long completedBookings,
+            long canceledBookings) {
+        String change = revenueGrowth == null
+                ? ""
+                : " (" + (revenueGrowth >= 0 ? "+" : "") + Math.round(revenueGrowth) + "% so với tuần trước)";
+        return new Message(
+                "Báo cáo tuần " + from.format(SHORT_DAY) + " – " + to.format(SHORT_DAY) + " · " + scopeName,
+                "Doanh thu " + money(revenue) + change + " · lấp đầy " + Math.round(occupancyRate) + "% · "
+                        + completedBookings + " đơn hoàn tất · " + canceledBookings + " đơn huỷ.");
     }
 
     private static String money(BigDecimal amount) {

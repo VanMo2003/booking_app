@@ -191,6 +191,45 @@ class RevenueFiguresTest {
     }
 
     @Test
+    void twoQuietWeeksSendNoDigestButOneBusyWeekDoes() {
+        LocalDate monday = LocalDate.of(2026, 10, 19);
+        RevenueFigures.PeriodRows empty = new RevenueFigures.PeriodRows(
+                monday, monday.plusDays(6), List.of(), null, List.of(), List.of(), 10, 0, 0, 0, null, null);
+        RevenueFigures.PeriodRows emptyBefore = new RevenueFigures.PeriodRows(
+                monday.minusWeeks(1),
+                monday.minusDays(1),
+                List.of(),
+                null,
+                List.of(),
+                List.of(),
+                10,
+                0,
+                0,
+                0,
+                null,
+                null);
+        RevenueFigures.PeriodRows busyBefore = new RevenueFigures.PeriodRows(
+                monday.minusWeeks(1),
+                monday.minusDays(1),
+                List.of(booking(1_000_000, PaymentMethod.CASH, null)),
+                null,
+                List.of(),
+                List.of(),
+                10,
+                0,
+                1,
+                0,
+                null,
+                null);
+
+        assertThat(RevenueFigures.quiet(RevenueFigures.summary(empty, emptyBefore)))
+                .isTrue();
+        // a drop to nothing is news
+        assertThat(RevenueFigures.quiet(RevenueFigures.summary(empty, busyBefore)))
+                .isFalse();
+    }
+
+    @Test
     void tourCancellationsSayWhoCancelled() {
         RevenueFigures.TourCancellations tours = RevenueFigures.tourCancellations(List.of(
                 new TourStatusCountRow(TourBookingStatus.COMPLETED, null, 5L),
