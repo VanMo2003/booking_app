@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Comparator;
@@ -11,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
@@ -45,6 +47,7 @@ final class RevenueFigures {
      * @param soldRooms rooms of the completed bookings (check-out in the period)
      * @param occupiedRoomNights nights of every booking that was not cancelled, cut to the period
      * @param totalBookings bookings checking in during the period
+     * @param canceledRevenue what the cancelled ones among them were worth
      */
     record PeriodRows(
             LocalDate from,
@@ -56,7 +59,8 @@ final class RevenueFigures {
             long totalRooms,
             long occupiedRoomNights,
             long totalBookings,
-            long canceledBookings) {
+            long canceledBookings,
+            BigDecimal canceledRevenue) {
 
         long days() {
             return ChronoUnit.DAYS.between(from, to) + 1;
@@ -139,7 +143,24 @@ final class RevenueFigures {
                 .totalBookings(rows.totalBookings())
                 .canceledBookings(rows.canceledBookings())
                 .cancellationRate(rate(rows.canceledBookings(), rows.totalBookings()))
+                .canceledRevenue(rows.canceledRevenue() == null ? BigDecimal.ZERO : rows.canceledRevenue())
+                .averageStayNights(average(rows.bookings().stream()
+                        .filter(b -> b.getCheckinDate() != null && b.getCheckoutDate() != null)
+                        .mapToLong(b -> Math.max(1, ChronoUnit.DAYS.between(b.getCheckinDate(), b.getCheckoutDate())))))
+                .averageLeadDays(average(rows.bookings().stream()
+                        .filter(b -> b.getCreatedAt() != null && b.getCheckinDate() != null)
+                        // a walk-in booked on arrival day (or entered late) counts as zero days ahead
+                        .mapToLong(b -> Math.max(0, ChronoUnit.DAYS.between(bookedOn(b), b.getCheckinDate())))))
                 .build();
+    }
+
+    private static LocalDate bookedOn(CompletedBookingRow booking) {
+        return booking.getCreatedAt().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /** Mean with one decimal; 0 for no values. */
+    private static double average(LongStream values) {
+        return Math.round(values.average().orElse(0) * 10d) / 10d;
     }
 
     /** Every payment method, even one nobody used, so the app can show a fixed list. */

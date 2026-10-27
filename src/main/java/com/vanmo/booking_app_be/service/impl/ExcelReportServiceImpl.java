@@ -159,7 +159,10 @@ public class ExcelReportServiceImpl implements ExcelReportService {
                 now.getOccupancyRate(),
                 before.getOccupancyRate(),
                 points(summary.getOccupancyChange()));
-        kpiRow(sheet, r, "Tỷ lệ huỷ (%)", now.getCancellationRate(), before.getCancellationRate(), "");
+        r = kpiRow(sheet, r, "Tỷ lệ huỷ (%)", now.getCancellationRate(), before.getCancellationRate(), "");
+        r = kpiRow(sheet, r, "Doanh thu mất do huỷ", now.getCanceledRevenue(), before.getCanceledRevenue(), "");
+        r = kpiRow(sheet, r, "Lưu trú trung bình (đêm)", now.getAverageStayNights(), before.getAverageStayNights(), "");
+        kpiRow(sheet, r, "Đặt trước trung bình (ngày)", now.getAverageLeadDays(), before.getAverageLeadDays(), "");
         autoSize(sheet, 4);
     }
 

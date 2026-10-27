@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -28,7 +30,17 @@ class RevenueFiguresTest {
     private static final LocalDate OCT_10 = LocalDate.of(2026, 10, 10);
 
     private static CompletedBookingRow booking(long amount, PaymentMethod method, String handledBy) {
-        return new CompletedBookingRow(1L, BigDecimal.valueOf(amount), method, handledBy);
+        return new CompletedBookingRow(1L, BigDecimal.valueOf(amount), method, handledBy, null, null, null);
+    }
+
+    /** A completed stay placed {@code daysAhead} days before check-in. */
+    private static CompletedBookingRow stay(LocalDate checkin, int nights, int daysAhead) {
+        Date placed = Date.from(checkin.minusDays(daysAhead)
+                .atTime(9, 30)
+                .atZone(ZoneId.systemDefault())
+                .toInstant());
+        return new CompletedBookingRow(
+                1L, BigDecimal.valueOf(1_000_000), PaymentMethod.CASH, null, checkin, checkin.plusDays(nights), placed);
     }
 
     private static BookedRoomNightRow room(LocalDate checkin, int nights) {
@@ -56,7 +68,34 @@ class RevenueFiguresTest {
             List<BookedRoomNightRow> soldRooms,
             long occupiedNights) {
         return new RevenueFigures.PeriodRows(
-                from, to, bookings, BigDecimal.valueOf(services), tours, soldRooms, 10, occupiedNights, 4, 1);
+                from,
+                to,
+                bookings,
+                BigDecimal.valueOf(services),
+                tours,
+                soldRooms,
+                10,
+                occupiedNights,
+                4,
+                1,
+                BigDecimal.valueOf(650_000));
+    }
+
+    @Test
+    void periodAveragesTheStayAndHowFarAheadGuestsBook() {
+        RevenuePeriodDTO period = RevenueFigures.period(rows(
+                OCT_1,
+                OCT_10,
+                // 2 nights booked 10 days ahead, 1 night walk-in, 3 nights booked 5 days ahead
+                List.of(stay(OCT_1, 2, 10), stay(OCT_1.plusDays(3), 1, 0), stay(OCT_1.plusDays(5), 3, 5)),
+                0,
+                List.of(),
+                List.of(),
+                0));
+
+        assertThat(period.getAverageStayNights()).isEqualTo(2d);
+        assertThat(period.getAverageLeadDays()).isEqualTo(5d);
+        assertThat(period.getCanceledRevenue()).isEqualByComparingTo("650000");
     }
 
     @Test
@@ -93,7 +132,7 @@ class RevenueFiguresTest {
     @Test
     void emptyPeriodHasZeroesNotDivisionErrors() {
         RevenuePeriodDTO period = RevenueFigures.period(
-                new RevenueFigures.PeriodRows(OCT_1, OCT_1, List.of(), null, List.of(), List.of(), 0, 0, 0, 0));
+                new RevenueFigures.PeriodRows(OCT_1, OCT_1, List.of(), null, List.of(), List.of(), 0, 0, 0, 0, null));
 
         assertThat(period.getTotalRevenue()).isEqualByComparingTo("0");
         assertThat(period.getAdr()).isEqualByComparingTo("0");

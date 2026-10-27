@@ -56,4 +56,13 @@ public class RevenuePeriodDTO {
 
     long canceledBookings;
     double cancellationRate;
+
+    /** What the cancelled bookings of the period were worth. */
+    BigDecimal canceledRevenue;
+
+    /** Average length of stay of the completed bookings, in nights (1 decimal). */
+    double averageStayNights;
+
+    /** Average days between placing a completed booking and checking in (1 decimal). */
+    double averageLeadDays;
 }

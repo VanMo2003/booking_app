@@ -280,7 +280,9 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên; bản chuỗi thêm **so sánh cơ sở** |
 
 Cách tính trong tổng quan: tiền phòng = tổng đơn − dòng dịch vụ; ADR = tiền phòng / đêm đã bán; RevPAR =
-tiền phòng / (số phòng × số ngày). Mức tăng trưởng là % so với kỳ trước, bị bỏ khỏi JSON khi kỳ trước
+tiền phòng / (số phòng × số ngày); lưu trú TB = số đêm trung bình mỗi đơn hoàn tất; đặt trước TB = số ngày
+trung bình từ lúc tạo đơn đến ngày nhận phòng (đơn tạo sau ngày nhận phòng tính 0); doanh thu mất do huỷ =
+tổng tiền các đơn bị huỷ có ngày nhận phòng trong kỳ. Mức tăng trưởng là % so với kỳ trước, bị bỏ khỏi JSON khi kỳ trước
 bằng 0; lấp đầy so bằng điểm phần trăm (`occupancyChange`).
 
 Kỳ trước (`previous`, cũng dùng cho tăng trưởng của từng cơ sở) theo lịch khi có thể:

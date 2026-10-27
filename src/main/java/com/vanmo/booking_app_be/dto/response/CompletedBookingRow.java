@@ -1,6 +1,8 @@
 package com.vanmo.booking_app_be.dto.response;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Date;
 
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 
@@ -22,4 +24,9 @@ public class CompletedBookingRow {
     BigDecimal totalAmount;
     PaymentMethod paymentMethod;
     String handledByAccountId;
+    LocalDate checkinDate;
+    LocalDate checkoutDate;
+
+    /** When the booking was placed - the start of its lead time. */
+    Date createdAt;
 }

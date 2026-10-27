@@ -419,7 +419,8 @@ public class ReportServiceImpl implements ReportService {
                 totalRooms,
                 occupiedRoomNights,
                 bookingRepository.countBookings(hotelIds, from, to),
-                bookingRepository.countBookingsByStatus(hotelIds, BookingStatus.CANCELED, from, to));
+                bookingRepository.countBookingsByStatus(hotelIds, BookingStatus.CANCELED, from, to),
+                bookingRepository.sumAmountByStatus(hotelIds, BookingStatus.CANCELED, from, to));
     }
 
     private OccupancyResponse occupancy(List<Long> hotelIds, LocalDate from, LocalDate to) {

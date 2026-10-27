@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -237,6 +238,21 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     long countBookings(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    /** What the bookings in a status checking in during [from, to] were worth - e.g. revenue lost to cancellations. */
+    @Query(
+            """
+		SELECT COALESCE(SUM(b.totalAmount), 0)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkinDate BETWEEN :from AND :to
+	""")
+    BigDecimal sumAmountByStatus(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
     @Query(
             """
 		SELECT COUNT(b.id)
@@ -255,7 +271,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query(
             """
 		SELECT new com.vanmo.booking_app_be.dto.response.CompletedBookingRow(
-			b.id, b.totalAmount, b.paymentMethod, acc.id
+			b.id, b.totalAmount, b.paymentMethod, acc.id, b.checkinDate, b.checkoutDate, b.onCreate
 		)
 		FROM Booking b
 		LEFT JOIN b.handledBy acc
