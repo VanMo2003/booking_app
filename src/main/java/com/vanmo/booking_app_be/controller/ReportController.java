@@ -330,6 +330,12 @@ public class ReportController {
         return ApiResponse.ok(reportService.setRevenueTarget(req));
     }
 
+    /** Admin: run the 8:00 goal check now; returns how many alerts went out. */
+    @PostMapping("/targets/alerts")
+    public ApiResponse<Integer> runRevenueTargetAlerts() {
+        return ApiResponse.ok(reportService.runRevenueTargetAlertsNow());
+    }
+
     @GetMapping("/targets/progress")
     public ApiResponse<TargetProgressResponse> targetProgress(@RequestParam Long hotelId, @RequestParam String month) {
         return ApiResponse.ok(reportService.getTargetProgress(hotelId, month));

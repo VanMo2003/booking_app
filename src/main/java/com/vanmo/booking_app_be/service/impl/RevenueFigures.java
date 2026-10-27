@@ -524,6 +524,34 @@ final class RevenueFigures {
         return chain;
     }
 
+    /** What, if anything, to tell the branch about its goal this morning. */
+    enum TargetAlert {
+        NONE,
+        REACHED,
+        AT_RISK
+    }
+
+    /** Below this share of the goal, a mid-month projection counts as at risk. */
+    static final double AT_RISK_BELOW = 80d;
+
+    /**
+     * Reaching the goal is announced once; "at risk" once, and only from the middle of the month, when the projection
+     * has enough of the month behind it to mean something. A goal already reached is never at risk.
+     */
+    static TargetAlert targetAlert(TargetProgressResponse progress, boolean reachedNotified, boolean atRiskNotified) {
+        if (progress.getTarget() == null) {
+            return TargetAlert.NONE;
+        }
+        if (progress.getAchievedRate() >= 100) {
+            return reachedNotified ? TargetAlert.NONE : TargetAlert.REACHED;
+        }
+        boolean pastMidMonth = progress.getDaysElapsed() * 2 >= progress.getDaysInMonth();
+        if (!atRiskNotified && pastMidMonth && progress.getProjectedRate() < AT_RISK_BELOW) {
+            return TargetAlert.AT_RISK;
+        }
+        return TargetAlert.NONE;
+    }
+
     private static double percentOf(BigDecimal part, BigDecimal whole) {
         return part.multiply(HUNDRED).divide(whole, 2, RoundingMode.HALF_UP).doubleValue();
     }

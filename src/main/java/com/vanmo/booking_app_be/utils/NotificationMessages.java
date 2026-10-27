@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.utils;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -15,6 +16,7 @@ public final class NotificationMessages {
     public record Message(String title, String body) {}
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
 
     private NotificationMessages() {}
 
@@ -116,6 +118,21 @@ public final class NotificationMessages {
         return isBlank(booking.getCancelReason())
                 ? "."
                 : ". Lý do: " + booking.getCancelReason().strip();
+    }
+
+    public static Message revenueTargetReached(
+            String hotelName, YearMonth month, BigDecimal revenue, BigDecimal target) {
+        return new Message(
+                "Đạt mục tiêu tháng " + month.format(MONTH) + " · " + hotelName,
+                "Doanh thu đã đạt " + money(revenue) + ", vượt mục tiêu " + money(target) + ". Chúc mừng cả đội!");
+    }
+
+    public static Message revenueTargetAtRisk(
+            String hotelName, YearMonth month, BigDecimal projected, BigDecimal target, double projectedRate) {
+        return new Message(
+                "Nguy cơ hụt mục tiêu tháng " + month.format(MONTH) + " · " + hotelName,
+                "Dự kiến cả tháng chỉ " + money(projected) + " (" + Math.round(projectedRate) + "% mục tiêu "
+                        + money(target) + "). Xem báo cáo để có kế hoạch kích cầu.");
     }
 
     private static String money(BigDecimal amount) {

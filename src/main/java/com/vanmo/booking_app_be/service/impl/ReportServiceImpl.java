@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -22,11 +23,13 @@ import com.vanmo.booking_app_be.dto.request.ReportCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ReportUpdateRequest;
 import com.vanmo.booking_app_be.dto.request.RevenueTargetRequest;
 import com.vanmo.booking_app_be.dto.response.*;
+import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Employee;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Report;
 import com.vanmo.booking_app_be.entity.RevenueTarget;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.NotificationType;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.entity.enums.PayrollStatus;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
@@ -45,7 +48,9 @@ import com.vanmo.booking_app_be.repository.RevenueTargetRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.TourBookingRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
+import com.vanmo.booking_app_be.service.NotificationService;
 import com.vanmo.booking_app_be.service.ReportService;
+import com.vanmo.booking_app_be.utils.NotificationMessages;
 
 import lombok.RequiredArgsConstructor;
 
@@ -67,6 +72,7 @@ public class ReportServiceImpl implements ReportService {
     private final TourBookingRepository tourBookingRepository;
     private final PayrollRepository payrollRepository;
     private final RevenueTargetRepository revenueTargetRepository;
+    private final NotificationService notificationService;
     private final AccessGuard accessGuard;
 
     @Override
@@ -451,6 +457,10 @@ public class ReportServiceImpl implements ReportService {
                         .hotel(hotel)
                         .month(month.atDay(1))
                         .build();
+            } else if (target.getAmount().compareTo(req.getAmount()) != 0) {
+                // a new goal deserves its own alerts
+                target.setReachedNotified(false);
+                target.setAtRiskNotified(false);
             }
             target.setAmount(req.getAmount());
             revenueTargetRepository.save(target);
@@ -472,6 +482,61 @@ public class ReportServiceImpl implements ReportService {
                 .toList();
         return new ChainTargetProgressResponse(
                 RevenueFigures.chainTarget(branches, yearMonth, LocalDate.now()), branches);
+    }
+
+    @Override
+    @Transactional
+    public int sendRevenueTargetAlerts() {
+        YearMonth month = YearMonth.now();
+        int sent = 0;
+        for (RevenueTarget target : revenueTargetRepository.findAllByMonth(month.atDay(1))) {
+            Hotel hotel = target.getHotel();
+            TargetProgressResponse progress = targetProgress(hotel, month);
+            RevenueFigures.TargetAlert alert =
+                    RevenueFigures.targetAlert(progress, target.isReachedNotified(), target.isAtRiskNotified());
+            if (alert == RevenueFigures.TargetAlert.NONE) {
+                continue;
+            }
+            List<Account> recipients = new ArrayList<>();
+            recipients.add(hotel.getHotelChain().getAccount());
+            if (hotel.getAccount() != null
+                    && !hotel.getAccount().getId().equals(recipients.get(0).getId())) {
+                recipients.add(hotel.getAccount());
+            }
+            if (alert == RevenueFigures.TargetAlert.REACHED) {
+                notificationService.notifyAccounts(
+                        recipients,
+                        NotificationType.REVENUE_TARGET_REACHED,
+                        NotificationMessages.revenueTargetReached(
+                                hotel.getName(), month, progress.getRevenue(), progress.getTarget()),
+                        null,
+                        hotel.getId());
+                target.setReachedNotified(true);
+            } else {
+                notificationService.notifyAccounts(
+                        recipients,
+                        NotificationType.REVENUE_TARGET_AT_RISK,
+                        NotificationMessages.revenueTargetAtRisk(
+                                hotel.getName(),
+                                month,
+                                progress.getProjectedRevenue(),
+                                progress.getTarget(),
+                                progress.getProjectedRate()),
+                        null,
+                        hotel.getId());
+                target.setAtRiskNotified(true);
+            }
+            revenueTargetRepository.save(target);
+            sent++;
+        }
+        return sent;
+    }
+
+    @Override
+    @Transactional
+    public int runRevenueTargetAlertsNow() {
+        accessGuard.requireAdmin();
+        return sendRevenueTargetAlerts();
     }
 
     /** Revenue of the month so far plus what is booked for the rest of it, against the branch's goal. */

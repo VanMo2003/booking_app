@@ -99,6 +99,39 @@ class RevenueFiguresTest {
         assertThat(chain.getAchievedRate()).isEqualTo(50d);
     }
 
+    private static TargetProgressResponse october(long revenue, long projected, int day) {
+        return RevenueFigures.targetProgress(
+                6L,
+                "A",
+                OCTOBER,
+                BigDecimal.valueOf(10_000_000),
+                BigDecimal.valueOf(revenue),
+                BigDecimal.valueOf(projected - revenue),
+                LocalDate.of(2026, 10, day));
+    }
+
+    @Test
+    void reachingTheGoalIsAnnouncedOnce() {
+        assertThat(RevenueFigures.targetAlert(october(10_500_000, 10_500_000, 25), false, false))
+                .isEqualTo(RevenueFigures.TargetAlert.REACHED);
+        assertThat(RevenueFigures.targetAlert(october(10_500_000, 10_500_000, 26), true, false))
+                .isEqualTo(RevenueFigures.TargetAlert.NONE);
+    }
+
+    @Test
+    void atRiskOnlyFromMidMonthBelowEightyPercentAndOnce() {
+        // 60% projected but only day 10 of 31: too early to judge
+        assertThat(RevenueFigures.targetAlert(october(2_000_000, 6_000_000, 10), false, false))
+                .isEqualTo(RevenueFigures.TargetAlert.NONE);
+        assertThat(RevenueFigures.targetAlert(october(4_000_000, 6_000_000, 16), false, false))
+                .isEqualTo(RevenueFigures.TargetAlert.AT_RISK);
+        assertThat(RevenueFigures.targetAlert(october(4_000_000, 6_000_000, 20), false, true))
+                .isEqualTo(RevenueFigures.TargetAlert.NONE);
+        // 85% projected is not at risk
+        assertThat(RevenueFigures.targetAlert(october(6_000_000, 8_500_000, 20), false, false))
+                .isEqualTo(RevenueFigures.TargetAlert.NONE);
+    }
+
     @Test
     void guestsWithAnEarlierCompletedStayCountAsReturning() {
         List<RevenueShareDTO> types = RevenueFigures.byCustomerType(

@@ -45,6 +45,14 @@ public class RevenueTarget {
     @Column(nullable = false, precision = 14)
     BigDecimal amount;
 
+    /** The "goal reached" alert went out for this goal; cleared when the amount changes. */
+    @Builder.Default
+    boolean reachedNotified = false;
+
+    /** The "goal at risk" alert went out for this goal; cleared when the amount changes. */
+    @Builder.Default
+    boolean atRiskNotified = false;
+
     @UpdateTimestamp
     Date onUpdate;
 }

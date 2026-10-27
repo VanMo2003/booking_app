@@ -114,4 +114,14 @@ public interface ReportService {
     TargetProgressResponse getTargetProgress(Long hotelId, String month);
 
     ChainTargetProgressResponse getTargetProgressForChain(Long hotelChainId, String month);
+
+    /**
+     * Checks this month's goals and notifies the owner and manager of each branch that just reached its goal or, from
+     * mid-month, projects below 80% of it - each alert once per goal. Run by the morning scheduler (no caller to
+     * check); returns how many alerts went out.
+     */
+    int sendRevenueTargetAlerts();
+
+    /** {@link #sendRevenueTargetAlerts} on demand, for admins (e.g. to demo it without waiting for 8:00). */
+    int runRevenueTargetAlertsNow();
 }
