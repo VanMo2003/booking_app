@@ -398,6 +398,34 @@ public class ReportServiceImpl implements ReportService {
                 to);
     }
 
+    @Override
+    public List<WeekdayStatsDTO> getWeekdayPattern(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return weekdayPattern(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public List<WeekdayStatsDTO> getWeekdayPatternForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return weekdayPattern(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private List<WeekdayStatsDTO> weekdayPattern(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        Map<LocalDate, BigDecimal> revenueByDate = new HashMap<>();
+        bookingRepository
+                .revenueByDateRangeForHotels(hotelIds, BookingStatus.COMPLETED, from, to)
+                .forEach(day -> revenueByDate.merge(day.getDate(), day.getTotalRevenue(), BigDecimal::add));
+        tourBookingRepository
+                .findSales(hotelIds, TourBookingStatus.COMPLETED, from, to)
+                .forEach(tour -> revenueByDate.merge(tour.getTourDate(), tour.tourRevenue(), BigDecimal::add));
+        return RevenueFigures.weekdays(
+                from,
+                to,
+                roomRepository.countByHotel_IdIn(hotelIds),
+                bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)),
+                revenueByDate);
+    }
+
     /** Today and the next days - 1 days. */
     private RevenueOutlookResponse revenueOutlook(List<Long> hotelIds, int days) {
         if (days < 1 || days > MAX_OUTLOOK_DAYS) {

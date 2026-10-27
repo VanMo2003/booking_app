@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +23,7 @@ import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
@@ -108,6 +110,31 @@ class RevenueFiguresTest {
         assertThat(result.get(0).getCompletedStays()).isEqualTo(1);
         assertThat(result.get(0).getRevenue()).isEqualByComparingTo("1500000");
         assertThat(result.get(2).getOccupiedNights()).isZero();
+    }
+
+    @Test
+    void weekdaysAverageOccupancyAndRevenueOverTheirDays() {
+        // Mon 5 Oct - Sun 18 Oct 2026: two of each weekday, 2 rooms
+        LocalDate monday = LocalDate.of(2026, 10, 5);
+        List<BookedRoomNightRow> booked = List.of(
+                // both rooms on the first Saturday night, one room on the second
+                stayIn(1L, monday.plusDays(5), 1),
+                stayIn(2L, monday.plusDays(5), 1),
+                stayIn(1L, monday.plusDays(12), 1));
+        Map<LocalDate, BigDecimal> revenue = Map.of(
+                monday.plusDays(6), BigDecimal.valueOf(1_200_000), monday.plusDays(13), BigDecimal.valueOf(600_000));
+
+        List<WeekdayStatsDTO> week = RevenueFigures.weekdays(monday, monday.plusDays(13), 2, booked, revenue);
+
+        assertThat(week).hasSize(7);
+        assertThat(week).extracting(WeekdayStatsDTO::getDays).containsOnly(2L);
+        WeekdayStatsDTO saturday = week.get(5);
+        assertThat(saturday.getDayOfWeek()).isEqualTo(6);
+        assertThat(saturday.getAverageOccupancy()).isEqualTo(75d);
+        WeekdayStatsDTO sunday = week.get(6);
+        assertThat(sunday.getTotalRevenue()).isEqualByComparingTo("1800000");
+        assertThat(sunday.getAverageRevenue()).isEqualByComparingTo("900000");
+        assertThat(week.get(0).getAverageOccupancy()).isZero();
     }
 
     @Test

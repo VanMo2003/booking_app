@@ -97,4 +97,10 @@ public interface ReportService {
     // ---- every room of a branch over [from, to] ----
 
     List<RoomPerformanceDTO> getRoomPerformance(Long hotelId, LocalDate from, LocalDate to);
+
+    // ---- Monday to Sunday over [from, to] ----
+
+    List<WeekdayStatsDTO> getWeekdayPattern(Long hotelId, LocalDate from, LocalDate to);
+
+    List<WeekdayStatsDTO> getWeekdayPatternForChain(Long hotelChainId, LocalDate from, LocalDate to);
 }

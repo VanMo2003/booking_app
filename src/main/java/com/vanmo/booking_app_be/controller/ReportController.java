@@ -306,6 +306,22 @@ public class ReportController {
         return ApiResponse.ok(reportService.getRoomPerformance(hotelId, from, to));
     }
 
+    @GetMapping("/weekdays")
+    public ApiResponse<List<WeekdayStatsDTO>> weekdayPattern(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getWeekdayPattern(hotelId, from, to));
+    }
+
+    @GetMapping("/chain/weekdays")
+    public ApiResponse<List<WeekdayStatsDTO>> weekdayPatternForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getWeekdayPatternForChain(hotelChainId, from, to));
+    }
+
     // ---- Excel export ----
 
     @GetMapping("/export")

@@ -6,12 +6,14 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
@@ -28,6 +30,7 @@ import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
@@ -174,6 +177,44 @@ final class RevenueFigures {
                         // a walk-in booked on arrival day (or entered late) counts as zero days ahead
                         .mapToLong(b -> Math.max(0, ChronoUnit.DAYS.between(bookedOn(b), b.getCheckinDate())))))
                 .build();
+    }
+
+    /**
+     * Monday to Sunday over [from, to]: each weekday's occupancy and revenue averaged over the days of the period that
+     * fall on it.
+     *
+     * @param booked rooms of every booking that was not cancelled overlapping [from, to + 1)
+     * @param revenueByDate what each day earned (completed bookings by check-out day, completed tours by tour date)
+     */
+    static List<WeekdayStatsDTO> weekdays(
+            LocalDate from,
+            LocalDate to,
+            long totalRooms,
+            List<BookedRoomNightRow> booked,
+            Map<LocalDate, BigDecimal> revenueByDate) {
+        long[] days = new long[7];
+        long[] occupied = new long[7];
+        BigDecimal[] revenue = new BigDecimal[7];
+        Arrays.fill(revenue, BigDecimal.ZERO);
+        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+            int index = day.getDayOfWeek().getValue() - 1;
+            LocalDate date = day;
+            days[index]++;
+            occupied[index] += booked.stream()
+                    .filter(r -> !date.isBefore(r.getCheckinDate()) && date.isBefore(r.getCheckoutDate()))
+                    .map(BookedRoomNightRow::getRoomId)
+                    .distinct()
+                    .count();
+            revenue[index] = revenue[index].add(revenueByDate.getOrDefault(day, BigDecimal.ZERO));
+        }
+        return IntStream.range(0, 7)
+                .mapToObj(i -> new WeekdayStatsDTO(
+                        i + 1,
+                        days[i],
+                        rate(occupied[i], totalRooms * days[i]),
+                        perUnit(revenue[i], days[i]),
+                        revenue[i]))
+                .toList();
     }
 
     /** A room as the per-room report lists it. */
