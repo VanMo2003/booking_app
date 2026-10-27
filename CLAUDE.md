@@ -428,7 +428,11 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   month). `RevenueTargetScheduler` (08:00) calls `sendRevenueTargetAlerts`, which has **no access
   check** - it is only reachable from the scheduler and from `runRevenueTargetAlertsNow` (admin);
   don't map it to an endpoint directly. The `reachedNotified`/`atRiskNotified` flags reset when the
-  amount changes.
+  amount changes. `WeeklyReportScheduler` (Monday 08:00) → `sendWeeklyDigests` follows the same
+  pattern (admin twin: `POST /reports/weekly-digest`); it compares Monday-Sunday with the previous
+  week explicitly instead of `previousPeriod`, whose month rule would kick in for a week starting on
+  the 1st. Both jobs notify every approved chain in the DB - the shared local DB included, so don't
+  call the admin endpoints from automated runs against it.
 
 ### Public browsing
 
