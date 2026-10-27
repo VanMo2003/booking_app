@@ -369,16 +369,18 @@ public class ExcelReportServiceImpl implements ExcelReportService {
 
     private void writeTopCustomers(Workbook workbook, CellStyle header, List<TopCustomerDTO> rows) {
         Sheet sheet = workbook.createSheet("Top khách hàng");
-        writeHeader(sheet, header, "Khách hàng", "Số điện thoại", "Số đơn", "Tổng chi tiêu");
+        writeHeader(sheet, header, "Khách hàng", "Số điện thoại", "Số đơn", "Số tour", "Tiền tour", "Tổng chi tiêu");
         int r = 1;
         for (TopCustomerDTO row : rows) {
             Row line = sheet.createRow(r++);
             line.createCell(0).setCellValue(row.getFullName());
             line.createCell(1).setCellValue(row.getPhoneNumber());
             line.createCell(2).setCellValue(orZero(row.getTotalBooking()));
-            line.createCell(3).setCellValue(toDouble(row.getTotalSpend()));
+            line.createCell(3).setCellValue(row.getTours());
+            line.createCell(4).setCellValue(toDouble(row.getTourSpend()));
+            line.createCell(5).setCellValue(toDouble(row.getTotalSpend()));
         }
-        autoSize(sheet, 4);
+        autoSize(sheet, 6);
     }
 
     private void writeStaffPerformance(Workbook workbook, CellStyle header, List<StaffPerformanceDTO> rows) {

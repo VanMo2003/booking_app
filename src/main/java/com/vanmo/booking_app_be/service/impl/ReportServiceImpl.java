@@ -712,8 +712,11 @@ public class ReportServiceImpl implements ReportService {
     private List<TopCustomerDTO> topCustomers(List<Long> hotelIds, LocalDate from, LocalDate to, int limit) {
         requireRange(from, to);
         int safeLimit = limit <= 0 ? 10 : Math.min(limit, 100);
-        return bookingRepository.topCustomers(
-                hotelIds, BookingStatus.COMPLETED, from, to, PageRequest.of(0, safeLimit));
+        // every guest's bookings, not just the top ones: tours can lift someone into the top
+        return RevenueFigures.topCustomers(
+                bookingRepository.topCustomers(hotelIds, BookingStatus.COMPLETED, from, to, Pageable.unpaged()),
+                tourBookingRepository.findByCustomer(hotelIds, TourBookingStatus.COMPLETED, from, to),
+                safeLimit);
     }
 
     private List<StaffPerformanceDTO> staffPerformance(List<Long> hotelIds, LocalDate from, LocalDate to) {

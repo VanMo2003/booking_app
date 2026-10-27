@@ -281,6 +281,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | So sánh cơ sở (chỉ cấp chuỗi) | `GET /reports/chain/branches?hotelChainId=&from=&to=` | Mỗi cơ sở: KPI như tổng quan, doanh thu kỳ trước, % tăng trưởng, tỷ trọng trong doanh thu chuỗi; nhiều doanh thu nhất trước |
 | Doanh thu theo tour | `GET /reports/revenue-by-tour?from=&to=` | Đơn tour hoàn tất gộp theo tour: số đơn, số khách, tiền tour, tiền phòng gói (chỉ tham khảo), số đơn do AI lên |
 | Hiệu suất nhân viên | `GET /reports/staff-performance?from=&to=` | Mỗi tài khoản quầy/quản lý: số đơn đã nhận và giá trị (nhận phòng trong kỳ, chưa huỷ), số đơn của họ đã hoàn tất và doanh thu thật (trả phòng trong kỳ), số tour hoàn tất họ xử lý và tiền tour; xếp theo hoàn tất + tour |
+| Khách chi tiêu nhiều nhất | `GET /reports/top-customers?from=&to=&limit=` | Tổng chi tiêu = đơn phòng hoàn tất (trả phòng trong kỳ) + tour hoàn tất (ngày đi trong kỳ), kèm số đơn, số tour, tiền tour; khách chỉ đi tour cũng được xếp hạng |
 | Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | |
 | Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên, **tiền chưa thu** (danh sách tại thời điểm xuất); bản chuỗi thêm **so sánh cơ sở** |
 

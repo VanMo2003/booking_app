@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
@@ -27,6 +28,7 @@ import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
+import com.vanmo.booking_app_be.dto.response.TopCustomerDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
@@ -163,6 +165,26 @@ class RevenueFiguresTest {
         StaffPerformanceDTO c = staff.get(1);
         assertThat(c.getTotalBooking()).isZero();
         assertThat(c.getCompletedRevenue()).isEqualByComparingTo("2000000");
+    }
+
+    @Test
+    void topCustomersAddToursAndLetATourGuestIntoTheTop() {
+        List<TopCustomerDTO> bookings = List.of(
+                new TopCustomerDTO(1L, "An", "0901", 2L, BigDecimal.valueOf(3_000_000)),
+                new TopCustomerDTO(2L, "Bình", "0902", 1L, BigDecimal.valueOf(1_000_000)),
+                new TopCustomerDTO(3L, "Chi", "0903", 1L, BigDecimal.valueOf(500_000)));
+        List<CustomerTourRow> tours = List.of(
+                new CustomerTourRow(2L, "Bình", "0902", 1L, BigDecimal.valueOf(2_500_000)),
+                // only took a tour
+                new CustomerTourRow(4L, "Dũng", "0904", 2L, BigDecimal.valueOf(1_800_000)));
+
+        List<TopCustomerDTO> top = RevenueFigures.topCustomers(bookings, tours, 3);
+
+        assertThat(top).extracting(TopCustomerDTO::getCustomerId).containsExactly(2L, 1L, 4L);
+        assertThat(top.get(0).getTotalSpend()).isEqualByComparingTo("3500000");
+        assertThat(top.get(0).getTours()).isEqualTo(1);
+        assertThat(top.get(2).getTotalBooking()).isZero();
+        assertThat(top.get(2).getTourSpend()).isEqualByComparingTo("1800000");
     }
 
     @Test

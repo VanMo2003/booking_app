@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
@@ -33,6 +34,7 @@ import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
+import com.vanmo.booking_app_be.dto.response.TopCustomerDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
@@ -559,6 +561,30 @@ final class RevenueFigures {
                                 row.getCompletedRevenue().add(row.getTourRevenue()))
                         .thenComparing(row -> row.getTotalBooking() == null ? 0L : row.getTotalBooking())
                         .reversed())
+                .toList();
+    }
+
+    /**
+     * Guests ranked by what they spent - completed bookings plus completed tours - keeping the top {@code limit}; a
+     * guest who only took tours is ranked too.
+     */
+    static List<TopCustomerDTO> topCustomers(List<TopCustomerDTO> bookings, List<CustomerTourRow> tours, int limit) {
+        Map<Long, TopCustomerDTO> byCustomer = new LinkedHashMap<>();
+        bookings.forEach(row -> byCustomer.put(row.getCustomerId(), row));
+        for (CustomerTourRow tour : tours) {
+            TopCustomerDTO row = byCustomer.computeIfAbsent(
+                    tour.getCustomerId(),
+                    id -> new TopCustomerDTO(id, tour.getFullName(), tour.getPhoneNumber(), 0L, BigDecimal.ZERO));
+            BigDecimal spend = tour.getTourSpend() == null ? BigDecimal.ZERO : tour.getTourSpend();
+            row.setTours(tour.getTours() == null ? 0 : tour.getTours());
+            row.setTourSpend(spend);
+            row.setTotalSpend((row.getTotalSpend() == null ? BigDecimal.ZERO : row.getTotalSpend()).add(spend));
+        }
+        return byCustomer.values().stream()
+                .sorted(Comparator.comparing((TopCustomerDTO row) ->
+                                row.getTotalSpend() == null ? BigDecimal.ZERO : row.getTotalSpend())
+                        .reversed())
+                .limit(limit)
                 .toList();
     }
 
