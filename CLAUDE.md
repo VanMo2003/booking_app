@@ -414,6 +414,21 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
 - The `.xlsx` exports reuse the same service methods (so the same guards): "KPI so với kỳ trước",
   "Thanh toán & kênh bán", "Doanh thu theo tour", and for chains "So sánh cơ sở" right after the KPIs.
   `ExcelReportServiceImplTest` mocks `ReportService` and reads the workbook back.
+- **Summary extras.** Each `RevenuePeriodDTO` also carries average stay / lead time (from
+  `CompletedBookingRow` dates and `Booking.onCreate`), cancelled revenue, and profit after payroll:
+  `PayrollRepository.findCosts` (APPROVED/PAID payslips of branch employees - managers have none) spread
+  per day of each payslip's month by `RevenueFigures.payrollCost`. `byCustomerType` (NEW/RETURNING) is
+  set by `revenueSummary` after `RevenueFigures.summary`, from `findCustomerIdsBefore(from)`.
+- **Per-room, weekday, staff, top customers** all merge plain rows in `RevenueFigures` (`rooms`,
+  `weekdays`, `staff`, `topCustomers`). The JPQL projections that grew extra fields
+  (`StaffPerformanceDTO`, `TopCustomerDTO`, `ReceivableDTO`) keep an explicit constructor matching the
+  query's arguments - adding a field to them must not break that constructor.
+- **Monthly targets** (`RevenueTarget`, unique per branch+month, `month` = first day). Progress is
+  computed on read (`targetProgress`: revenue so far + `RevenueFigures.outlook` for the rest of the
+  month). `RevenueTargetScheduler` (08:00) calls `sendRevenueTargetAlerts`, which has **no access
+  check** - it is only reachable from the scheduler and from `runRevenueTargetAlertsNow` (admin);
+  don't map it to an endpoint directly. The `reachedNotified`/`atRiskNotified` flags reset when the
+  amount changes.
 
 ### Public browsing
 
