@@ -22,10 +22,12 @@ import org.junit.jupiter.api.Test;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CancellationRateResponse;
 import com.vanmo.booking_app_be.dto.response.OccupancyResponse;
+import com.vanmo.booking_app_be.dto.response.ReceivableDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
+import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.service.ReportService;
 
 class ExcelReportServiceImplTest {
@@ -77,6 +79,17 @@ class ExcelReportServiceImplTest {
         when(reports.getCancellationRateForChain(anyLong(), any(), any())).thenReturn(cancellation);
         when(reports.getRevenueSummary(anyLong(), any(), any())).thenReturn(summary());
         when(reports.getRevenueSummaryForChain(anyLong(), any(), any())).thenReturn(summary());
+        when(reports.getReceivables(anyLong()))
+                .thenReturn(List.of(new ReceivableDTO(
+                        21L,
+                        6L,
+                        "Hoàn Kiếm",
+                        "Nguyễn An",
+                        "0901234567",
+                        LocalDate.of(2026, 10, 12),
+                        BigDecimal.valueOf(1_200_000),
+                        PaymentMethod.CASH,
+                        16L)));
         when(reports.getRevenueByTour(anyLong(), any(), any()))
                 .thenReturn(List.of(new RevenueByTourDTO(
                         7L, "Hạ Long", 1, 2, BigDecimal.valueOf(900_000), BigDecimal.valueOf(550_000), 1)));
@@ -109,6 +122,11 @@ class ExcelReportServiceImplTest {
             assertThat(shares.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Tiền mặt");
             assertThat(shares.getRow(4).getCell(0).getStringCellValue()).isEqualTo("Kênh bán");
             assertThat(shares.getRow(5).getCell(0).getStringCellValue()).isEqualTo("Đặt tại quầy");
+
+            Sheet receivables = book.getSheet("Tiền chưa thu");
+            assertThat(receivables.getRow(1).getCell(1).getStringCellValue()).isEqualTo("Nguyễn An");
+            assertThat(receivables.getRow(1).getCell(4).getNumericCellValue()).isEqualTo(16d);
+            assertThat(receivables.getRow(1).getCell(5).getStringCellValue()).isEqualTo("Tiền mặt");
 
             Sheet tours = book.getSheet("Doanh thu theo tour");
             assertThat(tours.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Hạ Long");

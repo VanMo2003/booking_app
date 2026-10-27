@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -62,6 +63,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRevenueByTour(workbook, header, reportService.getRevenueByTour(hotelId, from, to));
             writeTopCustomers(workbook, header, reportService.getTopCustomers(hotelId, from, to, 20));
             writeStaffPerformance(workbook, header, reportService.getStaffPerformance(hotelId, from, to));
+            writeReceivables(workbook, header, reportService.getReceivables(hotelId), false);
 
             return toBytes(workbook);
         } catch (IOException e) {
@@ -89,6 +91,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRevenueByTour(workbook, header, reportService.getRevenueByTourForChain(hotelChainId, from, to));
             writeTopCustomers(workbook, header, reportService.getTopCustomersForChain(hotelChainId, from, to, 20));
             writeStaffPerformance(workbook, header, reportService.getStaffPerformanceForChain(hotelChainId, from, to));
+            writeReceivables(workbook, header, reportService.getReceivablesForChain(hotelChainId), true);
 
             return toBytes(workbook);
         } catch (IOException e) {
@@ -266,6 +269,39 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             line.createCell(5).setCellValue(row.getAiOrders());
         }
         autoSize(sheet, 6);
+    }
+
+    /** Today's list, whatever the export's period: completed stays whose payment was never recorded. */
+    private void writeReceivables(Workbook workbook, CellStyle header, List<ReceivableDTO> rows, boolean withBranch) {
+        Sheet sheet = workbook.createSheet("Tiền chưa thu");
+        List<String> titles = new ArrayList<>(List.of(
+                "Đơn", "Khách hàng", "Số điện thoại", "Ngày trả phòng", "Số ngày quá hạn", "Phương thức", "Số tiền"));
+        if (withBranch) {
+            titles.add(1, "Cơ sở");
+        }
+        writeHeader(sheet, header, titles.toArray(String[]::new));
+        int r = 1;
+        for (ReceivableDTO row : rows) {
+            Row line = sheet.createRow(r++);
+            int c = 0;
+            line.createCell(c++).setCellValue("#" + row.getBookingId());
+            if (withBranch) {
+                line.createCell(c++).setCellValue(row.getHotelName());
+            }
+            line.createCell(c++).setCellValue(row.getCustomerName() == null ? "" : row.getCustomerName());
+            line.createCell(c++).setCellValue(row.getPhoneNumber() == null ? "" : row.getPhoneNumber());
+            line.createCell(c++).setCellValue(String.valueOf(row.getCheckoutDate()));
+            line.createCell(c++).setCellValue(row.getDaysOverdue());
+            line.createCell(c++)
+                    .setCellValue(
+                            row.getPaymentMethod() == null
+                                    ? ""
+                                    : SHARE_LABELS.getOrDefault(
+                                            row.getPaymentMethod().name(),
+                                            row.getPaymentMethod().name()));
+            line.createCell(c).setCellValue(toDouble(row.getTotalAmount()));
+        }
+        autoSize(sheet, titles.size());
     }
 
     /** "+12.50%", or a dash when there was nothing to compare with. */

@@ -281,7 +281,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | So sánh cơ sở (chỉ cấp chuỗi) | `GET /reports/chain/branches?hotelChainId=&from=&to=` | Mỗi cơ sở: KPI như tổng quan, doanh thu kỳ trước, % tăng trưởng, tỷ trọng trong doanh thu chuỗi; nhiều doanh thu nhất trước |
 | Doanh thu theo tour | `GET /reports/revenue-by-tour?from=&to=` | Đơn tour hoàn tất gộp theo tour: số đơn, số khách, tiền tour, tiền phòng gói (chỉ tham khảo), số đơn do AI lên |
 | Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | |
-| Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên; bản chuỗi thêm **so sánh cơ sở** |
+| Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên, **tiền chưa thu** (danh sách tại thời điểm xuất); bản chuỗi thêm **so sánh cơ sở** |
 
 Cách tính trong tổng quan: tiền phòng = tổng đơn − dòng dịch vụ; ADR = tiền phòng / đêm đã bán; RevPAR =
 tiền phòng / (số phòng × số ngày); lưu trú TB = số đêm trung bình mỗi đơn hoàn tất; đặt trước TB = số ngày
