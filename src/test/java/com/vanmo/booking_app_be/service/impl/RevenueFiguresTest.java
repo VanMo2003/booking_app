@@ -24,6 +24,8 @@ import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
@@ -130,6 +132,37 @@ class RevenueFiguresTest {
         // 85% projected is not at risk
         assertThat(RevenueFigures.targetAlert(october(6_000_000, 8_500_000, 20), false, false))
                 .isEqualTo(RevenueFigures.TargetAlert.NONE);
+    }
+
+    private static CompletedBookingRow handledBy(String account, long amount) {
+        return new CompletedBookingRow(
+                1L, BigDecimal.valueOf(amount), PaymentMethod.CASH, account, null, null, null, null);
+    }
+
+    @Test
+    void staffAddsCompletedBookingsAndToursToWhatTheyTookAndRanksByEarned() {
+        List<StaffPerformanceDTO> taken = List.of(
+                new StaffPerformanceDTO("a", "an", null, null, 3L, BigDecimal.valueOf(5_000_000)),
+                new StaffPerformanceDTO("b", "binh", null, null, 1L, BigDecimal.valueOf(900_000)));
+        List<CompletedBookingRow> completed = List.of(
+                handledBy("a", 1_000_000),
+                handledBy("b", 900_000),
+                // a booking c took last month completed in this one
+                handledBy("c", 2_000_000),
+                // booked by the guest in the app: nobody's
+                handledBy(null, 700_000));
+        List<StaffTourRow> tours = List.of(new StaffTourRow("b", "binh", 2L, BigDecimal.valueOf(1_500_000)));
+
+        List<StaffPerformanceDTO> staff = RevenueFigures.staff(taken, completed, tours);
+
+        assertThat(staff).extracting(StaffPerformanceDTO::getAccountId).containsExactly("b", "c", "a");
+        StaffPerformanceDTO binh = staff.get(0);
+        assertThat(binh.getCompletedBookings()).isEqualTo(1);
+        assertThat(binh.getToursHandled()).isEqualTo(2);
+        assertThat(binh.getTourRevenue()).isEqualByComparingTo("1500000");
+        StaffPerformanceDTO c = staff.get(1);
+        assertThat(c.getTotalBooking()).isZero();
+        assertThat(c.getCompletedRevenue()).isEqualByComparingTo("2000000");
     }
 
     @Test

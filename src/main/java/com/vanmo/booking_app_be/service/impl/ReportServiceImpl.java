@@ -37,6 +37,7 @@ import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.ReportMapper;
+import com.vanmo.booking_app_be.repository.AccountRepository;
 import com.vanmo.booking_app_be.repository.BookingRepository;
 import com.vanmo.booking_app_be.repository.BookingRoomRepository;
 import com.vanmo.booking_app_be.repository.BookingServiceRepository;
@@ -73,6 +74,7 @@ public class ReportServiceImpl implements ReportService {
     private final PayrollRepository payrollRepository;
     private final RevenueTargetRepository revenueTargetRepository;
     private final NotificationService notificationService;
+    private final AccountRepository accountRepository;
     private final AccessGuard accessGuard;
 
     @Override
@@ -716,10 +718,18 @@ public class ReportServiceImpl implements ReportService {
 
     private List<StaffPerformanceDTO> staffPerformance(List<Long> hotelIds, LocalDate from, LocalDate to) {
         requireRange(from, to);
-        List<StaffPerformanceDTO> rows = bookingRepository.staffPerformance(hotelIds, from, to);
+        List<StaffPerformanceDTO> rows = RevenueFigures.staff(
+                bookingRepository.staffPerformance(hotelIds, from, to),
+                bookingRepository.findSales(hotelIds, BookingStatus.COMPLETED, from, to),
+                tourBookingRepository.findHandledByStaff(hotelIds, TourBookingStatus.COMPLETED, from, to));
 
         // the query can only see the Account; names/positions live on Employee (managers have none)
         for (StaffPerformanceDTO row : rows) {
+            if (row.getUsername() == null) {
+                accountRepository
+                        .findById(row.getAccountId())
+                        .ifPresent(account -> row.setUsername(account.getUsername()));
+            }
             Employee employee = employeeRepository.findByAccount_Id(row.getAccountId());
             if (employee != null) {
                 row.setFullName(employee.getFullName());

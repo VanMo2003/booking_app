@@ -30,6 +30,8 @@ import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
@@ -522,6 +524,42 @@ final class RevenueFigures {
                     percentOf(sum(targeted.stream().map(TargetProgressResponse::getProjectedRevenue)), target));
         }
         return chain;
+    }
+
+    /**
+     * Each team member's period: the bookings they took (already counted by the query), the ones of theirs that
+     * completed and the tours they handled - someone can appear through any of the three. Biggest earner (completed +
+     * tours) first. Names are filled in by the caller.
+     */
+    static List<StaffPerformanceDTO> staff(
+            List<StaffPerformanceDTO> taken, List<CompletedBookingRow> completed, List<StaffTourRow> tours) {
+        Map<String, StaffPerformanceDTO> byAccount = new LinkedHashMap<>();
+        taken.forEach(row -> byAccount.put(row.getAccountId(), row));
+        for (CompletedBookingRow sale : completed) {
+            if (sale.getHandledByAccountId() == null) {
+                continue;
+            }
+            StaffPerformanceDTO row = byAccount.computeIfAbsent(
+                    sale.getHandledByAccountId(),
+                    id -> new StaffPerformanceDTO(id, null, null, null, 0L, BigDecimal.ZERO));
+            row.setCompletedBookings(row.getCompletedBookings() + 1);
+            if (sale.getTotalAmount() != null) {
+                row.setCompletedRevenue(row.getCompletedRevenue().add(sale.getTotalAmount()));
+            }
+        }
+        for (StaffTourRow tour : tours) {
+            StaffPerformanceDTO row = byAccount.computeIfAbsent(
+                    tour.getAccountId(),
+                    id -> new StaffPerformanceDTO(id, tour.getUsername(), null, null, 0L, BigDecimal.ZERO));
+            row.setToursHandled(tour.getTours() == null ? 0 : tour.getTours());
+            row.setTourRevenue(tour.getTourRevenue() == null ? BigDecimal.ZERO : tour.getTourRevenue());
+        }
+        return byAccount.values().stream()
+                .sorted(Comparator.comparing((StaffPerformanceDTO row) ->
+                                row.getCompletedRevenue().add(row.getTourRevenue()))
+                        .thenComparing(row -> row.getTotalBooking() == null ? 0L : row.getTotalBooking())
+                        .reversed())
+                .toList();
     }
 
     /** What, if anything, to tell the branch about its goal this morning. */

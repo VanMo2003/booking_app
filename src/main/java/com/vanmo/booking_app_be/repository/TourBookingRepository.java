@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.entity.TourBooking;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
@@ -44,6 +45,18 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
             + "from TourBooking b left join b.tour tr "
             + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to")
     List<TourSaleRow> findSales(
+            @Param("hotelIds") Collection<Long> hotelIds,
+            @Param("status") TourBookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** Tour orders in a status with tour date in [from, to], per team member who handled them last. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.StaffTourRow("
+            + "acc.id, acc.username, count(b), sum(coalesce(b.tourAmount, b.totalAmount))) "
+            + "from TourBooking b join b.handledBy acc "
+            + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to "
+            + "group by acc.id, acc.username")
+    List<StaffTourRow> findHandledByStaff(
             @Param("hotelIds") Collection<Long> hotelIds,
             @Param("status") TourBookingStatus status,
             @Param("from") LocalDate from,

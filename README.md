@@ -280,6 +280,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | Doanh thu dự kiến & tiền chưa thu | `GET /reports/outlook?days=30` | Từ hôm nay, tối đa 90 ngày: đơn chờ/đã xác nhận theo ngày trả phòng và tour chờ/đã xác nhận theo ngày đi (từng ngày), phần khách đã trả trước, phần còn chờ xác nhận; đơn quá ngày trả phòng chưa hoàn tất; đơn đã hoàn tất chưa ghi nhận thanh toán |
 | So sánh cơ sở (chỉ cấp chuỗi) | `GET /reports/chain/branches?hotelChainId=&from=&to=` | Mỗi cơ sở: KPI như tổng quan, doanh thu kỳ trước, % tăng trưởng, tỷ trọng trong doanh thu chuỗi; nhiều doanh thu nhất trước |
 | Doanh thu theo tour | `GET /reports/revenue-by-tour?from=&to=` | Đơn tour hoàn tất gộp theo tour: số đơn, số khách, tiền tour, tiền phòng gói (chỉ tham khảo), số đơn do AI lên |
+| Hiệu suất nhân viên | `GET /reports/staff-performance?from=&to=` | Mỗi tài khoản quầy/quản lý: số đơn đã nhận và giá trị (nhận phòng trong kỳ, chưa huỷ), số đơn của họ đã hoàn tất và doanh thu thật (trả phòng trong kỳ), số tour hoàn tất họ xử lý và tiền tour; xếp theo hoàn tất + tour |
 | Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | |
 | Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên, **tiền chưa thu** (danh sách tại thời điểm xuất); bản chuỗi thêm **so sánh cơ sở** |
 

@@ -383,17 +383,32 @@ public class ExcelReportServiceImpl implements ExcelReportService {
 
     private void writeStaffPerformance(Workbook workbook, CellStyle header, List<StaffPerformanceDTO> rows) {
         Sheet sheet = workbook.createSheet("Hiệu suất nhân viên");
-        writeHeader(sheet, header, "Tài khoản", "Họ tên", "Chức vụ", "Số đơn đã nhận", "Doanh thu");
+        writeHeader(
+                sheet,
+                header,
+                "Tài khoản",
+                "Họ tên",
+                "Chức vụ",
+                "Số đơn đã nhận",
+                "Giá trị đơn đã nhận",
+                "Đơn hoàn tất",
+                "Doanh thu hoàn tất",
+                "Tour đã xử lý",
+                "Doanh thu tour");
         int r = 1;
         for (StaffPerformanceDTO row : rows) {
             Row line = sheet.createRow(r++);
-            line.createCell(0).setCellValue(row.getUsername());
+            line.createCell(0).setCellValue(row.getUsername() == null ? "" : row.getUsername());
             line.createCell(1).setCellValue(row.getFullName() == null ? "" : row.getFullName());
             line.createCell(2).setCellValue(row.getPositionName() == null ? "" : row.getPositionName());
             line.createCell(3).setCellValue(orZero(row.getTotalBooking()));
             line.createCell(4).setCellValue(toDouble(row.getTotalRevenue()));
+            line.createCell(5).setCellValue(row.getCompletedBookings());
+            line.createCell(6).setCellValue(toDouble(row.getCompletedRevenue()));
+            line.createCell(7).setCellValue(row.getToursHandled());
+            line.createCell(8).setCellValue(toDouble(row.getTourRevenue()));
         }
-        autoSize(sheet, 5);
+        autoSize(sheet, 9);
     }
 
     private CellStyle headerStyle(Workbook workbook) {
