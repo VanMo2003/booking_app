@@ -323,6 +323,18 @@ public class ReportController {
         return ApiResponse.ok(reportService.getWeekdayPatternForChain(hotelChainId, from, to));
     }
 
+    // ---- money still to collect ----
+
+    @GetMapping("/receivables")
+    public ApiResponse<List<ReceivableDTO>> receivables(@RequestParam Long hotelId) {
+        return ApiResponse.ok(reportService.getReceivables(hotelId));
+    }
+
+    @GetMapping("/chain/receivables")
+    public ApiResponse<List<ReceivableDTO>> receivablesForChain(@RequestParam Long hotelChainId) {
+        return ApiResponse.ok(reportService.getReceivablesForChain(hotelChainId));
+    }
+
     // ---- monthly revenue goals ----
 
     @PutMapping("/targets")

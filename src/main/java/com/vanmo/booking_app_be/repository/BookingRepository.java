@@ -15,6 +15,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
+import com.vanmo.booking_app_be.dto.response.ReceivableDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByMonthDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByYearDTO;
@@ -317,6 +318,25 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("hotelIds") List<Long> hotelIds,
             @Param("statuses") Collection<BookingStatus> statuses,
             @Param("to") LocalDate to);
+
+    /** The same bookings as {@link #findUnpaid}, with who and where, oldest check-out first. */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.ReceivableDTO(
+			b.id, h.id, h.name, c.fullName, c.phoneNumber, b.checkoutDate, b.totalAmount, b.paymentMethod
+		)
+		FROM Booking b
+		JOIN b.hotel h
+		JOIN b.customer c
+		WHERE h.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.paymentStatus <> :paid
+		ORDER BY b.checkoutDate, b.id
+	""")
+    List<ReceivableDTO> findReceivables(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("paid") PaymentStatus paid);
 
     /** Bookings in a status whose payment was never recorded as :paid. */
     @Query(

@@ -124,4 +124,10 @@ public interface ReportService {
 
     /** {@link #sendRevenueTargetAlerts} on demand, for admins (e.g. to demo it without waiting for 8:00). */
     int runRevenueTargetAlertsNow();
+
+    // ---- completed bookings whose payment was never recorded ----
+
+    List<ReceivableDTO> getReceivables(Long hotelId);
+
+    List<ReceivableDTO> getReceivablesForChain(Long hotelChainId);
 }

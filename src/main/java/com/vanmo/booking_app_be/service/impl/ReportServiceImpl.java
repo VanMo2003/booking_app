@@ -539,6 +539,25 @@ public class ReportServiceImpl implements ReportService {
         return sendRevenueTargetAlerts();
     }
 
+    @Override
+    public List<ReceivableDTO> getReceivables(Long hotelId) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return receivables(List.of(hotelId));
+    }
+
+    @Override
+    public List<ReceivableDTO> getReceivablesForChain(Long hotelChainId) {
+        return receivables(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)));
+    }
+
+    private List<ReceivableDTO> receivables(List<Long> hotelIds) {
+        LocalDate today = LocalDate.now();
+        List<ReceivableDTO> rows =
+                bookingRepository.findReceivables(hotelIds, BookingStatus.COMPLETED, PaymentStatus.PAID);
+        rows.forEach(row -> row.setDaysOverdue(Math.max(0, ChronoUnit.DAYS.between(row.getCheckoutDate(), today))));
+        return rows;
+    }
+
     /** Revenue of the month so far plus what is booked for the rest of it, against the branch's goal. */
     private TargetProgressResponse targetProgress(Hotel hotel, YearMonth month) {
         List<Long> ids = List.of(hotel.getId());
