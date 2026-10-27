@@ -26,6 +26,7 @@ import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
+import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
@@ -173,6 +174,60 @@ final class RevenueFigures {
                         // a walk-in booked on arrival day (or entered late) counts as zero days ahead
                         .mapToLong(b -> Math.max(0, ChronoUnit.DAYS.between(bookedOn(b), b.getCheckinDate())))))
                 .build();
+    }
+
+    /** A room as the per-room report lists it. */
+    record RoomInfo(Long id, String number, String typeName, BigDecimal price) {}
+
+    /**
+     * Every room of the branch over [from, to], busiest first; rooms nobody stayed in are kept (at 0) so the branch sees
+     * them.
+     *
+     * @param booked rooms of every booking that was not cancelled overlapping [from, to + 1)
+     * @param completed rooms of the completed bookings checking out in [from, to]
+     */
+    static List<RoomPerformanceDTO> rooms(
+            List<RoomInfo> rooms,
+            List<BookedRoomNightRow> booked,
+            List<BookedRoomNightRow> completed,
+            LocalDate from,
+            LocalDate to) {
+        LocalDate end = to.plusDays(1);
+        long days = ChronoUnit.DAYS.between(from, end);
+        Map<Long, RoomPerformanceDTO> byRoom = new LinkedHashMap<>();
+        for (RoomInfo room : rooms) {
+            byRoom.put(
+                    room.id(),
+                    new RoomPerformanceDTO(
+                            room.id(), room.number(), room.typeName(), room.price(), 0L, 0d, 0L, BigDecimal.ZERO));
+        }
+        for (BookedRoomNightRow row : booked) {
+            RoomPerformanceDTO room = byRoom.get(row.getRoomId());
+            if (room != null) {
+                room.setOccupiedNights(room.getOccupiedNights() + nightsWithin(row, from, end));
+            }
+        }
+        for (BookedRoomNightRow row : completed) {
+            RoomPerformanceDTO room = byRoom.get(row.getRoomId());
+            if (room != null && row.getRoomPrice() != null) {
+                room.setCompletedStays(room.getCompletedStays() + 1);
+                room.setRevenue(room.getRevenue().add(row.getRoomPrice().multiply(BigDecimal.valueOf(nights(row)))));
+            }
+        }
+        byRoom.values().forEach(room -> room.setOccupancyRate(rate(room.getOccupiedNights(), days)));
+        return byRoom.values().stream()
+                .sorted(Comparator.comparingDouble(RoomPerformanceDTO::getOccupancyRate)
+                        .thenComparing(RoomPerformanceDTO::getRevenue)
+                        .reversed()
+                        .thenComparing(RoomPerformanceDTO::getRoomNumber, Comparator.nullsLast(String::compareTo)))
+                .toList();
+    }
+
+    /** Nights of this stay inside [from, end) - stays can start before or end after it. */
+    private static long nightsWithin(BookedRoomNightRow row, LocalDate from, LocalDate end) {
+        LocalDate start = row.getCheckinDate().isBefore(from) ? from : row.getCheckinDate();
+        LocalDate stop = row.getCheckoutDate().isAfter(end) ? end : row.getCheckoutDate();
+        return Math.max(0, ChronoUnit.DAYS.between(start, stop));
     }
 
     /**

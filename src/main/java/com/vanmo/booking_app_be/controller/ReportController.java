@@ -298,6 +298,14 @@ public class ReportController {
         return ApiResponse.ok(reportService.getRevenueOutlookForChain(hotelChainId, days));
     }
 
+    @GetMapping("/rooms")
+    public ApiResponse<List<RoomPerformanceDTO>> roomPerformance(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRoomPerformance(hotelId, from, to));
+    }
+
     // ---- Excel export ----
 
     @GetMapping("/export")

@@ -93,4 +93,8 @@ public interface ReportService {
     RevenueOutlookResponse getRevenueOutlook(Long hotelId, int days);
 
     RevenueOutlookResponse getRevenueOutlookForChain(Long hotelChainId, int days);
+
+    // ---- every room of a branch over [from, to] ----
+
+    List<RoomPerformanceDTO> getRoomPerformance(Long hotelId, LocalDate from, LocalDate to);
 }

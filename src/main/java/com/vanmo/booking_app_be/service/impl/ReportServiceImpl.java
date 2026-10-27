@@ -378,6 +378,26 @@ public class ReportServiceImpl implements ReportService {
         return revenueOutlook(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), days);
     }
 
+    @Override
+    public List<RoomPerformanceDTO> getRoomPerformance(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        requireInclusiveRange(from, to);
+        List<Long> hotelIds = List.of(hotelId);
+        List<RevenueFigures.RoomInfo> rooms = roomRepository.findAllByHotel_Id(hotelId).stream()
+                .map(room -> new RevenueFigures.RoomInfo(
+                        room.getId(),
+                        room.getRoomNumber(),
+                        room.getRoomType() == null ? null : room.getRoomType().getName(),
+                        room.getPrice()))
+                .toList();
+        return RevenueFigures.rooms(
+                rooms,
+                bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)),
+                bookingRoomRepository.findRoomNightsByStatus(hotelIds, BookingStatus.COMPLETED, from, to),
+                from,
+                to);
+    }
+
     /** Today and the next days - 1 days. */
     private RevenueOutlookResponse revenueOutlook(List<Long> hotelIds, int days) {
         if (days < 1 || days > MAX_OUTLOOK_DAYS) {

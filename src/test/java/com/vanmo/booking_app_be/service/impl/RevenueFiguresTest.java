@@ -20,6 +20,7 @@ import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
+import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
@@ -81,6 +82,32 @@ class RevenueFiguresTest {
                 1,
                 BigDecimal.valueOf(650_000),
                 BigDecimal.ZERO);
+    }
+
+    private static BookedRoomNightRow stayIn(long roomId, LocalDate checkin, int nights) {
+        return new BookedRoomNightRow(
+                roomId, 1L, "Deluxe", BigDecimal.valueOf(500_000), checkin, checkin.plusDays(nights));
+    }
+
+    @Test
+    void everyRoomIsListedBusiestFirstWithIdleRoomsKept() {
+        List<RevenueFigures.RoomInfo> rooms = List.of(
+                new RevenueFigures.RoomInfo(1L, "101", "Deluxe", BigDecimal.valueOf(500_000)),
+                new RevenueFigures.RoomInfo(2L, "102", "Deluxe", BigDecimal.valueOf(500_000)),
+                new RevenueFigures.RoomInfo(3L, "201", "Suite", BigDecimal.valueOf(900_000)));
+        // room 102: a stay from before the period (only 2 of its nights fall in it) and one inside
+        List<BookedRoomNightRow> booked = List.of(
+                stayIn(1L, OCT_1.plusDays(2), 2), stayIn(2L, OCT_1.minusDays(1), 3), stayIn(2L, OCT_1.plusDays(5), 3));
+
+        List<RoomPerformanceDTO> result =
+                RevenueFigures.rooms(rooms, booked, List.of(stayIn(2L, OCT_1.plusDays(5), 3)), OCT_1, OCT_10);
+
+        assertThat(result).extracting(RoomPerformanceDTO::getRoomNumber).containsExactly("102", "101", "201");
+        assertThat(result.get(0).getOccupiedNights()).isEqualTo(5);
+        assertThat(result.get(0).getOccupancyRate()).isEqualTo(50d);
+        assertThat(result.get(0).getCompletedStays()).isEqualTo(1);
+        assertThat(result.get(0).getRevenue()).isEqualByComparingTo("1500000");
+        assertThat(result.get(2).getOccupiedNights()).isZero();
     }
 
     @Test
