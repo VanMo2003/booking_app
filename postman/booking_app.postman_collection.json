@@ -8606,7 +8606,8 @@
                   "pm.test('previous period: same length, ends the day before', () => { pm.expect(d.previous.from).to.eql('2025-01-01'); pm.expect(d.previous.to).to.eql('2025-12-31'); });",
                   "pm.test('every payment method listed', () => pm.expect(d.byPaymentMethod.length).to.eql(3));",
                   "pm.test('channels: app, front desk, tour', () => { pm.expect(d.byChannel[0].key).to.eql('SELF_SERVICE'); pm.expect(d.byChannel[2].key).to.eql('TOUR'); });",
-                  "pm.test('the November payslip (5.200.000, paid) is the payroll cost', () => pm.expect(d.current.payrollCost).to.eql(5200000));"
+                  "pm.test('the November payslip (5.200.000, paid) is the payroll cost', () => pm.expect(d.current.payrollCost).to.eql(5200000));",
+                  "pm.test('new then returning guests; nobody stayed before 2026, so nobody returns', () => { pm.expect(d.byCustomerType[0].key).to.eql('NEW'); pm.expect(d.byCustomerType[1].count).to.eql(0); });"
                 ]
               }
             }

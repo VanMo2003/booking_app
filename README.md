@@ -270,7 +270,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 
 | Báo cáo | Endpoint | Ghi chú |
 |---|---|---|
-| Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ; so với kỳ trước (xem bên dưới); chia theo phương thức thanh toán và kênh bán (khách tự đặt / tại quầy / tour). `from`, `to` tính cả hai đầu |
+| Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ; so với kỳ trước (xem bên dưới); chia theo phương thức thanh toán, kênh bán (khách tự đặt / tại quầy / tour) và loại khách (mới / quay lại — đã có đơn hoàn tất trả phòng trước kỳ). `from`, `to` tính cả hai đầu |
 | Doanh thu theo thời gian | `GET /reports/daily`, `/weekly`, `/weekly-in-month`, `/monthly`, `/monthly/last-5-months`, `/yearly` | Chỉ đơn phòng (đã gồm dịch vụ) |
 | Lấp đầy | `GET /reports/occupancy`, `/occupancy/daily` | `[from, to)`; theo ngày tối đa 92 ngày, chỉ cấp cơ sở |
 | Theo thứ trong tuần | `GET /reports/weekdays?from=&to=` | 7 dòng, thứ Hai → Chủ nhật: số ngày của thứ đó trong kỳ, lấp đầy trung bình, doanh thu trung bình mỗi ngày (đơn phòng theo ngày trả phòng + tour theo ngày đi) |

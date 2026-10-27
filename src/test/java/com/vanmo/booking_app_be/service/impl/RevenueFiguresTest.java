@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +35,22 @@ class RevenueFiguresTest {
     private static final LocalDate OCT_10 = LocalDate.of(2026, 10, 10);
 
     private static CompletedBookingRow booking(long amount, PaymentMethod method, String handledBy) {
-        return new CompletedBookingRow(1L, BigDecimal.valueOf(amount), method, handledBy, null, null, null);
+        return new CompletedBookingRow(1L, BigDecimal.valueOf(amount), method, handledBy, null, null, null, null);
+    }
+
+    private static CompletedBookingRow bookedBy(long customerId, long amount) {
+        return new CompletedBookingRow(
+                1L, BigDecimal.valueOf(amount), PaymentMethod.CASH, null, null, null, null, customerId);
+    }
+
+    @Test
+    void guestsWithAnEarlierCompletedStayCountAsReturning() {
+        List<RevenueShareDTO> types = RevenueFigures.byCustomerType(
+                List.of(bookedBy(1L, 1_000_000), bookedBy(2L, 3_000_000), bookedBy(2L, 1_000_000)), Set.of(2L));
+
+        assertThat(types).extracting(RevenueShareDTO::getKey).containsExactly("NEW", "RETURNING");
+        assertThat(types).extracting(RevenueShareDTO::getCount).containsExactly(1L, 2L);
+        assertThat(types).extracting(RevenueShareDTO::getShare).containsExactly(20d, 80d);
     }
 
     /** A completed stay placed {@code daysAhead} days before check-in. */
@@ -44,7 +60,14 @@ class RevenueFiguresTest {
                 .atZone(ZoneId.systemDefault())
                 .toInstant());
         return new CompletedBookingRow(
-                1L, BigDecimal.valueOf(1_000_000), PaymentMethod.CASH, null, checkin, checkin.plusDays(nights), placed);
+                1L,
+                BigDecimal.valueOf(1_000_000),
+                PaymentMethod.CASH,
+                null,
+                checkin,
+                checkin.plusDays(nights),
+                placed,
+                null);
     }
 
     private static BookedRoomNightRow room(LocalDate checkin, int nights) {

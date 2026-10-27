@@ -29,4 +29,6 @@ public class CompletedBookingRow {
 
     /** When the booking was placed - the start of its lead time. */
     Date createdAt;
+
+    Long customerId;
 }

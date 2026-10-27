@@ -238,6 +238,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     long countBookings(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    /** Customers with a booking in the status that checked out before :before - who counts as a returning guest. */
+    @Query(
+            """
+		SELECT DISTINCT b.customer.id
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkoutDate < :before
+	""")
+    List<Long> findCustomerIdsBefore(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("before") LocalDate before);
+
     /** What the bookings in a status checking in during [from, to] were worth - e.g. revenue lost to cancellations. */
     @Query(
             """
@@ -271,7 +285,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query(
             """
 		SELECT new com.vanmo.booking_app_be.dto.response.CompletedBookingRow(
-			b.id, b.totalAmount, b.paymentMethod, acc.id, b.checkinDate, b.checkoutDate, b.onCreate
+			b.id, b.totalAmount, b.paymentMethod, acc.id, b.checkinDate, b.checkoutDate, b.onCreate, b.customer.id
 		)
 		FROM Booking b
 		LEFT JOIN b.handledBy acc

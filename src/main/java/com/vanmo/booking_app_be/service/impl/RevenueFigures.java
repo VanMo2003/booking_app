@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
@@ -41,6 +42,8 @@ final class RevenueFigures {
     static final String SELF_SERVICE = "SELF_SERVICE";
     static final String FRONT_DESK = "FRONT_DESK";
     static final String TOUR = "TOUR";
+    static final String NEW_GUEST = "NEW";
+    static final String RETURNING_GUEST = "RETURNING";
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
@@ -464,6 +467,16 @@ final class RevenueFigures {
                 .outstandingAmount(outstanding.getRevenue())
                 .outstandingBookings(outstanding.getCount())
                 .build();
+    }
+
+    /** NEW then RETURNING: a guest returns when they are among {@code returningCustomerIds}. */
+    static List<RevenueShareDTO> byCustomerType(List<CompletedBookingRow> bookings, Set<Long> returningCustomerIds) {
+        RevenueShareDTO newGuests = slice(NEW_GUEST);
+        RevenueShareDTO returning = slice(RETURNING_GUEST);
+        for (CompletedBookingRow row : bookings) {
+            add(returningCustomerIds.contains(row.getCustomerId()) ? returning : newGuests, row.getTotalAmount());
+        }
+        return withShares(List.of(newGuests, returning));
     }
 
     /** Percentage change, 2 decimals; null when there was nothing before to compare with. */

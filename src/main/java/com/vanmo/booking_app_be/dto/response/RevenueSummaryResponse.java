@@ -38,4 +38,10 @@ public class RevenueSummaryResponse {
 
     /** SELF_SERVICE (booked in the app), FRONT_DESK (taken by staff) and TOUR. */
     List<RevenueShareDTO> byChannel;
+
+    /**
+     * Completed bookings of NEW guests and of RETURNING ones (a completed stay here that checked out before the
+     * period).
+     */
+    List<RevenueShareDTO> byCustomerType;
 }

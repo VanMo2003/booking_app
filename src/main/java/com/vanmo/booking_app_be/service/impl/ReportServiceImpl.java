@@ -447,9 +447,13 @@ public class ReportServiceImpl implements ReportService {
         requireInclusiveRange(from, to);
         long totalRooms = roomRepository.countByHotel_IdIn(hotelIds);
         RevenueFigures.Period previous = RevenueFigures.previousPeriod(from, to);
-        return RevenueFigures.summary(
-                periodRows(hotelIds, totalRooms, from, to),
-                periodRows(hotelIds, totalRooms, previous.from(), previous.to()));
+        RevenueFigures.PeriodRows current = periodRows(hotelIds, totalRooms, from, to);
+        RevenueSummaryResponse summary =
+                RevenueFigures.summary(current, periodRows(hotelIds, totalRooms, previous.from(), previous.to()));
+        summary.setByCustomerType(RevenueFigures.byCustomerType(
+                current.bookings(),
+                Set.copyOf(bookingRepository.findCustomerIdsBefore(hotelIds, BookingStatus.COMPLETED, from))));
+        return summary;
     }
 
     private RevenueFigures.PeriodRows periodRows(List<Long> hotelIds, long totalRooms, LocalDate from, LocalDate to) {

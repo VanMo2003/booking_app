@@ -35,7 +35,9 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             "VN_PAY", "VNPay",
             "SELF_SERVICE", "Khách tự đặt trên app",
             "FRONT_DESK", "Đặt tại quầy",
-            "TOUR", "Tour");
+            "TOUR", "Tour",
+            "NEW", "Khách mới",
+            "RETURNING", "Khách quay lại");
 
     private final ReportService reportService;
 
@@ -195,6 +197,13 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         writeHeaderAt(sheet, header, r++, "Kênh bán", "Số đơn", "Doanh thu", "Tỷ trọng (%)");
         for (RevenueShareDTO share : summary.getByChannel()) {
             r = shareRow(sheet, r, share);
+        }
+        if (summary.getByCustomerType() != null) {
+            r++;
+            writeHeaderAt(sheet, header, r++, "Loại khách", "Số đơn", "Doanh thu", "Tỷ trọng (%)");
+            for (RevenueShareDTO share : summary.getByCustomerType()) {
+                r = shareRow(sheet, r, share);
+            }
         }
         autoSize(sheet, 4);
     }
