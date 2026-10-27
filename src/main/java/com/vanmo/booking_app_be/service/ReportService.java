@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.vanmo.booking_app_be.dto.request.ReportCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ReportUpdateRequest;
+import com.vanmo.booking_app_be.dto.request.RevenueTargetRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 
 public interface ReportService {
@@ -103,4 +104,14 @@ public interface ReportService {
     List<WeekdayStatsDTO> getWeekdayPattern(Long hotelId, LocalDate from, LocalDate to);
 
     List<WeekdayStatsDTO> getWeekdayPatternForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    // ---- monthly revenue goals ----
+
+    /** Sets (or, with amount 0, removes) a branch's goal for a month; owner or manager of the branch. */
+    TargetProgressResponse setRevenueTarget(RevenueTargetRequest req);
+
+    /** month "yyyy-MM". */
+    TargetProgressResponse getTargetProgress(Long hotelId, String month);
+
+    ChainTargetProgressResponse getTargetProgressForChain(Long hotelChainId, String month);
 }

@@ -30,6 +30,7 @@ import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
@@ -467,6 +468,64 @@ final class RevenueFigures {
                 .outstandingAmount(outstanding.getRevenue())
                 .outstandingBookings(outstanding.getCount())
                 .build();
+    }
+
+    /**
+     * One branch's month against its goal.
+     *
+     * @param revenue the month's total revenue so far
+     * @param onTheBooks open bookings and tour orders due in the rest of the month
+     */
+    static TargetProgressResponse targetProgress(
+            Long hotelId,
+            String hotelName,
+            YearMonth month,
+            BigDecimal target,
+            BigDecimal revenue,
+            BigDecimal onTheBooks,
+            LocalDate today) {
+        LocalDate start = month.atDay(1);
+        long elapsed =
+                today.isBefore(start) ? 0 : Math.min(month.lengthOfMonth(), ChronoUnit.DAYS.between(start, today) + 1);
+        BigDecimal projected = revenue.add(onTheBooks);
+        boolean hasTarget = target != null && target.signum() > 0;
+        return TargetProgressResponse.builder()
+                .hotelId(hotelId)
+                .hotelName(hotelName)
+                .month(month.toString())
+                .target(hasTarget ? target : null)
+                .revenue(revenue)
+                .projectedRevenue(projected)
+                .achievedRate(hasTarget ? percentOf(revenue, target) : null)
+                .projectedRate(hasTarget ? percentOf(projected, target) : null)
+                .daysElapsed((int) elapsed)
+                .daysInMonth(month.lengthOfMonth())
+                .build();
+    }
+
+    /**
+     * The chain's month: revenue and projection of every branch, measured against the sum of the goals that were set -
+     * the rates only count the branches that have a goal, so a branch without one cannot inflate them.
+     */
+    static TargetProgressResponse chainTarget(List<TargetProgressResponse> branches, YearMonth month, LocalDate today) {
+        BigDecimal revenue = sum(branches.stream().map(TargetProgressResponse::getRevenue));
+        BigDecimal projected = sum(branches.stream().map(TargetProgressResponse::getProjectedRevenue));
+        TargetProgressResponse chain =
+                targetProgress(null, null, month, null, revenue, projected.subtract(revenue), today);
+        List<TargetProgressResponse> targeted =
+                branches.stream().filter(b -> b.getTarget() != null).toList();
+        if (!targeted.isEmpty()) {
+            BigDecimal target = sum(targeted.stream().map(TargetProgressResponse::getTarget));
+            chain.setTarget(target);
+            chain.setAchievedRate(percentOf(sum(targeted.stream().map(TargetProgressResponse::getRevenue)), target));
+            chain.setProjectedRate(
+                    percentOf(sum(targeted.stream().map(TargetProgressResponse::getProjectedRevenue)), target));
+        }
+        return chain;
+    }
+
+    private static double percentOf(BigDecimal part, BigDecimal whole) {
+        return part.multiply(HUNDRED).divide(whole, 2, RoundingMode.HALF_UP).doubleValue();
     }
 
     /** NEW then RETURNING: a guest returns when they are among {@code returningCustomerIds}. */

@@ -16,13 +16,16 @@ import java.util.stream.IntStream;
 
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.vanmo.booking_app_be.dto.request.ReportCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ReportUpdateRequest;
+import com.vanmo.booking_app_be.dto.request.RevenueTargetRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.Employee;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Report;
+import com.vanmo.booking_app_be.entity.RevenueTarget;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.entity.enums.PayrollStatus;
@@ -38,6 +41,7 @@ import com.vanmo.booking_app_be.repository.EmployeeRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.PayrollRepository;
 import com.vanmo.booking_app_be.repository.ReportRepository;
+import com.vanmo.booking_app_be.repository.RevenueTargetRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.TourBookingRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
@@ -62,6 +66,7 @@ public class ReportServiceImpl implements ReportService {
     private final HotelRepository hotelRepository;
     private final TourBookingRepository tourBookingRepository;
     private final PayrollRepository payrollRepository;
+    private final RevenueTargetRepository revenueTargetRepository;
     private final AccessGuard accessGuard;
 
     @Override
@@ -424,6 +429,92 @@ public class ReportServiceImpl implements ReportService {
                 roomRepository.countByHotel_IdIn(hotelIds),
                 bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)),
                 revenueByDate);
+    }
+
+    // ---------------- monthly revenue goals ----------------
+
+    @Override
+    @Transactional
+    public TargetProgressResponse setRevenueTarget(RevenueTargetRequest req) {
+        Hotel hotel = accessGuard.requireBranchManagerOrAbove(req.getHotelId());
+        YearMonth month = parseMonth(req.getMonth());
+        RevenueTarget target = revenueTargetRepository
+                .findByHotel_IdAndMonth(hotel.getId(), month.atDay(1))
+                .orElse(null);
+        if (req.getAmount().signum() == 0) {
+            if (target != null) {
+                revenueTargetRepository.delete(target);
+            }
+        } else {
+            if (target == null) {
+                target = RevenueTarget.builder()
+                        .hotel(hotel)
+                        .month(month.atDay(1))
+                        .build();
+            }
+            target.setAmount(req.getAmount());
+            revenueTargetRepository.save(target);
+        }
+        return targetProgress(hotel, month);
+    }
+
+    @Override
+    public TargetProgressResponse getTargetProgress(Long hotelId, String month) {
+        return targetProgress(accessGuard.requireBranchManagerOrAbove(hotelId), parseMonth(month));
+    }
+
+    @Override
+    public ChainTargetProgressResponse getTargetProgressForChain(Long hotelChainId, String month) {
+        requireChainAccess(hotelChainId);
+        YearMonth yearMonth = parseMonth(month);
+        List<TargetProgressResponse> branches = hotelRepository.findAllByHotelChain_Id(hotelChainId).stream()
+                .map(hotel -> targetProgress(hotel, yearMonth))
+                .toList();
+        return new ChainTargetProgressResponse(
+                RevenueFigures.chainTarget(branches, yearMonth, LocalDate.now()), branches);
+    }
+
+    /** Revenue of the month so far plus what is booked for the rest of it, against the branch's goal. */
+    private TargetProgressResponse targetProgress(Hotel hotel, YearMonth month) {
+        List<Long> ids = List.of(hotel.getId());
+        LocalDate today = LocalDate.now();
+        LocalDate start = month.atDay(1);
+        LocalDate end = month.atEndOfMonth();
+        BigDecimal revenue = BigDecimal.ZERO;
+        if (!start.isAfter(today)) {
+            LocalDate upTo = end.isBefore(today) ? end : today;
+            revenue = RevenueFigures.sum(bookingRepository.findSales(ids, BookingStatus.COMPLETED, start, upTo).stream()
+                            .map(CompletedBookingRow::getTotalAmount))
+                    .add(RevenueFigures.sum(
+                            tourBookingRepository.findSales(ids, TourBookingStatus.COMPLETED, start, upTo).stream()
+                                    .map(TourSaleRow::tourRevenue)));
+        }
+        BigDecimal onTheBooks = BigDecimal.ZERO;
+        if (!end.isBefore(today)) {
+            LocalDate from = start.isAfter(today) ? start : today;
+            onTheBooks = RevenueFigures.outlook(
+                            from,
+                            end,
+                            bookingRepository.findOpen(
+                                    ids, EnumSet.of(BookingStatus.PENDING, BookingStatus.CONFIRMED), end),
+                            tourBookingRepository.findUpcoming(
+                                    ids, EnumSet.of(TourBookingStatus.PENDING, TourBookingStatus.CONFIRMED), from, end),
+                            List.of())
+                    .getTotalExpected();
+        }
+        BigDecimal target = revenueTargetRepository
+                .findByHotel_IdAndMonth(hotel.getId(), start)
+                .map(RevenueTarget::getAmount)
+                .orElse(null);
+        return RevenueFigures.targetProgress(hotel.getId(), hotel.getName(), month, target, revenue, onTheBooks, today);
+    }
+
+    private YearMonth parseMonth(String month) {
+        try {
+            return YearMonth.parse(month);
+        } catch (RuntimeException e) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "month phải có dạng yyyy-MM");
+        }
     }
 
     /** Today and the next days - 1 days. */

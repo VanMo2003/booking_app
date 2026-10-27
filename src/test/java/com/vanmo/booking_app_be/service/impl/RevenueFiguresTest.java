@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
@@ -23,6 +24,7 @@ import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
@@ -41,6 +43,60 @@ class RevenueFiguresTest {
     private static CompletedBookingRow bookedBy(long customerId, long amount) {
         return new CompletedBookingRow(
                 1L, BigDecimal.valueOf(amount), PaymentMethod.CASH, null, null, null, null, customerId);
+    }
+
+    private static final YearMonth OCTOBER = YearMonth.of(2026, 10);
+
+    @Test
+    void targetProgressAddsWhatIsBookedForTheRestOfTheMonth() {
+        TargetProgressResponse progress = RevenueFigures.targetProgress(
+                6L,
+                "Hoàn Kiếm",
+                OCTOBER,
+                BigDecimal.valueOf(10_000_000),
+                BigDecimal.valueOf(4_000_000),
+                BigDecimal.valueOf(5_000_000),
+                LocalDate.of(2026, 10, 20));
+
+        assertThat(progress.getMonth()).isEqualTo("2026-10");
+        assertThat(progress.getAchievedRate()).isEqualTo(40d);
+        assertThat(progress.getProjectedRevenue()).isEqualByComparingTo("9000000");
+        assertThat(progress.getProjectedRate()).isEqualTo(90d);
+        assertThat(progress.getDaysElapsed()).isEqualTo(20);
+        assertThat(progress.getDaysInMonth()).isEqualTo(31);
+    }
+
+    @Test
+    void withoutATargetThereAreNoRatesAndFutureMonthsHaveNotStarted() {
+        TargetProgressResponse progress = RevenueFigures.targetProgress(
+                6L, "A", OCTOBER, null, BigDecimal.ZERO, BigDecimal.ZERO, LocalDate.of(2026, 9, 28));
+
+        assertThat(progress.getTarget()).isNull();
+        assertThat(progress.getAchievedRate()).isNull();
+        assertThat(progress.getDaysElapsed()).isZero();
+    }
+
+    @Test
+    void chainRatesOnlyCountBranchesWithATarget() {
+        LocalDate today = LocalDate.of(2026, 10, 20);
+        TargetProgressResponse withGoal = RevenueFigures.targetProgress(
+                6L,
+                "A",
+                OCTOBER,
+                BigDecimal.valueOf(10_000_000),
+                BigDecimal.valueOf(5_000_000),
+                BigDecimal.ZERO,
+                today);
+        TargetProgressResponse noGoal = RevenueFigures.targetProgress(
+                7L, "B", OCTOBER, null, BigDecimal.valueOf(3_000_000), BigDecimal.valueOf(1_000_000), today);
+
+        TargetProgressResponse chain = RevenueFigures.chainTarget(List.of(withGoal, noGoal), OCTOBER, today);
+
+        assertThat(chain.getHotelId()).isNull();
+        assertThat(chain.getRevenue()).isEqualByComparingTo("8000000");
+        assertThat(chain.getProjectedRevenue()).isEqualByComparingTo("9000000");
+        assertThat(chain.getTarget()).isEqualByComparingTo("10000000");
+        assertThat(chain.getAchievedRate()).isEqualTo(50d);
     }
 
     @Test

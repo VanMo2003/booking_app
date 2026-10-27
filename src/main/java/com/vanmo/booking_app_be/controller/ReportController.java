@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.ReportCreateRequest;
 import com.vanmo.booking_app_be.dto.request.ReportUpdateRequest;
+import com.vanmo.booking_app_be.dto.request.RevenueTargetRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.service.ExcelReportService;
 import com.vanmo.booking_app_be.service.ReportService;
@@ -320,6 +321,24 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ApiResponse.ok(reportService.getWeekdayPatternForChain(hotelChainId, from, to));
+    }
+
+    // ---- monthly revenue goals ----
+
+    @PutMapping("/targets")
+    public ApiResponse<TargetProgressResponse> setRevenueTarget(@Valid @RequestBody RevenueTargetRequest req) {
+        return ApiResponse.ok(reportService.setRevenueTarget(req));
+    }
+
+    @GetMapping("/targets/progress")
+    public ApiResponse<TargetProgressResponse> targetProgress(@RequestParam Long hotelId, @RequestParam String month) {
+        return ApiResponse.ok(reportService.getTargetProgress(hotelId, month));
+    }
+
+    @GetMapping("/chain/targets/progress")
+    public ApiResponse<ChainTargetProgressResponse> targetProgressForChain(
+            @RequestParam Long hotelChainId, @RequestParam String month) {
+        return ApiResponse.ok(reportService.getTargetProgressForChain(hotelChainId, month));
     }
 
     // ---- Excel export ----
