@@ -25,6 +25,7 @@ import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.Report;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
+import com.vanmo.booking_app_be.entity.enums.PayrollStatus;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
@@ -35,6 +36,7 @@ import com.vanmo.booking_app_be.repository.BookingRoomRepository;
 import com.vanmo.booking_app_be.repository.BookingServiceRepository;
 import com.vanmo.booking_app_be.repository.EmployeeRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
+import com.vanmo.booking_app_be.repository.PayrollRepository;
 import com.vanmo.booking_app_be.repository.ReportRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.TourBookingRepository;
@@ -59,6 +61,7 @@ public class ReportServiceImpl implements ReportService {
     private final EmployeeRepository employeeRepository;
     private final HotelRepository hotelRepository;
     private final TourBookingRepository tourBookingRepository;
+    private final PayrollRepository payrollRepository;
     private final AccessGuard accessGuard;
 
     @Override
@@ -420,7 +423,15 @@ public class ReportServiceImpl implements ReportService {
                 occupiedRoomNights,
                 bookingRepository.countBookings(hotelIds, from, to),
                 bookingRepository.countBookingsByStatus(hotelIds, BookingStatus.CANCELED, from, to),
-                bookingRepository.sumAmountByStatus(hotelIds, BookingStatus.CANCELED, from, to));
+                bookingRepository.sumAmountByStatus(hotelIds, BookingStatus.CANCELED, from, to),
+                RevenueFigures.payrollCost(
+                        payrollRepository.findCosts(
+                                hotelIds,
+                                EnumSet.of(PayrollStatus.APPROVED, PayrollStatus.PAID),
+                                YearMonth.from(from).atDay(1),
+                                YearMonth.from(to).atEndOfMonth()),
+                        from,
+                        to));
     }
 
     private OccupancyResponse occupancy(List<Long> hotelIds, LocalDate from, LocalDate to) {

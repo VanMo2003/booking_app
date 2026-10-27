@@ -65,4 +65,16 @@ public class RevenuePeriodDTO {
 
     /** Average days between placing a completed booking and checking in (1 decimal). */
     double averageLeadDays;
+
+    /**
+     * Approved and paid payslips of the branch staff, each month's spread over its days and counted for the days of
+     * the period (managers have no payslip, so they are not in here).
+     */
+    BigDecimal payrollCost;
+
+    /** totalRevenue - payrollCost; can be negative. */
+    BigDecimal grossProfit;
+
+    /** grossProfit as a percentage of totalRevenue; 0 without revenue. */
+    double profitMargin;
 }

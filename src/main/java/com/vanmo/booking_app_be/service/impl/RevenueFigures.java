@@ -20,6 +20,7 @@ import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
+import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -48,6 +49,7 @@ final class RevenueFigures {
      * @param occupiedRoomNights nights of every booking that was not cancelled, cut to the period
      * @param totalBookings bookings checking in during the period
      * @param canceledRevenue what the cancelled ones among them were worth
+     * @param payrollCost the payslips' part that falls in the period, see {@link #payrollCost}
      */
     record PeriodRows(
             LocalDate from,
@@ -60,7 +62,8 @@ final class RevenueFigures {
             long occupiedRoomNights,
             long totalBookings,
             long canceledBookings,
-            BigDecimal canceledRevenue) {
+            BigDecimal canceledRevenue,
+            BigDecimal payrollCost) {
 
         long days() {
             return ChronoUnit.DAYS.between(from, to) + 1;
@@ -102,6 +105,11 @@ final class RevenueFigures {
                         BigDecimal.valueOf(previous.getCompletedBookings())))
                 .adrGrowth(growth(current.getAdr(), previous.getAdr()))
                 .revparGrowth(growth(current.getRevpar(), previous.getRevpar()))
+                // growth over a loss would read backwards, so only a previous profit is a base
+                .profitGrowth(
+                        previous.getGrossProfit().signum() > 0
+                                ? growth(current.getGrossProfit(), previous.getGrossProfit())
+                                : null)
                 .occupancyChange(round2(current.getOccupancyRate() - previous.getOccupancyRate()))
                 .byPaymentMethod(byPaymentMethod(currentRows.bookings()))
                 .byChannel(byChannel(currentRows.bookings(), currentRows.tours()))
@@ -115,6 +123,10 @@ final class RevenueFigures {
         BigDecimal roomRevenue = bookingRevenue.subtract(serviceRevenue).max(BigDecimal.ZERO);
         BigDecimal tourRevenue = sum(rows.tours().stream().map(TourSaleRow::tourRevenue));
 
+        BigDecimal totalRevenue = bookingRevenue.add(tourRevenue);
+        BigDecimal payrollCost = rows.payrollCost() == null ? BigDecimal.ZERO : rows.payrollCost();
+        BigDecimal grossProfit = totalRevenue.subtract(payrollCost);
+
         long nightsSold =
                 rows.soldRooms().stream().mapToLong(RevenueFigures::nights).sum();
         long availableNights = rows.totalRooms() * rows.days();
@@ -123,7 +135,16 @@ final class RevenueFigures {
         return RevenuePeriodDTO.builder()
                 .from(rows.from())
                 .to(rows.to())
-                .totalRevenue(bookingRevenue.add(tourRevenue))
+                .totalRevenue(totalRevenue)
+                .payrollCost(payrollCost)
+                .grossProfit(grossProfit)
+                .profitMargin(
+                        totalRevenue.signum() == 0
+                                ? 0d
+                                : grossProfit
+                                        .multiply(HUNDRED)
+                                        .divide(totalRevenue, 2, RoundingMode.HALF_UP)
+                                        .doubleValue())
                 .roomRevenue(roomRevenue)
                 .serviceRevenue(serviceRevenue)
                 .tourRevenue(tourRevenue)
@@ -152,6 +173,29 @@ final class RevenueFigures {
                         // a walk-in booked on arrival day (or entered late) counts as zero days ahead
                         .mapToLong(b -> Math.max(0, ChronoUnit.DAYS.between(bookedOn(b), b.getCheckinDate())))))
                 .build();
+    }
+
+    /**
+     * Payroll cost of [from, to]: each payslip pays for a whole month, so it is spread evenly over that month's days and
+     * only the days inside the period count (a 10-day range in a 30-day month carries a third of that month's salary).
+     */
+    static BigDecimal payrollCost(List<PayrollCostRow> payslips, LocalDate from, LocalDate to) {
+        BigDecimal cost = BigDecimal.ZERO;
+        for (PayrollCostRow payslip : payslips) {
+            if (payslip.getMonth() == null || payslip.getTotalSalary() == null) {
+                continue;
+            }
+            YearMonth month = YearMonth.from(payslip.getMonth());
+            LocalDate start = month.atDay(1).isBefore(from) ? from : month.atDay(1);
+            LocalDate end = month.atEndOfMonth().isAfter(to) ? to : month.atEndOfMonth();
+            long days = ChronoUnit.DAYS.between(start, end) + 1;
+            if (days > 0) {
+                cost = cost.add(payslip.getTotalSalary()
+                        .multiply(BigDecimal.valueOf(days))
+                        .divide(BigDecimal.valueOf(month.lengthOfMonth()), 0, RoundingMode.HALF_UP));
+            }
+        }
+        return cost;
     }
 
     private static LocalDate bookedOn(CompletedBookingRow booking) {

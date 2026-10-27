@@ -141,6 +141,15 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         r = kpiRow(sheet, r, "Tiền phòng", now.getRoomRevenue(), before.getRoomRevenue(), "");
         r = kpiRow(sheet, r, "Dịch vụ", now.getServiceRevenue(), before.getServiceRevenue(), "");
         r = kpiRow(sheet, r, "Tour", now.getTourRevenue(), before.getTourRevenue(), "");
+        r = kpiRow(sheet, r, "Chi phí lương (phân bổ theo ngày)", now.getPayrollCost(), before.getPayrollCost(), "");
+        r = kpiRow(
+                sheet,
+                r,
+                "Lợi nhuận sau lương",
+                now.getGrossProfit(),
+                before.getGrossProfit(),
+                percent(summary.getProfitGrowth()));
+        r = kpiRow(sheet, r, "Biên lợi nhuận (%)", now.getProfitMargin(), before.getProfitMargin(), "");
         r = kpiRow(
                 sheet,
                 r,

@@ -27,6 +27,9 @@ public class RevenueSummaryResponse {
     Double adrGrowth;
     Double revparGrowth;
 
+    /** Change of grossProfit; only when the previous period made a profit. */
+    Double profitGrowth;
+
     /** Occupancy difference in percentage points (current - previous). */
     Double occupancyChange;
 

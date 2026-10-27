@@ -96,8 +96,10 @@ class ExcelReportServiceImplTest {
             assertThat(kpi.getRow(1).getCell(2).getNumericCellValue()).isEqualTo(2_000_000d);
             assertThat(kpi.getRow(1).getCell(3).getStringCellValue()).isEqualTo("+50.00%");
             // no previous ADR to compare with
-            assertThat(kpi.getRow(8).getCell(3).getStringCellValue()).isEqualTo("–");
-            assertThat(kpi.getRow(10).getCell(3).getStringCellValue()).isEqualTo("+2.50 điểm");
+            assertThat(kpi.getRow(6).getCell(0).getStringCellValue()).isEqualTo("Lợi nhuận sau lương");
+            assertThat(kpi.getRow(11).getCell(0).getStringCellValue()).isEqualTo("ADR - giá TB/đêm");
+            assertThat(kpi.getRow(11).getCell(3).getStringCellValue()).isEqualTo("–");
+            assertThat(kpi.getRow(13).getCell(3).getStringCellValue()).isEqualTo("+2.50 điểm");
 
             // one spelling of "huỷ" across sheets, like the app
             Sheet overview = book.getSheet("Tổng quan");

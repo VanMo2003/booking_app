@@ -8605,7 +8605,8 @@
                   "pm.test('current period is the requested range', () => { pm.expect(d.current.from).to.eql('2026-01-01'); pm.expect(d.current.to).to.eql('2026-12-31'); });",
                   "pm.test('previous period: same length, ends the day before', () => { pm.expect(d.previous.from).to.eql('2025-01-01'); pm.expect(d.previous.to).to.eql('2025-12-31'); });",
                   "pm.test('every payment method listed', () => pm.expect(d.byPaymentMethod.length).to.eql(3));",
-                  "pm.test('channels: app, front desk, tour', () => { pm.expect(d.byChannel[0].key).to.eql('SELF_SERVICE'); pm.expect(d.byChannel[2].key).to.eql('TOUR'); });"
+                  "pm.test('channels: app, front desk, tour', () => { pm.expect(d.byChannel[0].key).to.eql('SELF_SERVICE'); pm.expect(d.byChannel[2].key).to.eql('TOUR'); });",
+                  "pm.test('the November payslip (5.200.000, paid) is the payroll cost', () => pm.expect(d.current.payrollCost).to.eql(5200000));"
                 ]
               }
             }
@@ -8952,7 +8953,8 @@
                   "const rows = pm.response.json().data;",
                   "pm.test('the chain has its one branch', () => { pm.expect(rows.length).to.eql(1); pm.expect(rows[0].hotelId).to.eql(Number(pm.collectionVariables.get('hotelId'))); });",
                   "pm.test('a lone branch holds the whole chain revenue', () => pm.expect(rows[0].revenueShare).to.eql(100));",
-                  "pm.test('its KPIs include the completed tour', () => pm.expect(rows[0].current.tourRevenue).to.eql(900000));"
+                  "pm.test('its KPIs include the completed tour', () => pm.expect(rows[0].current.tourRevenue).to.eql(900000));",
+                  "pm.test('the branch carries its payroll cost', () => pm.expect(rows[0].current.payrollCost).to.eql(5200000));"
                 ]
               }
             }

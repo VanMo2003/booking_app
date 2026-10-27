@@ -282,7 +282,10 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 Cách tính trong tổng quan: tiền phòng = tổng đơn − dòng dịch vụ; ADR = tiền phòng / đêm đã bán; RevPAR =
 tiền phòng / (số phòng × số ngày); lưu trú TB = số đêm trung bình mỗi đơn hoàn tất; đặt trước TB = số ngày
 trung bình từ lúc tạo đơn đến ngày nhận phòng (đơn tạo sau ngày nhận phòng tính 0); doanh thu mất do huỷ =
-tổng tiền các đơn bị huỷ có ngày nhận phòng trong kỳ. Mức tăng trưởng là % so với kỳ trước, bị bỏ khỏi JSON khi kỳ trước
+tổng tiền các đơn bị huỷ có ngày nhận phòng trong kỳ; chi phí lương = phiếu lương đã duyệt/đã trả của
+nhân viên cơ sở, mỗi phiếu chia đều theo số ngày của tháng và chỉ tính phần ngày nằm trong kỳ (quản lý
+không có phiếu lương nên không tính); lợi nhuận sau lương = tổng doanh thu − chi phí lương, kèm biên lợi
+nhuận (%) và tăng trưởng lợi nhuận (chỉ khi kỳ trước có lãi). Mức tăng trưởng là % so với kỳ trước, bị bỏ khỏi JSON khi kỳ trước
 bằng 0; lấp đầy so bằng điểm phần trăm (`occupancyChange`).
 
 Kỳ trước (`previous`, cũng dùng cho tăng trưởng của từng cơ sở) theo lịch khi có thể:

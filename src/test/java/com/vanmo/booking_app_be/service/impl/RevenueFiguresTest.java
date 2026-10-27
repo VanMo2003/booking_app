@@ -14,6 +14,7 @@ import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
+import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -78,7 +79,67 @@ class RevenueFiguresTest {
                 occupiedNights,
                 4,
                 1,
-                BigDecimal.valueOf(650_000));
+                BigDecimal.valueOf(650_000),
+                BigDecimal.ZERO);
+    }
+
+    @Test
+    void payslipsAreSpreadOverTheirMonthAndCountedForTheDaysInThePeriod() {
+        List<PayrollCostRow> payslips = List.of(
+                // whole September inside the range
+                new PayrollCostRow(LocalDate.of(2026, 9, 1), BigDecimal.valueOf(9_000_000)),
+                // October: only 1-10 of 31 days are in the range
+                new PayrollCostRow(LocalDate.of(2026, 10, 15), BigDecimal.valueOf(3_100_000)));
+
+        BigDecimal cost = RevenueFigures.payrollCost(payslips, LocalDate.of(2026, 9, 1), OCT_10);
+
+        assertThat(cost).isEqualByComparingTo("10000000");
+    }
+
+    @Test
+    void profitIsRevenueMinusPayrollWithItsMargin() {
+        RevenueFigures.PeriodRows withPayroll = new RevenueFigures.PeriodRows(
+                OCT_1,
+                OCT_10,
+                List.of(booking(4_000_000, PaymentMethod.CASH, null)),
+                BigDecimal.ZERO,
+                List.of(),
+                List.of(),
+                10,
+                0,
+                0,
+                0,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(3_000_000));
+
+        RevenuePeriodDTO period = RevenueFigures.period(withPayroll);
+
+        assertThat(period.getPayrollCost()).isEqualByComparingTo("3000000");
+        assertThat(period.getGrossProfit()).isEqualByComparingTo("1000000");
+        assertThat(period.getProfitMargin()).isEqualTo(25d);
+    }
+
+    @Test
+    void profitGrowthNeedsAProfitBefore() {
+        RevenueFigures.PeriodRows loss = new RevenueFigures.PeriodRows(
+                OCT_1.minusDays(10),
+                OCT_1.minusDays(1),
+                List.of(booking(1_000_000, PaymentMethod.CASH, null)),
+                BigDecimal.ZERO,
+                List.of(),
+                List.of(),
+                10,
+                0,
+                0,
+                0,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(3_000_000));
+
+        RevenueSummaryResponse summary = RevenueFigures.summary(
+                rows(OCT_1, OCT_10, List.of(booking(2_000_000, PaymentMethod.CASH, null)), 0, List.of(), List.of(), 0),
+                loss);
+
+        assertThat(summary.getProfitGrowth()).isNull();
     }
 
     @Test
@@ -131,8 +192,8 @@ class RevenueFiguresTest {
 
     @Test
     void emptyPeriodHasZeroesNotDivisionErrors() {
-        RevenuePeriodDTO period = RevenueFigures.period(
-                new RevenueFigures.PeriodRows(OCT_1, OCT_1, List.of(), null, List.of(), List.of(), 0, 0, 0, 0, null));
+        RevenuePeriodDTO period = RevenueFigures.period(new RevenueFigures.PeriodRows(
+                OCT_1, OCT_1, List.of(), null, List.of(), List.of(), 0, 0, 0, 0, null, null));
 
         assertThat(period.getTotalRevenue()).isEqualByComparingTo("0");
         assertThat(period.getAdr()).isEqualByComparingTo("0");
