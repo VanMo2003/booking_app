@@ -56,6 +56,14 @@ public class RevenueOutlookResponse {
     /** bookedRoomNights over availableRoomNights, percentage: the occupancy already on the books. */
     double occupancyOnTheBooks;
 
+    /**
+     * How full the same nights a year earlier ended up (any booking not cancelled, today's rooms), percentage - what
+     * the window can still grow towards. Null when nothing was booked then, e.g. a branch that did not exist yet.
+     */
+    Double lastYearOccupancy;
+
+    long lastYearBookedRoomNights;
+
     /** Open bookings whose check-out day already passed - nobody checked the guest out. */
     BigDecimal overdueRevenue;
 

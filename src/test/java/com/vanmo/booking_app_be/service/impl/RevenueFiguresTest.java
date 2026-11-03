@@ -777,7 +777,12 @@ class RevenueFiguresTest {
                         stayIn(2L, today, 1),
                         // the same room twice that night (a second booking row) still counts once
                         stayIn(2L, today, 1),
-                        stayIn(3L, today.plusDays(3), 2)));
+                        stayIn(3L, today.plusDays(3), 2)),
+                // a year earlier: two rooms the first two nights, one more on the last night
+                List.of(
+                        stayIn(1L, today.minusYears(1), 2),
+                        stayIn(4L, today.minusYears(1), 2),
+                        stayIn(4L, today.minusYears(1).plusDays(3), 1)));
 
         assertThat(outlook.getByDate()).extracting(day -> day.getBookedRooms()).containsExactly(2L, 1L, 0L, 1L);
         assertThat(outlook.getByDate().get(0).getOccupancyRate()).isEqualTo(50.0);
@@ -785,5 +790,18 @@ class RevenueFiguresTest {
         assertThat(outlook.getBookedRoomNights()).isEqualTo(4);
         assertThat(outlook.getAvailableRoomNights()).isEqualTo(16);
         assertThat(outlook.getOccupancyOnTheBooks()).isEqualTo(25.0);
+        assertThat(outlook.getLastYearBookedRoomNights()).isEqualTo(5);
+        assertThat(outlook.getLastYearOccupancy()).isEqualTo(31.25);
+    }
+
+    @Test
+    void noLastYearFigureWhenNothingWasBookedThen() {
+        RevenueOutlookResponse outlook =
+                RevenueFigures.outlook(OCT_10, OCT_10.plusDays(6), List.of(), List.of(), List.of());
+
+        RevenueFigures.occupancyOnTheBooks(outlook, 4, List.of(stayIn(1L, OCT_10, 2)), List.of());
+
+        assertThat(outlook.getLastYearOccupancy()).isNull();
+        assertThat(outlook.getLastYearBookedRoomNights()).isZero();
     }
 }

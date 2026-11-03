@@ -208,15 +208,14 @@ final class RevenueFigures {
      * Fills in the rooms already booked for each night of an outlook and the occupancy that makes over the window -
      * the hotel's "on the books" figure. A room counts once a night however many bookings overlap it.
      */
-    static void occupancyOnTheBooks(RevenueOutlookResponse outlook, long totalRooms, List<BookedRoomNightRow> booked) {
+    static void occupancyOnTheBooks(
+            RevenueOutlookResponse outlook,
+            long totalRooms,
+            List<BookedRoomNightRow> booked,
+            List<BookedRoomNightRow> bookedLastYear) {
         long bookedNights = 0;
         for (ExpectedRevenueDTO day : outlook.getByDate()) {
-            LocalDate date = day.getDate();
-            long rooms = booked.stream()
-                    .filter(r -> !date.isBefore(r.getCheckinDate()) && date.isBefore(r.getCheckoutDate()))
-                    .map(BookedRoomNightRow::getRoomId)
-                    .distinct()
-                    .count();
+            long rooms = roomsBooked(day.getDate(), booked);
             day.setBookedRooms(rooms);
             day.setOccupancyRate(rate(rooms, totalRooms));
             bookedNights += rooms;
@@ -226,6 +225,27 @@ final class RevenueFigures {
         outlook.setBookedRoomNights(bookedNights);
         outlook.setAvailableRoomNights(available);
         outlook.setOccupancyOnTheBooks(rate(bookedNights, available));
+
+        LocalDate from = outlook.getFrom().minusYears(1);
+        LocalDate to = outlook.getTo().minusYears(1);
+        long lastYearNights = 0;
+        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+            lastYearNights += roomsBooked(day, bookedLastYear);
+        }
+        outlook.setLastYearBookedRoomNights(lastYearNights);
+        outlook.setLastYearOccupancy(
+                lastYearNights == 0
+                        ? null
+                        : rate(lastYearNights, totalRooms * (ChronoUnit.DAYS.between(from, to) + 1)));
+    }
+
+    /** Rooms taken the night starting on that day; a room counts once however many bookings overlap it. */
+    private static long roomsBooked(LocalDate night, List<BookedRoomNightRow> booked) {
+        return booked.stream()
+                .filter(r -> !night.isBefore(r.getCheckinDate()) && night.isBefore(r.getCheckoutDate()))
+                .map(BookedRoomNightRow::getRoomId)
+                .distinct()
+                .count();
     }
 
     static List<WeekdayStatsDTO> weekdays(

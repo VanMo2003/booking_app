@@ -765,7 +765,9 @@ public class ReportServiceImpl implements ReportService {
         RevenueFigures.occupancyOnTheBooks(
                 outlook,
                 roomRepository.countByHotel_IdIn(hotelIds),
-                bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)));
+                bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)),
+                bookingRoomRepository.findBookedRoomNights(
+                        hotelIds, from.minusYears(1), to.minusYears(1).plusDays(1)));
         return outlook;
     }
 

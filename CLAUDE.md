@@ -427,7 +427,8 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   query's arguments - adding a field to them must not break that constructor.
 - **Outlook occupancy.** `revenueOutlook` adds the rooms booked per night and the window's on-the-books
   occupancy with `RevenueFigures.occupancyOnTheBooks`, fed by the occupancy report's own query
-  (`findBookedRoomNights`: any booking not cancelled). `targetProgress` reuses `RevenueFigures.outlook`
+  (`findBookedRoomNights`: any booking not cancelled), and the same nights a year earlier for `lastYearOccupancy`
+  (null when nothing was booked then). `targetProgress` reuses `RevenueFigures.outlook`
   without it.
 - **AI assistant report** (`/reports/ai-assistant`) is computed by `ChatFigures` (unit-tested in
   `ChatFiguresTest`) from `ChatMessageRepository.findForReport` - messages written in the period, thread by
