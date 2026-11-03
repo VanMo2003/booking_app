@@ -146,14 +146,16 @@ public final class NotificationMessages {
             Double revenueGrowth,
             double occupancyRate,
             long completedBookings,
-            long canceledBookings) {
+            long canceledBookings,
+            Double bookedAhead) {
         String change = revenueGrowth == null
                 ? ""
                 : " (" + (revenueGrowth >= 0 ? "+" : "") + Math.round(revenueGrowth) + "% so với tuần trước)";
+        String ahead = bookedAhead == null ? "" : " Tuần này đã đặt " + Math.round(bookedAhead) + "% phòng.";
         return new Message(
                 "Báo cáo tuần " + from.format(SHORT_DAY) + " – " + to.format(SHORT_DAY) + " · " + scopeName,
                 "Doanh thu " + money(revenue) + change + " · lấp đầy " + Math.round(occupancyRate) + "% · "
-                        + completedBookings + " đơn hoàn tất · " + canceledBookings + " đơn huỷ.");
+                        + completedBookings + " đơn hoàn tất · " + canceledBookings + " đơn huỷ." + ahead);
     }
 
     private static String money(BigDecimal amount) {

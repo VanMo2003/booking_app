@@ -662,7 +662,9 @@ public class ReportServiceImpl implements ReportService {
                         summary.getRevenueGrowth(),
                         week.getOccupancyRate(),
                         week.getCompletedBookings(),
-                        week.getCanceledBookings()),
+                        week.getCanceledBookings(),
+                        // the week that starts today, as far as it is booked already
+                        rooms == 0 ? null : revenueOutlook(hotelIds, 7).getOccupancyOnTheBooks()),
                 null,
                 referenceId);
         return true;
