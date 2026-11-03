@@ -2,10 +2,13 @@ package com.vanmo.booking_app_be.service.impl;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.IsoFields;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -25,6 +28,7 @@ import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
+import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -37,6 +41,7 @@ import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TopCustomerDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
+import com.vanmo.booking_app_be.dto.response.TrendBucketDTO;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.ChatSide;
@@ -616,6 +621,78 @@ final class RevenueFigures {
             }
         }
         return new TourCancellations(orders, canceled, byGuest, byHotel);
+    }
+
+    /** Size of one bar of the revenue trend. */
+    enum TrendGranularity {
+        DAY,
+        WEEK,
+        MONTH,
+        YEAR
+    }
+
+    /**
+     * The revenue trend over [from, to]: one bucket per day, ISO week (Monday start), month or year, every bucket
+     * present even when empty, the first and last cut to the range.
+     *
+     * @param bookingsByDay completed bookings by check-out day
+     * @param tours completed tour orders (tour date in the range)
+     */
+    static List<TrendBucketDTO> trend(
+            LocalDate from,
+            LocalDate to,
+            TrendGranularity granularity,
+            List<RevenueByDateDTO> bookingsByDay,
+            List<TourSaleRow> tours) {
+        Map<LocalDate, TrendBucketDTO> buckets = new LinkedHashMap<>();
+        for (LocalDate start = bucketStart(from, granularity); !start.isAfter(to); start = next(start, granularity)) {
+            LocalDate end = next(start, granularity).minusDays(1);
+            buckets.put(
+                    start,
+                    new TrendBucketDTO(
+                            start.isBefore(from) ? from : start,
+                            end.isAfter(to) ? to : end,
+                            granularity == TrendGranularity.WEEK ? start.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) : null,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            0L,
+                            0L));
+        }
+        for (RevenueByDateDTO day : bookingsByDay) {
+            TrendBucketDTO bucket = buckets.get(bucketStart(day.getDate(), granularity));
+            if (bucket != null && day.getTotalRevenue() != null) {
+                bucket.setBookingRevenue(bucket.getBookingRevenue().add(day.getTotalRevenue()));
+                bucket.setBookings(bucket.getBookings() + (day.getTotalBooking() == null ? 0 : day.getTotalBooking()));
+            }
+        }
+        for (TourSaleRow tour : tours) {
+            TrendBucketDTO bucket = buckets.get(bucketStart(tour.getTourDate(), granularity));
+            if (bucket != null) {
+                bucket.setTourRevenue(bucket.getTourRevenue().add(tour.tourRevenue()));
+                bucket.setTours(bucket.getTours() + 1);
+            }
+        }
+        buckets.values().forEach(b -> b.setTotalRevenue(b.getBookingRevenue().add(b.getTourRevenue())));
+        return List.copyOf(buckets.values());
+    }
+
+    private static LocalDate bucketStart(LocalDate date, TrendGranularity granularity) {
+        return switch (granularity) {
+            case DAY -> date;
+            case WEEK -> date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            case MONTH -> date.withDayOfMonth(1);
+            case YEAR -> date.withDayOfYear(1);
+        };
+    }
+
+    private static LocalDate next(LocalDate start, TrendGranularity granularity) {
+        return switch (granularity) {
+            case DAY -> start.plusDays(1);
+            case WEEK -> start.plusWeeks(1);
+            case MONTH -> start.plusMonths(1);
+            case YEAR -> start.plusYears(1);
+        };
     }
 
     /** Nothing completed, booked or earned in either week of a digest: not worth a notification. */

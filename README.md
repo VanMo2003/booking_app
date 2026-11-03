@@ -271,7 +271,8 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | Báo cáo | Endpoint | Ghi chú |
 |---|---|---|
 | Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ; so với kỳ trước (xem bên dưới); chia theo phương thức thanh toán, kênh bán (khách tự đặt / tại quầy / tour) và loại khách (mới / quay lại — đã có đơn hoàn tất trả phòng trước kỳ). `from`, `to` tính cả hai đầu |
-| Doanh thu theo thời gian | `GET /reports/daily`, `/weekly`, `/weekly-in-month`, `/monthly`, `/monthly/last-5-months`, `/yearly` | Chỉ đơn phòng (đã gồm dịch vụ) |
+| Diễn biến doanh thu | `GET /reports/trend?from=&to=&granularity=day\|week\|month\|year` | Đơn phòng + tour, từng mốc (tuần ISO bắt đầu thứ Hai, mốc đầu/cuối cắt theo khoảng), đủ cả mốc trống; theo ngày tối đa 400 ngày. App dùng endpoint này cho biểu đồ |
+| Doanh thu theo thời gian (cũ) | `GET /reports/daily`, `/weekly`, `/weekly-in-month`, `/monthly`, `/monthly/last-5-months`, `/yearly` | Chỉ đơn phòng (đã gồm dịch vụ); giữ cho client cũ |
 | Lấp đầy | `GET /reports/occupancy`, `/occupancy/daily` | `[from, to)`; theo ngày tối đa 92 ngày, chỉ cấp cơ sở |
 | Báo cáo tuần tự động | (thông báo `WEEKLY_REPORT`), admin chạy ngay: `POST /reports/weekly-digest` | 8:00 thứ Hai (`WeeklyReportScheduler`): tuần trước (T2–CN) so với tuần trước nữa — chủ chuỗi đã duyệt nhận bản cả chuỗi, quản lý nhận bản cơ sở mình; doanh thu (± %), lấp đầy, đơn hoàn tất, đơn huỷ. Bỏ qua khi cả hai tuần không có hoạt động. Lưu ý: chạy trên DB dùng chung thì các tài khoản demo cũng nhận |
 | Tiền chưa thu | `GET /reports/receivables?hotelId=`, `/reports/chain/receivables?hotelChainId=` | Đơn đã hoàn tất nhưng chưa ghi nhận thanh toán, trả phòng lâu nhất trước: khách, SĐT, cơ sở, ngày trả phòng, số tiền, phương thức, số ngày quá hạn. Ghi nhận đã thu bằng `PUT /bookings/{id}/payment-status` có sẵn |

@@ -323,6 +323,26 @@ public class ReportController {
         return ApiResponse.ok(reportService.getWeekdayPatternForChain(hotelChainId, from, to));
     }
 
+    // ---- revenue trend including tours ----
+
+    @GetMapping("/trend")
+    public ApiResponse<List<TrendBucketDTO>> revenueTrend(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "day") String granularity) {
+        return ApiResponse.ok(reportService.getRevenueTrend(hotelId, from, to, granularity));
+    }
+
+    @GetMapping("/chain/trend")
+    public ApiResponse<List<TrendBucketDTO>> revenueTrendForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "day") String granularity) {
+        return ApiResponse.ok(reportService.getRevenueTrendForChain(hotelChainId, from, to, granularity));
+    }
+
     // ---- money still to collect ----
 
     @GetMapping("/receivables")

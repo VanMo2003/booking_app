@@ -19,6 +19,7 @@ import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
+import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -31,6 +32,7 @@ import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
 import com.vanmo.booking_app_be.dto.response.TopCustomerDTO;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
+import com.vanmo.booking_app_be.dto.response.TrendBucketDTO;
 import com.vanmo.booking_app_be.dto.response.WeekdayStatsDTO;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.ChatSide;
@@ -188,6 +190,40 @@ class RevenueFiguresTest {
         assertThat(top.get(0).getTours()).isEqualTo(1);
         assertThat(top.get(2).getTotalBooking()).isZero();
         assertThat(top.get(2).getTourSpend()).isEqualByComparingTo("1800000");
+    }
+
+    @Test
+    void trendBucketsAddToursToBookingsAndKeepEmptyBuckets() {
+        // Wed 21 Oct - Tue 3 Nov 2026
+        LocalDate from = LocalDate.of(2026, 10, 21);
+        LocalDate to = LocalDate.of(2026, 11, 3);
+        List<RevenueByDateDTO> bookings = List.of(
+                new RevenueByDateDTO(LocalDate.of(2026, 10, 22), BigDecimal.valueOf(1_000_000), 2L),
+                new RevenueByDateDTO(LocalDate.of(2026, 11, 2), BigDecimal.valueOf(600_000), 1L));
+        TourSaleRow tour = new TourSaleRow(
+                7L, "Hạ Long", 2, BigDecimal.valueOf(900_000), null, null, false, LocalDate.of(2026, 10, 25));
+
+        List<TrendBucketDTO> weeks =
+                RevenueFigures.trend(from, to, RevenueFigures.TrendGranularity.WEEK, bookings, List.of(tour));
+        List<TrendBucketDTO> months =
+                RevenueFigures.trend(from, to, RevenueFigures.TrendGranularity.MONTH, bookings, List.of(tour));
+        List<TrendBucketDTO> days =
+                RevenueFigures.trend(from, to, RevenueFigures.TrendGranularity.DAY, bookings, List.of(tour));
+
+        // weeks of 19, 26 Oct and 2 Nov, the first one cut to start on the 21st
+        assertThat(weeks).hasSize(3);
+        assertThat(weeks.get(0).getStart()).isEqualTo(from);
+        assertThat(weeks.get(0).getWeek()).isEqualTo(43);
+        assertThat(weeks.get(0).getTotalRevenue()).isEqualByComparingTo("1900000");
+        assertThat(weeks.get(0).getTours()).isEqualTo(1);
+        assertThat(weeks.get(1).getTotalRevenue()).isEqualByComparingTo("0");
+        assertThat(weeks.get(2).getEnd()).isEqualTo(to);
+        assertThat(months)
+                .extracting(TrendBucketDTO::getTotalRevenue)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(BigDecimal.valueOf(1_900_000), BigDecimal.valueOf(600_000));
+        assertThat(days).hasSize(14);
+        assertThat(days.get(1).getBookings()).isEqualTo(2);
     }
 
     @Test

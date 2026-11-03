@@ -135,6 +135,12 @@ public interface ReportService {
     /** {@link #sendWeeklyDigests} on demand, for admins. */
     int runWeeklyDigestsNow();
 
+    // ---- revenue trend (bookings + tours) by day / week / month / year over [from, to] ----
+
+    List<TrendBucketDTO> getRevenueTrend(Long hotelId, LocalDate from, LocalDate to, String granularity);
+
+    List<TrendBucketDTO> getRevenueTrendForChain(Long hotelChainId, LocalDate from, LocalDate to, String granularity);
+
     // ---- completed bookings whose payment was never recorded ----
 
     List<ReceivableDTO> getReceivables(Long hotelId);

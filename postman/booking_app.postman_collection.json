@@ -8717,6 +8717,320 @@
           ]
         },
         {
+          "name": "GET revenue trend by month (manager)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/trend?hotelId={{hotelId}}&from={{reportFrom}}&to={{reportTo}}&granularity=month",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "trend"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                },
+                {
+                  "key": "granularity",
+                  "value": "month"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const months = pm.response.json().data;",
+                  "pm.test('twelve months, empty ones included', () => { pm.expect(months.length).to.eql(12); pm.expect(months[0].start).to.eql('2026-01-01'); pm.expect(months[11].end).to.eql('2026-12-31'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET revenue trend by week (manager)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/trend?hotelId={{hotelId}}&from={{reportFrom}}&to={{reportTo}}&granularity=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "trend"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                },
+                {
+                  "key": "granularity",
+                  "value": "week"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const weeks = pm.response.json().data;",
+                  "pm.test('2026 has 53 ISO weeks, the first cut to 1 January', () => { pm.expect(weeks.length).to.eql(53); pm.expect(weeks[0].start).to.eql('2026-01-01'); pm.expect(weeks[0].week).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET revenue trend on the tour day includes the tour",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/trend?hotelId={{hotelId}}&from={{tourDate}}&to={{tourDate}}&granularity=day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "trend"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{tourDate}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{tourDate}}"
+                },
+                {
+                  "key": "granularity",
+                  "value": "day"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const days = pm.response.json().data;",
+                  "pm.test('one day with the completed tour', () => { pm.expect(days.length).to.eql(1); pm.expect(days[0].tours).to.eql(1); pm.expect(days[0].tourRevenue).to.eql(900000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET chain revenue trend by year (owner)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/chain/trend?hotelChainId={{chainId}}&from=2022-01-01&to={{reportTo}}&granularity=year",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "chain",
+                "trend"
+              ],
+              "query": [
+                {
+                  "key": "hotelChainId",
+                  "value": "{{chainId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "2022-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                },
+                {
+                  "key": "granularity",
+                  "value": "year"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('2022 to 2026', () => pm.expect(pm.response.json().data.length).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revenue trend by day rejects more than 400 days -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/trend?hotelId={{hotelId}}&from=2025-01-01&to={{reportTo}}&granularity=day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "trend"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "2025-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                },
+                {
+                  "key": "granularity",
+                  "value": "day"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revenue trend rejects an unknown granularity -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/trend?hotelId={{hotelId}}&from={{reportFrom}}&to={{reportTo}}&granularity=hour",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "trend"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                },
+                {
+                  "key": "granularity",
+                  "value": "hour"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Revenue summary rejects from after to -> 400",
           "request": {
             "method": "GET",

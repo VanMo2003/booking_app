@@ -12,6 +12,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -66,6 +67,8 @@ public class ReportServiceImpl implements ReportService {
 
     private static final int MAX_DAILY_RANGE = 92;
     private static final int MAX_OUTLOOK_DAYS = 90;
+    /** Day buckets above this many days would make an unreadable chart. */
+    private static final int MAX_TREND_DAYS = 400;
 
     private final ReportRepository reportRepository;
     private final ReportMapper reportMapper;
@@ -610,6 +613,39 @@ public class ReportServiceImpl implements ReportService {
                 null,
                 referenceId);
         return true;
+    }
+
+    @Override
+    public List<TrendBucketDTO> getRevenueTrend(Long hotelId, LocalDate from, LocalDate to, String granularity) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return revenueTrend(List.of(hotelId), from, to, granularity);
+    }
+
+    @Override
+    public List<TrendBucketDTO> getRevenueTrendForChain(
+            Long hotelChainId, LocalDate from, LocalDate to, String granularity) {
+        return revenueTrend(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to, granularity);
+    }
+
+    private List<TrendBucketDTO> revenueTrend(List<Long> hotelIds, LocalDate from, LocalDate to, String granularity) {
+        requireInclusiveRange(from, to);
+        RevenueFigures.TrendGranularity size;
+        try {
+            size = RevenueFigures.TrendGranularity.valueOf(granularity.toUpperCase(Locale.ROOT));
+        } catch (RuntimeException e) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "granularity phải là day, week, month hoặc year");
+        }
+        if (size == RevenueFigures.TrendGranularity.DAY && ChronoUnit.DAYS.between(from, to) >= MAX_TREND_DAYS) {
+            throw new AppException(
+                    ErrorCode.BAD_REQUEST,
+                    "Xem theo ngày tối đa " + MAX_TREND_DAYS + " ngày, hãy chọn tuần hoặc tháng");
+        }
+        return RevenueFigures.trend(
+                from,
+                to,
+                size,
+                bookingRepository.revenueByDateRangeForHotels(hotelIds, BookingStatus.COMPLETED, from, to),
+                tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to));
     }
 
     @Override
