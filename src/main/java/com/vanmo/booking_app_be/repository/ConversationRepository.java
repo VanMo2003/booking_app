@@ -24,4 +24,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     @Query("SELECT COALESCE(SUM(c.hotelUnread), 0) FROM Conversation c WHERE c.hotel.id IN :hotelIds")
     long sumHotelUnread(@Param("hotelIds") Collection<Long> hotelIds);
+
+    /** Threads the assistant handed over that no one on the team has answered yet. */
+    long countByHotel_IdInAndNeedsStaffTrue(Collection<Long> hotelIds);
 }

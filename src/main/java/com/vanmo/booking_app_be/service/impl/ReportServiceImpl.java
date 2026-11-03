@@ -4,10 +4,12 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -46,6 +48,8 @@ import com.vanmo.booking_app_be.repository.AccountRepository;
 import com.vanmo.booking_app_be.repository.BookingRepository;
 import com.vanmo.booking_app_be.repository.BookingRoomRepository;
 import com.vanmo.booking_app_be.repository.BookingServiceRepository;
+import com.vanmo.booking_app_be.repository.ChatMessageRepository;
+import com.vanmo.booking_app_be.repository.ConversationRepository;
 import com.vanmo.booking_app_be.repository.EmployeeRepository;
 import com.vanmo.booking_app_be.repository.HotelChainRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
@@ -84,6 +88,8 @@ public class ReportServiceImpl implements ReportService {
     private final NotificationService notificationService;
     private final AccountRepository accountRepository;
     private final HotelChainRepository hotelChainRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final ConversationRepository conversationRepository;
     private final AccessGuard accessGuard;
 
     @Override
@@ -675,6 +681,28 @@ public class ReportServiceImpl implements ReportService {
                 bookingRepository.findReceivables(hotelIds, BookingStatus.COMPLETED, PaymentStatus.PAID);
         rows.forEach(row -> row.setDaysOverdue(Math.max(0, ChronoUnit.DAYS.between(row.getCheckoutDate(), today))));
         return rows;
+    }
+
+    @Override
+    public AiAssistantReportResponse getAiAssistantReport(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return aiAssistantReport(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public AiAssistantReportResponse getAiAssistantReportForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return aiAssistantReport(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private AiAssistantReportResponse aiAssistantReport(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        Date start = Date.from(from.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date end = Date.from(to.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        return ChatFigures.assistant(
+                chatMessageRepository.findForReport(hotelIds, start, end),
+                tourBookingRepository.countPlacedByAi(hotelIds, start, end),
+                tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to),
+                conversationRepository.countByHotel_IdInAndNeedsStaffTrue(hotelIds));
     }
 
     /** Revenue of the month so far plus what is booked for the rest of it, against the branch's goal. */

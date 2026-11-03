@@ -323,6 +323,24 @@ public class ReportController {
         return ApiResponse.ok(reportService.getWeekdayPatternForChain(hotelChainId, from, to));
     }
 
+    // ---- chat assistant ----
+
+    @GetMapping("/ai-assistant")
+    public ApiResponse<AiAssistantReportResponse> aiAssistant(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getAiAssistantReport(hotelId, from, to));
+    }
+
+    @GetMapping("/chain/ai-assistant")
+    public ApiResponse<AiAssistantReportResponse> aiAssistantForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getAiAssistantReportForChain(hotelChainId, from, to));
+    }
+
     // ---- revenue trend including tours ----
 
     @GetMapping("/trend")

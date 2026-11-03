@@ -146,4 +146,10 @@ public interface ReportService {
     List<ReceivableDTO> getReceivables(Long hotelId);
 
     List<ReceivableDTO> getReceivablesForChain(Long hotelChainId);
+
+    // ---- what the chat assistant answered and sold over [from, to] ----
+
+    AiAssistantReportResponse getAiAssistantReport(Long hotelId, LocalDate from, LocalDate to);
+
+    AiAssistantReportResponse getAiAssistantReportForChain(Long hotelChainId, LocalDate from, LocalDate to);
 }

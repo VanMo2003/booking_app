@@ -425,6 +425,12 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   `weekdays`, `staff`, `topCustomers`). The JPQL projections that grew extra fields
   (`StaffPerformanceDTO`, `TopCustomerDTO`, `ReceivableDTO`) keep an explicit constructor matching the
   query's arguments - adding a field to them must not break that constructor.
+- **AI assistant report** (`/reports/ai-assistant`) is computed by `ChatFigures` (unit-tested in
+  `ChatFiguresTest`) from `ChatMessageRepository.findForReport` - messages written in the period, thread by
+  thread. A reply's wait runs from the first guest message still unanswered; the assistant's messages are
+  `aiGenerated` HOTEL messages. Tour orders "placed by AI" are counted by `onCreate`, while AI tour revenue
+  stays on the revenue reports' basis (completed, by tour date). `waitingForStaff` is the live `needsStaff`
+  count, not period-bound.
 - **Monthly targets** (`RevenueTarget`, unique per branch+month, `month` = first day). Progress is
   computed on read (`targetProgress`: revenue so far + `RevenueFigures.outlook` for the rest of the
   month). `RevenueTargetScheduler` (08:00) calls `sendRevenueTargetAlerts`, which has **no access

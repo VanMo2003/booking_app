@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.repository;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -94,4 +95,12 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
             @Param("statuses") Collection<TourBookingStatus> statuses,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
+
+    /** Tour orders the assistant placed in [start, end), counted by where they are now. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.TourStatusCountRow(b.status, b.canceledBy, count(b)) "
+            + "from TourBooking b "
+            + "where b.hotel.id in :hotelIds and b.createdByAi = true and b.onCreate >= :start and b.onCreate < :end "
+            + "group by b.status, b.canceledBy")
+    List<TourStatusCountRow> countPlacedByAi(
+            @Param("hotelIds") Collection<Long> hotelIds, @Param("start") Date start, @Param("end") Date end);
 }

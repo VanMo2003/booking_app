@@ -9809,6 +9809,153 @@
           ]
         },
         {
+          "name": "GET AI assistant report (manager)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/ai-assistant?hotelId={{hotelId}}&from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "ai-assistant"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ai = pm.response.json().data;",
+                  "pm.test('the chat of this run: one thread, cust_one wrote once, staff replied once', () => { pm.expect(ai.conversations).to.eql(1); pm.expect(ai.guestMessages).to.eql(1); pm.expect(ai.staffReplies).to.eql(1); pm.expect(ai.staffConversations).to.eql(1); });",
+                  "pm.test('reply share and tour fields are numbers', () => { pm.expect(ai.aiReplyShare).to.be.a('number'); pm.expect(ai.aiTourOrders).to.be.a('number'); pm.expect(ai.aiTourRevenueShare).to.be.a('number'); pm.expect(ai.waitingForStaff).to.be.a('number'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET chain AI assistant report (owner)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/chain/ai-assistant?hotelChainId={{chainId}}&from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "chain",
+                "ai-assistant"
+              ],
+              "query": [
+                {
+                  "key": "hotelChainId",
+                  "value": "{{chainId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ai = pm.response.json().data;",
+                  "pm.test('covers the branch thread', () => { pm.expect(ai.conversations).to.eql(1); pm.expect(ai.guestMessages).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff cannot read the AI assistant report -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/ai-assistant?hotelId={{hotelId}}&from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "ai-assistant"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Manager sets the branch's November revenue target",
           "request": {
             "method": "PUT",
