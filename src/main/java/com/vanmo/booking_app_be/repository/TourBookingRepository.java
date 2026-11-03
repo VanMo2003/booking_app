@@ -108,6 +108,12 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
 
+    /** When the branches' tour orders were placed, for those placed in [start, end). */
+    @Query(
+            "select b.onCreate from TourBooking b where b.hotel.id in :hotelIds and b.onCreate >= :start and b.onCreate < :end")
+    List<Date> findCreatedTimes(
+            @Param("hotelIds") Collection<Long> hotelIds, @Param("start") Date start, @Param("end") Date end);
+
     /** Tour orders the assistant placed in [start, end), counted by where they are now. */
     @Query("select new com.vanmo.booking_app_be.dto.response.TourStatusCountRow(b.status, b.canceledBy, count(b)) "
             + "from TourBooking b "

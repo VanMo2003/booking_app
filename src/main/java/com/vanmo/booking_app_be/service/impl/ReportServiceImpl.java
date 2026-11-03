@@ -729,6 +729,26 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    public BookingHoursResponse getBookingHours(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return bookingHours(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public BookingHoursResponse getBookingHoursForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return bookingHours(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private BookingHoursResponse bookingHours(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        Date start = Date.from(from.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date end = Date.from(to.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        List<Date> created = new ArrayList<>(bookingRepository.findCreatedTimes(hotelIds, start, end));
+        created.addAll(tourBookingRepository.findCreatedTimes(hotelIds, start, end));
+        return OrderHours.hours(from, to, created);
+    }
+
+    @Override
     public CollectionsResponse getCollections(Long hotelId, LocalDate from, LocalDate to) {
         accessGuard.requireBranchManagerOrAbove(hotelId);
         return collections(List.of(hotelId), from, to);

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 import jakarta.validation.constraints.NotNull;
@@ -242,6 +243,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 	""")
     long countBookings(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** When the branches' bookings were created, for those created in [start, end). */
+    @Query(
+            "SELECT b.onCreate FROM Booking b WHERE b.hotel.id IN :hotelIds AND b.onCreate >= :start AND b.onCreate < :end")
+    List<Date> findCreatedTimes(
+            @Param("hotelIds") List<Long> hotelIds, @Param("start") Date start, @Param("end") Date end);
 
     /** Payments of the branches' bookings recorded in [start, end), whatever the booking's status now. */
     @Query(

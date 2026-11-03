@@ -150,6 +150,12 @@ public interface ReportService {
 
     List<ReceivableDTO> getReceivablesForChain(Long hotelChainId);
 
+    // ---- when orders are placed: weekday x hour ----
+
+    BookingHoursResponse getBookingHours(Long hotelId, LocalDate from, LocalDate to);
+
+    BookingHoursResponse getBookingHoursForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
     // ---- money recorded as received, by day and method (at most 92 days) ----
 
     CollectionsResponse getCollections(Long hotelId, LocalDate from, LocalDate to);

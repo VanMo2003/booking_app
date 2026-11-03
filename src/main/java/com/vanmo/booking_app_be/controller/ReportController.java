@@ -329,6 +329,24 @@ public class ReportController {
         return ApiResponse.ok(reportService.getWeekdayPatternForChain(hotelChainId, from, to));
     }
 
+    // ---- when orders are placed ----
+
+    @GetMapping("/booking-hours")
+    public ApiResponse<BookingHoursResponse> bookingHours(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getBookingHours(hotelId, from, to));
+    }
+
+    @GetMapping("/chain/booking-hours")
+    public ApiResponse<BookingHoursResponse> bookingHoursForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getBookingHoursForChain(hotelChainId, from, to));
+    }
+
     // ---- collections ledger ----
 
     @GetMapping("/collections")
