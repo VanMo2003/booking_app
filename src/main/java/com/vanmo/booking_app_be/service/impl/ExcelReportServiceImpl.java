@@ -86,6 +86,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             if (ChronoUnit.DAYS.between(from, to) <= MAX_DAILY_RANGE) {
                 writeCollections(workbook, header, reportService.getCollections(hotelId, from, to));
             }
+            writeOutlook(workbook, header, reportService.getRevenueOutlook(hotelId, 30));
             writeReceivables(workbook, header, reportService.getReceivables(hotelId), false);
 
             return toBytes(workbook);
@@ -126,6 +127,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             if (ChronoUnit.DAYS.between(from, to) <= MAX_DAILY_RANGE) {
                 writeCollections(workbook, header, reportService.getCollectionsForChain(hotelChainId, from, to));
             }
+            writeOutlook(workbook, header, reportService.getRevenueOutlookForChain(hotelChainId, 30));
             writeReceivables(workbook, header, reportService.getReceivablesForChain(hotelChainId), true);
 
             return toBytes(workbook);
@@ -379,6 +381,45 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             line.createCell(c).setCellValue(toDouble(row.getTotalAmount()));
         }
         autoSize(sheet, titles.size());
+    }
+
+    /** From today, whatever the export's period: rooms booked and revenue expected each coming day. */
+    private void writeOutlook(Workbook workbook, CellStyle header, RevenueOutlookResponse outlook) {
+        if (outlook == null || outlook.getByDate() == null) {
+            return;
+        }
+        Sheet sheet = workbook.createSheet("Dự kiến 30 ngày tới");
+        writeHeader(
+                sheet,
+                header,
+                "Ngày",
+                "Phòng đã đặt",
+                "Lấp đầy đã đặt (%)",
+                "Đơn trả phòng",
+                "Tiền đơn phòng",
+                "Tour khởi hành",
+                "Tiền tour");
+        int r = 1;
+        for (ExpectedRevenueDTO day : outlook.getByDate()) {
+            Row line = sheet.createRow(r++);
+            line.createCell(0).setCellValue(String.valueOf(day.getDate()));
+            line.createCell(1).setCellValue(day.getBookedRooms());
+            line.createCell(2).setCellValue(day.getOccupancyRate());
+            line.createCell(3).setCellValue(day.getBookings());
+            line.createCell(4).setCellValue(toDouble(day.getBookingRevenue()));
+            line.createCell(5).setCellValue(day.getTours());
+            line.createCell(6).setCellValue(toDouble(day.getTourRevenue()));
+        }
+        r++;
+        r = writeRow(sheet, r, header, "Tổng dự kiến", toDouble(outlook.getTotalExpected()));
+        r = writeRow(sheet, r, header, "Lấp đầy đã đặt cả khoảng (%)", outlook.getOccupancyOnTheBooks());
+        writeRow(
+                sheet,
+                r,
+                header,
+                "Cùng kỳ năm trước (%)",
+                outlook.getLastYearOccupancy() == null ? "–" : outlook.getLastYearOccupancy());
+        autoSize(sheet, 7);
     }
 
     /** Money recorded as received each day, by method; skipped when the service has nothing to give. */

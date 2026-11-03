@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -25,11 +26,13 @@ import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CancellationRateResponse;
 import com.vanmo.booking_app_be.dto.response.CollectionDayDTO;
 import com.vanmo.booking_app_be.dto.response.CollectionsResponse;
+import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
 import com.vanmo.booking_app_be.dto.response.FeedbackRow;
 import com.vanmo.booking_app_be.dto.response.OccupancyResponse;
 import com.vanmo.booking_app_be.dto.response.RatingReportResponse;
 import com.vanmo.booking_app_be.dto.response.ReceivableDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
+import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
@@ -135,6 +138,13 @@ class ExcelReportServiceImplTest {
                         3L, 21L, 6L, "Hoàn Kiếm", "Nguyễn An", 2, "Phòng ồn", LocalDate.of(2026, 10, 15))))
                 .build();
         when(reports.getRatings(anyLong(), any(), any())).thenReturn(ratings);
+        RevenueOutlookResponse outlook = RevenueOutlookResponse.builder()
+                .totalExpected(BigDecimal.valueOf(2_000_000))
+                .occupancyOnTheBooks(25.0)
+                .byDate(List.of(
+                        new ExpectedRevenueDTO(FROM, BigDecimal.valueOf(2_000_000), BigDecimal.ZERO, 1L, 0L, 3L, 30.0)))
+                .build();
+        when(reports.getRevenueOutlook(anyLong(), anyInt())).thenReturn(outlook);
         when(reports.getCollections(anyLong(), any(), any()))
                 .thenReturn(CollectionsResponse.builder()
                         .total(BigDecimal.valueOf(1_200_000))
@@ -209,6 +219,11 @@ class ExcelReportServiceImplTest {
             assertThat(ratings.getRow(10).getCell(3).getStringCellValue()).isEqualTo("Nhận xét");
             assertThat(ratings.getRow(11).getCell(3).getStringCellValue()).isEqualTo("Phòng ồn");
             assertThat(book.getSheet("Khách theo quê quán")).isNotNull();
+            Sheet ahead = book.getSheet("Dự kiến 30 ngày tới");
+            assertThat(ahead.getRow(1).getCell(1).getNumericCellValue()).isEqualTo(3d);
+            assertThat(ahead.getRow(3).getCell(1).getNumericCellValue()).isEqualTo(2_000_000d);
+            // no bookings a year earlier
+            assertThat(ahead.getRow(5).getCell(1).getStringCellValue()).isEqualTo("–");
             Sheet ledger = book.getSheet("Sổ thu tiền");
             assertThat(ledger.getRow(1).getCell(2).getNumericCellValue()).isEqualTo(1_200_000d);
             assertThat(ledger.getRow(2).getCell(0).getStringCellValue()).isEqualTo("Cộng");
