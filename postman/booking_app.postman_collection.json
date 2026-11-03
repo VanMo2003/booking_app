@@ -7978,7 +7978,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().data;",
+                  "pm.test('every room type of the branch is listed with its rooms, occupancy, ADR and RevPAR', () => { pm.expect(rows.length).to.be.at.least(1); pm.expect(rows[0].rooms).to.be.at.least(1); pm.expect(rows[0].occupancyRate).to.be.at.most(100); pm.expect(rows[0].adr).to.be.a('number'); pm.expect(rows[0].revpar).to.be.a('number'); pm.expect(rows[0].listPrice).to.be.at.least(1); });"
                 ]
               }
             }
@@ -8611,7 +8613,8 @@
                   "pm.test('every payment method listed', () => pm.expect(d.byPaymentMethod.length).to.eql(3));",
                   "pm.test('channels: app, front desk, tour', () => { pm.expect(d.byChannel[0].key).to.eql('SELF_SERVICE'); pm.expect(d.byChannel[2].key).to.eql('TOUR'); });",
                   "pm.test('the November payslip (5.200.000, paid) is the payroll cost', () => pm.expect(d.current.payrollCost).to.eql(5200000));",
-                  "pm.test('new then returning guests; nobody stayed before 2026, so nobody returns', () => { pm.expect(d.byCustomerType[0].key).to.eql('NEW'); pm.expect(d.byCustomerType[1].count).to.eql(0); });"
+                  "pm.test('new then returning guests; nobody stayed before 2026, so nobody returns', () => { pm.expect(d.byCustomerType[0].key).to.eql('NEW'); pm.expect(d.byCustomerType[1].count).to.eql(0); });",
+                  "pm.test('service attach rate is a share of the completed bookings', () => { pm.expect(d.current.serviceAttachRate).to.be.at.most(100); pm.expect(d.current.serviceAttachRate).to.be.at.least(0); pm.expect(d.current.servicePerBooking).to.be.a('number'); });"
                 ]
               }
             }

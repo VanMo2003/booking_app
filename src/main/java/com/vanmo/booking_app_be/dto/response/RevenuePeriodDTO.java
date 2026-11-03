@@ -77,4 +77,10 @@ public class RevenuePeriodDTO {
 
     /** grossProfit as a percentage of totalRevenue; 0 without revenue. */
     double profitMargin;
+
+    /** Completed bookings with at least one service line, as a percentage of the completed bookings. */
+    double serviceAttachRate;
+
+    /** serviceRevenue per completed booking. */
+    BigDecimal servicePerBooking;
 }

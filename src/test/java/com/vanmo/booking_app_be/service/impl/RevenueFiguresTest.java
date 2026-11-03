@@ -21,12 +21,14 @@ import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
+import com.vanmo.booking_app_be.dto.response.RevenueByRoomTypeDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.RoomTypeStockRow;
 import com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
@@ -540,6 +542,21 @@ class RevenueFiguresTest {
     }
 
     @Test
+    void serviceAttachRateIsTheShareOfCompletedBookingsThatBoughtAService() {
+        List<CompletedBookingRow> bookings = List.of(
+                booking(1_000_000, PaymentMethod.CASH, null),
+                booking(1_200_000, PaymentMethod.CASH, null),
+                booking(800_000, PaymentMethod.VN_PAY, null),
+                booking(600_000, PaymentMethod.VN_PAY, null));
+
+        RevenuePeriodDTO period = RevenueFigures.period(new RevenueFigures.PeriodRows(
+                OCT_1, OCT_1, bookings, BigDecimal.valueOf(300_000), List.of(), List.of(), 10, 0, 4, 0, null, null, 1));
+
+        assertThat(period.getServiceAttachRate()).isEqualTo(25.0);
+        assertThat(period.getServicePerBooking()).isEqualByComparingTo("75000");
+    }
+
+    @Test
     void emptyPeriodHasZeroesNotDivisionErrors() {
         RevenuePeriodDTO period = RevenueFigures.period(new RevenueFigures.PeriodRows(
                 OCT_1, OCT_1, List.of(), null, List.of(), List.of(), 0, 0, 0, 0, null, null));
@@ -548,6 +565,8 @@ class RevenueFiguresTest {
         assertThat(period.getAdr()).isEqualByComparingTo("0");
         assertThat(period.getRevpar()).isEqualByComparingTo("0");
         assertThat(period.getAveragePerBooking()).isEqualByComparingTo("0");
+        assertThat(period.getServiceAttachRate()).isZero();
+        assertThat(period.getServicePerBooking()).isEqualByComparingTo("0");
         assertThat(period.getOccupancyRate()).isZero();
         assertThat(period.getCancellationRate()).isZero();
     }
@@ -849,5 +868,59 @@ class RevenueFiguresTest {
         Date at = Date.from(
                 canceledOn.atTime(15, 30).atZone(ZoneId.systemDefault()).toInstant());
         return new CanceledBookingRow(1L, BigDecimal.valueOf(amount), checkin, at, at, by);
+    }
+
+    @Test
+    void roomTypesSetWhatEachTypeEarnedAgainstItsRoomsAndListPrice() {
+        LocalDate from = OCT_1;
+        LocalDate to = OCT_1.plusDays(9);
+        BookedRoomNightRow deluxeA = typedStay(11L, 1L, "Deluxe", OCT_1.plusDays(1), 3);
+        BookedRoomNightRow deluxeB = typedStay(12L, 1L, "Deluxe", OCT_1.plusDays(5), 2);
+        BookedRoomNightRow suite = typedStay(21L, 2L, "Suite", OCT_1.plusDays(2), 1);
+        List<RoomTypeStockRow> stock = List.of(
+                new RoomTypeStockRow(1L, "Deluxe", 2L, 600_000d),
+                new RoomTypeStockRow(2L, "Suite", 1L, 1_500_000d),
+                new RoomTypeStockRow(3L, "Gia đình", 1L, 900_000d));
+
+        List<RevenueByRoomTypeDTO> types = RevenueFigures.roomTypes(
+                from,
+                to,
+                stock,
+                List.of(deluxeA, deluxeB, suite),
+                Map.of(
+                        deluxeA, BigDecimal.valueOf(1_500_000),
+                        deluxeB, BigDecimal.valueOf(1_000_000),
+                        suite, BigDecimal.valueOf(1_200_000)),
+                List.of(
+                        deluxeA,
+                        deluxeB,
+                        // the same room twice that night counts once
+                        typedStay(12L, 1L, "Deluxe", OCT_1.plusDays(5), 2),
+                        suite,
+                        // still to come: only its nights inside the period count
+                        typedStay(11L, 1L, "Deluxe", OCT_1.plusDays(8), 4)));
+
+        assertThat(types)
+                .extracting(RevenueByRoomTypeDTO::getRoomTypeName)
+                .containsExactly("Deluxe", "Suite", "Gia đình");
+        RevenueByRoomTypeDTO deluxe = types.get(0);
+        assertThat(deluxe.getRooms()).isEqualTo(2);
+        assertThat(deluxe.getRoomNights()).isEqualTo(5);
+        assertThat(deluxe.getAvailableRoomNights()).isEqualTo(20);
+        assertThat(deluxe.getOccupiedRoomNights()).isEqualTo(7);
+        assertThat(deluxe.getOccupancyRate()).isEqualTo(35.0);
+        assertThat(deluxe.getAdr()).isEqualByComparingTo("500000");
+        assertThat(deluxe.getRevpar()).isEqualByComparingTo("125000");
+        assertThat(deluxe.getListPrice()).isEqualByComparingTo("600000");
+        assertThat(types.get(1).getOccupancyRate()).isEqualTo(10.0);
+        RevenueByRoomTypeDTO idle = types.get(2);
+        assertThat(idle.getTotalRevenue()).isEqualByComparingTo("0");
+        assertThat(idle.getAvailableRoomNights()).isEqualTo(10);
+        assertThat(idle.getAdr()).isEqualByComparingTo("0");
+    }
+
+    private static BookedRoomNightRow typedStay(long roomId, long typeId, String type, LocalDate checkin, int nights) {
+        return new BookedRoomNightRow(
+                roomId, typeId, type, BigDecimal.valueOf(600_000), checkin, checkin.plusDays(nights));
     }
 }

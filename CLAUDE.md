@@ -438,6 +438,10 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   cancel that frees its rooms (copying the tour's side). `RevenueFigures.cancellationLeadTimes` buckets
   `findCanceled` rows by days before check-in and falls back to `onUpdate` for rows cancelled before the
   columns existed (those have no side). Any new place that cancels a booking must set both.
+- **Room types** come from `RevenueFigures.roomTypes`: `RoomRepository.countByRoomType` (rooms + average list
+  price) so unsold types are listed, completed stays for revenue/ADR, `findBookedRoomNights` for occupancy.
+  `PeriodRows` gained `bookingsWithServices` (service attach rate); its old 12-argument constructor stays for
+  the tests and passes 0.
 - **AI assistant report** (`/reports/ai-assistant`) is computed by `ChatFigures` (unit-tested in
   `ChatFiguresTest`) from `ChatMessageRepository.findForReport` - messages written in the period, thread by
   thread. A reply's wait runs from the first guest message still unanswered; the assistant's messages are

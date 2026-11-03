@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,12 +34,14 @@ import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
+import com.vanmo.booking_app_be.dto.response.RevenueByRoomTypeDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.RoomPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.RoomTypeStockRow;
 import com.vanmo.booking_app_be.dto.response.StaffPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TargetProgressResponse;
@@ -87,7 +90,38 @@ final class RevenueFigures {
             long totalBookings,
             long canceledBookings,
             BigDecimal canceledRevenue,
-            BigDecimal payrollCost) {
+            BigDecimal payrollCost,
+            long bookingsWithServices) {
+
+        /** Without the service attach count (0), as most tests build it. */
+        PeriodRows(
+                LocalDate from,
+                LocalDate to,
+                List<CompletedBookingRow> bookings,
+                BigDecimal serviceRevenue,
+                List<TourSaleRow> tours,
+                List<BookedRoomNightRow> soldRooms,
+                long totalRooms,
+                long occupiedRoomNights,
+                long totalBookings,
+                long canceledBookings,
+                BigDecimal canceledRevenue,
+                BigDecimal payrollCost) {
+            this(
+                    from,
+                    to,
+                    bookings,
+                    serviceRevenue,
+                    tours,
+                    soldRooms,
+                    totalRooms,
+                    occupiedRoomNights,
+                    totalBookings,
+                    canceledBookings,
+                    canceledRevenue,
+                    payrollCost,
+                    0);
+        }
 
         long days() {
             return ChronoUnit.DAYS.between(from, to) + 1;
@@ -185,6 +219,8 @@ final class RevenueFigures {
                 .adr(perUnit(roomRevenue, nightsSold))
                 .revpar(perUnit(roomRevenue, availableNights))
                 .averagePerBooking(perUnit(bookingRevenue, completed))
+                .serviceAttachRate(rate(rows.bookingsWithServices(), completed))
+                .servicePerBooking(perUnit(serviceRevenue, completed))
                 .totalBookings(rows.totalBookings())
                 .canceledBookings(rows.canceledBookings())
                 .cancellationRate(rate(rows.canceledBookings(), rows.totalBookings()))
@@ -864,6 +900,74 @@ final class RevenueFigures {
             return 0d;
         }
         return Math.round((part * 10000d) / whole) / 100d;
+    }
+
+    /**
+     * Each room type over [from, to]: what its completed stays earned and how many nights they had, against how many
+     * rooms of the type there are and how many of their nights were booked - occupancy, ADR, RevPAR and the list price
+     * beside them. Types with rooms but no sale are listed too (after the others), so an idle type shows up.
+     *
+     * @param completed completed stays checking out in the period, with what each earned in {@code earned}
+     * @param booked stays (not cancelled) overlapping the period, for the occupancy
+     */
+    static List<RevenueByRoomTypeDTO> roomTypes(
+            LocalDate from,
+            LocalDate to,
+            List<RoomTypeStockRow> stock,
+            List<BookedRoomNightRow> completed,
+            Map<BookedRoomNightRow, BigDecimal> earned,
+            List<BookedRoomNightRow> booked) {
+        long days = ChronoUnit.DAYS.between(from, to) + 1;
+        Map<Long, RevenueByRoomTypeDTO> byType = new LinkedHashMap<>();
+        for (RoomTypeStockRow row : stock) {
+            long rooms = row.getRooms() == null ? 0 : row.getRooms();
+            RevenueByRoomTypeDTO type = roomType(byType, row.getRoomTypeId(), row.getRoomTypeName());
+            type.setRooms(rooms);
+            type.setAvailableRoomNights(rooms * days);
+            type.setListPrice(
+                    row.getAveragePrice() == null
+                            ? BigDecimal.ZERO
+                            : BigDecimal.valueOf(row.getAveragePrice()).setScale(0, RoundingMode.HALF_UP));
+        }
+        for (BookedRoomNightRow row : completed) {
+            RevenueByRoomTypeDTO type = roomType(byType, row.getRoomTypeId(), row.getRoomTypeName());
+            type.setBookedRooms(type.getBookedRooms() + 1);
+            type.setRoomNights(type.getRoomNights() + nights(row));
+            type.setTotalRevenue(type.getTotalRevenue().add(earned.getOrDefault(row, BigDecimal.ZERO)));
+        }
+        // a room counts once a night, however many bookings overlap it
+        Map<Long, Set<String>> occupied = new LinkedHashMap<>();
+        LocalDate end = to.plusDays(1);
+        for (BookedRoomNightRow row : booked) {
+            LocalDate night = row.getCheckinDate().isBefore(from) ? from : row.getCheckinDate();
+            LocalDate last = row.getCheckoutDate().isAfter(end) ? end : row.getCheckoutDate();
+            for (; night.isBefore(last); night = night.plusDays(1)) {
+                occupied.computeIfAbsent(row.getRoomTypeId(), id -> new HashSet<>())
+                        .add(row.getRoomId() + "@" + night);
+            }
+        }
+        for (RevenueByRoomTypeDTO type : byType.values()) {
+            long nightsBooked =
+                    occupied.getOrDefault(type.getRoomTypeId(), Set.of()).size();
+            type.setOccupiedRoomNights(nightsBooked);
+            type.setOccupancyRate(rate(nightsBooked, type.getAvailableRoomNights()));
+            type.setAdr(perUnit(type.getTotalRevenue(), type.getRoomNights()));
+            type.setRevpar(perUnit(type.getTotalRevenue(), type.getAvailableRoomNights()));
+        }
+        return byType.values().stream()
+                .sorted(Comparator.comparing(RevenueByRoomTypeDTO::getTotalRevenue)
+                        .reversed()
+                        .thenComparing(RevenueByRoomTypeDTO::getRooms, Comparator.reverseOrder()))
+                .toList();
+    }
+
+    private static RevenueByRoomTypeDTO roomType(Map<Long, RevenueByRoomTypeDTO> byType, Long id, String name) {
+        return byType.computeIfAbsent(id, key -> RevenueByRoomTypeDTO.builder()
+                .roomTypeId(key)
+                .roomTypeName(name)
+                .totalRevenue(BigDecimal.ZERO)
+                .listPrice(BigDecimal.ZERO)
+                .build());
     }
 
     /** How long before check-in bookings were cancelled, and by whom. */

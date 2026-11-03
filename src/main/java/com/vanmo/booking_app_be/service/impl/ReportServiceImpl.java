@@ -12,7 +12,6 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -833,7 +832,11 @@ public class ReportServiceImpl implements ReportService {
                                 YearMonth.from(from).atDay(1),
                                 YearMonth.from(to).atEndOfMonth()),
                         from,
-                        to));
+                        to),
+                bookingServiceRepository.serviceTotalsByBooking(hotelIds, BookingStatus.COMPLETED, from, to).stream()
+                        .filter(row ->
+                                row.getAmount() != null && row.getAmount().signum() > 0)
+                        .count());
     }
 
     private OccupancyResponse occupancy(List<Long> hotelIds, LocalDate from, LocalDate to) {
@@ -860,26 +863,13 @@ public class ReportServiceImpl implements ReportService {
         requireRange(from, to);
         List<BookedRoomNightRow> rows =
                 bookingRoomRepository.findRoomNightsByStatus(hotelIds, BookingStatus.COMPLETED, from, to);
-        Map<BookedRoomNightRow, BigDecimal> earned =
-                RevenueFigures.roomRevenue(rows, servicesByBooking(hotelIds, from, to));
-
-        Map<Long, RevenueByRoomTypeDTO> byType = new LinkedHashMap<>();
-        for (BookedRoomNightRow row : rows) {
-            long nights = Math.max(1, ChronoUnit.DAYS.between(row.getCheckinDate(), row.getCheckoutDate()));
-            BigDecimal revenue = earned.getOrDefault(row, BigDecimal.ZERO);
-
-            RevenueByRoomTypeDTO acc = byType.computeIfAbsent(
-                    row.getRoomTypeId(),
-                    id -> new RevenueByRoomTypeDTO(id, row.getRoomTypeName(), 0L, 0L, BigDecimal.ZERO));
-            acc.setBookedRooms(acc.getBookedRooms() + 1);
-            acc.setRoomNights(acc.getRoomNights() + nights);
-            acc.setTotalRevenue(acc.getTotalRevenue().add(revenue));
-        }
-
-        return byType.values().stream()
-                .sorted(Comparator.comparing(RevenueByRoomTypeDTO::getTotalRevenue)
-                        .reversed())
-                .toList();
+        return RevenueFigures.roomTypes(
+                from,
+                to,
+                roomRepository.countByRoomType(hotelIds),
+                rows,
+                RevenueFigures.roomRevenue(rows, servicesByBooking(hotelIds, from, to)),
+                bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)));
     }
 
     private List<TopCustomerDTO> topCustomers(List<Long> hotelIds, LocalDate from, LocalDate to, int limit) {

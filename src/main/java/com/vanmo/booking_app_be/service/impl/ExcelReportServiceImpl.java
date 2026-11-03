@@ -206,7 +206,9 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         r = kpiRow(sheet, r, "Tỷ lệ huỷ (%)", now.getCancellationRate(), before.getCancellationRate(), "");
         r = kpiRow(sheet, r, "Doanh thu mất do huỷ", now.getCanceledRevenue(), before.getCanceledRevenue(), "");
         r = kpiRow(sheet, r, "Lưu trú trung bình (đêm)", now.getAverageStayNights(), before.getAverageStayNights(), "");
-        kpiRow(sheet, r, "Đặt trước trung bình (ngày)", now.getAverageLeadDays(), before.getAverageLeadDays(), "");
+        r = kpiRow(sheet, r, "Đặt trước trung bình (ngày)", now.getAverageLeadDays(), before.getAverageLeadDays(), "");
+        r = kpiRow(sheet, r, "Đơn có mua dịch vụ (%)", now.getServiceAttachRate(), before.getServiceAttachRate(), "");
+        kpiRow(sheet, r, "Dịch vụ TB mỗi đơn", now.getServicePerBooking(), before.getServicePerBooking(), "");
         autoSize(sheet, 4);
     }
 
@@ -415,16 +417,32 @@ public class ExcelReportServiceImpl implements ExcelReportService {
 
     private void writeRevenueByRoomType(Workbook workbook, CellStyle header, List<RevenueByRoomTypeDTO> rows) {
         Sheet sheet = workbook.createSheet("Doanh thu theo loại phòng");
-        writeHeader(sheet, header, "Loại phòng", "Số phòng đã bán", "Số đêm-phòng", "Doanh thu");
+        writeHeader(
+                sheet,
+                header,
+                "Loại phòng",
+                "Số phòng",
+                "Lượt ở hoàn tất",
+                "Số đêm-phòng",
+                "Doanh thu",
+                "Lấp đầy (%)",
+                "ADR",
+                "RevPAR",
+                "Giá niêm yết TB");
         int r = 1;
         for (RevenueByRoomTypeDTO row : rows) {
             Row line = sheet.createRow(r++);
             line.createCell(0).setCellValue(row.getRoomTypeName());
-            line.createCell(1).setCellValue(row.getBookedRooms());
-            line.createCell(2).setCellValue(row.getRoomNights());
-            line.createCell(3).setCellValue(toDouble(row.getTotalRevenue()));
+            line.createCell(1).setCellValue(row.getRooms());
+            line.createCell(2).setCellValue(row.getBookedRooms());
+            line.createCell(3).setCellValue(row.getRoomNights());
+            line.createCell(4).setCellValue(toDouble(row.getTotalRevenue()));
+            line.createCell(5).setCellValue(row.getOccupancyRate());
+            line.createCell(6).setCellValue(toDouble(row.getAdr()));
+            line.createCell(7).setCellValue(toDouble(row.getRevpar()));
+            line.createCell(8).setCellValue(toDouble(row.getListPrice()));
         }
-        autoSize(sheet, 4);
+        autoSize(sheet, 9);
     }
 
     private void writeRevenueByService(Workbook workbook, CellStyle header, List<RevenueByServiceDTO> rows) {
