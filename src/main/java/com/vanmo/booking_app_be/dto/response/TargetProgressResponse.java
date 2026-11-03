@@ -42,4 +42,9 @@ public class TargetProgressResponse {
     int daysElapsed;
 
     int daysInMonth;
+
+    /** For setting the goal (branch only): the same month a year earlier, and the 3 months before this one. */
+    BigDecimal lastYearRevenue;
+
+    BigDecimal recentMonthlyAverage;
 }

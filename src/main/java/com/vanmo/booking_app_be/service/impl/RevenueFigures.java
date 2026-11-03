@@ -672,6 +672,11 @@ final class RevenueFigures {
                 .build();
     }
 
+    /** Mean of the amounts, rounded to the đồng; zero for none. */
+    static BigDecimal monthlyAverage(List<BigDecimal> months) {
+        return perUnit(sum(months.stream()), months.size());
+    }
+
     /**
      * The chain's month: revenue and projection of every branch, measured against the sum of the goals that were set -
      * the rates only count the branches that have a goal, so a branch without one cannot inflate them.

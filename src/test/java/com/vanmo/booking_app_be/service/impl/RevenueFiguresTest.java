@@ -1050,4 +1050,12 @@ class RevenueFiguresTest {
         assertThat(period.getRevenuePerGuest()).isEqualByComparingTo("1500000");
         assertThat(period.getAveragePerBooking()).isEqualByComparingTo("1000000");
     }
+
+    @Test
+    void monthlyAverageRoundsToTheDong() {
+        assertThat(RevenueFigures.monthlyAverage(
+                        List.of(BigDecimal.valueOf(1_000_000), BigDecimal.ZERO, BigDecimal.valueOf(500_000))))
+                .isEqualByComparingTo("500000");
+        assertThat(RevenueFigures.monthlyAverage(List.of())).isEqualByComparingTo("0");
+    }
 }

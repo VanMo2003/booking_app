@@ -867,7 +867,25 @@ public class ReportServiceImpl implements ReportService {
                 .findByHotel_IdAndMonth(hotel.getId(), start)
                 .map(RevenueTarget::getAmount)
                 .orElse(null);
-        return RevenueFigures.targetProgress(hotel.getId(), hotel.getName(), month, target, revenue, onTheBooks, today);
+        TargetProgressResponse progress = RevenueFigures.targetProgress(
+                hotel.getId(), hotel.getName(), month, target, revenue, onTheBooks, today);
+        progress.setLastYearRevenue(monthRevenue(ids, month.minusYears(1)));
+        progress.setRecentMonthlyAverage(RevenueFigures.monthlyAverage(List.of(
+                monthRevenue(ids, month.minusMonths(1)),
+                monthRevenue(ids, month.minusMonths(2)),
+                monthRevenue(ids, month.minusMonths(3)))));
+        return progress;
+    }
+
+    /** A whole month's revenue: completed bookings by check-out day and completed tours by tour date. */
+    private BigDecimal monthRevenue(List<Long> hotelIds, YearMonth month) {
+        LocalDate start = month.atDay(1);
+        LocalDate end = month.atEndOfMonth();
+        return RevenueFigures.sum(bookingRepository.findSales(hotelIds, BookingStatus.COMPLETED, start, end).stream()
+                        .map(CompletedBookingRow::getTotalAmount))
+                .add(RevenueFigures.sum(
+                        tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, start, end).stream()
+                                .map(TourSaleRow::tourRevenue)));
     }
 
     private YearMonth parseMonth(String month) {
