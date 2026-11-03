@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +28,7 @@ import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueShareDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueSummaryResponse;
+import com.vanmo.booking_app_be.dto.response.TrendBucketDTO;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.service.ReportService;
 
@@ -79,6 +81,16 @@ class ExcelReportServiceImplTest {
         when(reports.getCancellationRateForChain(anyLong(), any(), any())).thenReturn(cancellation);
         when(reports.getRevenueSummary(anyLong(), any(), any())).thenReturn(summary());
         when(reports.getRevenueSummaryForChain(anyLong(), any(), any())).thenReturn(summary());
+        when(reports.getRevenueTrend(anyLong(), any(), any(), eq("day")))
+                .thenReturn(List.of(new TrendBucketDTO(
+                        FROM,
+                        FROM,
+                        null,
+                        BigDecimal.valueOf(1_200_000),
+                        BigDecimal.valueOf(900_000),
+                        BigDecimal.valueOf(2_100_000),
+                        2L,
+                        1L)));
         when(reports.getReceivables(anyLong()))
                 .thenReturn(List.of(new ReceivableDTO(
                         21L,
@@ -122,6 +134,11 @@ class ExcelReportServiceImplTest {
             assertThat(shares.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Tiền mặt");
             assertThat(shares.getRow(4).getCell(0).getStringCellValue()).isEqualTo("Kênh bán");
             assertThat(shares.getRow(5).getCell(0).getStringCellValue()).isEqualTo("Đặt tại quầy");
+
+            Sheet days = book.getSheet("Doanh thu theo ngày");
+            assertThat(days.getRow(0).getCell(4).getStringCellValue()).isEqualTo("Tiền tour");
+            assertThat(days.getRow(1).getCell(0).getStringCellValue()).isEqualTo("2026-10-01");
+            assertThat(days.getRow(1).getCell(5).getNumericCellValue()).isEqualTo(2_100_000d);
 
             Sheet receivables = book.getSheet("Tiền chưa thu");
             assertThat(receivables.getRow(1).getCell(1).getStringCellValue()).isEqualTo("Nguyễn An");

@@ -29,6 +29,9 @@ public class ExcelReportServiceImpl implements ExcelReportService {
     /** Matches ReportServiceImpl's cap - past this the per-day sheet is skipped, not an error. */
     private static final int MAX_DAILY_RANGE = 92;
 
+    /** Matches ReportServiceImpl's day-trend cap - past this the revenue sheet goes month by month. */
+    private static final int MAX_TREND_DAYS = 400;
+
     /** Vietnamese names of the revenue summary's payment methods and sales channels. */
     private static final Map<String, String> SHARE_LABELS = Map.of(
             "CASH", "Tiền mặt",
@@ -54,7 +57,8 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             RevenueSummaryResponse summary = reportService.getRevenueSummary(hotelId, from, to);
             writeKpiSheet(workbook, header, summary);
             writeShares(workbook, header, summary);
-            writeRevenueByDate(workbook, header, reportService.getRevenueByDate(hotelId, from, to));
+            String granularity = trendGranularity(from, to);
+            writeTrend(workbook, header, reportService.getRevenueTrend(hotelId, from, to, granularity), granularity);
             if (ChronoUnit.DAYS.between(from, to) <= MAX_DAILY_RANGE) {
                 writeOccupancyDaily(workbook, header, reportService.getOccupancyByDate(hotelId, from, to));
             }
@@ -84,7 +88,12 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeKpiSheet(workbook, header, summary);
             writeBranchComparison(workbook, header, reportService.getBranchPerformanceForChain(hotelChainId, from, to));
             writeShares(workbook, header, summary);
-            writeRevenueByDate(workbook, header, reportService.getRevenueByDateForChain(hotelChainId, from, to));
+            String granularity = trendGranularity(from, to);
+            writeTrend(
+                    workbook,
+                    header,
+                    reportService.getRevenueTrendForChain(hotelChainId, from, to, granularity),
+                    granularity);
             writeRevenueByRoomType(
                     workbook, header, reportService.getRevenueByRoomTypeForChain(hotelChainId, from, to));
             writeRevenueByService(workbook, header, reportService.getRevenueByServiceForChain(hotelChainId, from, to));
@@ -313,17 +322,32 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         return change == null ? "–" : String.format(Locale.ROOT, "%+.2f điểm", change);
     }
 
-    private void writeRevenueByDate(Workbook workbook, CellStyle header, List<RevenueByDateDTO> rows) {
-        Sheet sheet = workbook.createSheet("Doanh thu theo ngày");
-        writeHeader(sheet, header, "Ngày", "Số đơn", "Doanh thu");
+    /** Day by day while the trend endpoint allows it (400 days), month by month beyond. */
+    private String trendGranularity(LocalDate from, LocalDate to) {
+        return ChronoUnit.DAYS.between(from, to) < MAX_TREND_DAYS ? "day" : "month";
+    }
+
+    /** Every day (or month) of the period, empty ones included: bookings, tours and their total. */
+    private void writeTrend(Workbook workbook, CellStyle header, List<TrendBucketDTO> rows, String granularity) {
+        boolean daily = "day".equals(granularity);
+        Sheet sheet = workbook.createSheet(daily ? "Doanh thu theo ngày" : "Doanh thu theo tháng");
+        writeHeader(
+                sheet, header, daily ? "Ngày" : "Tháng", "Số đơn", "Tiền đơn phòng", "Số tour", "Tiền tour", "Tổng");
         int r = 1;
-        for (RevenueByDateDTO row : rows) {
+        for (TrendBucketDTO row : rows) {
             Row line = sheet.createRow(r++);
-            line.createCell(0).setCellValue(String.valueOf(row.getDate()));
-            line.createCell(1).setCellValue(orZero(row.getTotalBooking()));
-            line.createCell(2).setCellValue(toDouble(row.getTotalRevenue()));
+            line.createCell(0)
+                    .setCellValue(
+                            daily
+                                    ? String.valueOf(row.getStart())
+                                    : String.valueOf(row.getStart()).substring(0, 7));
+            line.createCell(1).setCellValue(row.getBookings());
+            line.createCell(2).setCellValue(toDouble(row.getBookingRevenue()));
+            line.createCell(3).setCellValue(row.getTours());
+            line.createCell(4).setCellValue(toDouble(row.getTourRevenue()));
+            line.createCell(5).setCellValue(toDouble(row.getTotalRevenue()));
         }
-        autoSize(sheet, 3);
+        autoSize(sheet, 6);
     }
 
     private void writeOccupancyDaily(Workbook workbook, CellStyle header, List<OccupancyByDateDTO> rows) {
