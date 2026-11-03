@@ -755,13 +755,18 @@ public class ReportServiceImpl implements ReportService {
         }
         LocalDate from = LocalDate.now();
         LocalDate to = from.plusDays(days - 1L);
-        return RevenueFigures.outlook(
+        RevenueOutlookResponse outlook = RevenueFigures.outlook(
                 from,
                 to,
                 bookingRepository.findOpen(hotelIds, EnumSet.of(BookingStatus.PENDING, BookingStatus.CONFIRMED), to),
                 tourBookingRepository.findUpcoming(
                         hotelIds, EnumSet.of(TourBookingStatus.PENDING, TourBookingStatus.CONFIRMED), from, to),
                 bookingRepository.findUnpaid(hotelIds, BookingStatus.COMPLETED, PaymentStatus.PAID));
+        RevenueFigures.occupancyOnTheBooks(
+                outlook,
+                roomRepository.countByHotel_IdIn(hotelIds),
+                bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)));
+        return outlook;
     }
 
     /** [from, to] against its {@link RevenueFigures#previousPeriod previous period}. */

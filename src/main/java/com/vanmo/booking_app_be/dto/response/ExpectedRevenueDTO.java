@@ -6,7 +6,10 @@ import java.time.LocalDate;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-/** Revenue expected on one day: open bookings checking out that day and open tour orders departing that day. */
+/**
+ * Revenue expected on one day: open bookings checking out that day and open tour orders departing that day - plus the
+ * rooms already booked for that night.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,4 +22,10 @@ public class ExpectedRevenueDTO {
     BigDecimal tourRevenue;
     long bookings;
     long tours;
+
+    /** Rooms booked for the night starting that day (any booking not cancelled, as in the occupancy report). */
+    long bookedRooms;
+
+    /** bookedRooms over the branch's rooms, percentage. */
+    double occupancyRate;
 }

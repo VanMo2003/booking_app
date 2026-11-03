@@ -46,6 +46,16 @@ public class RevenueOutlookResponse {
     /** Every day of the window, empty days included. */
     List<ExpectedRevenueDTO> byDate;
 
+    /** Rooms of the branches, and the room-nights of the window already booked out of all of them. */
+    long totalRooms;
+
+    long bookedRoomNights;
+
+    long availableRoomNights;
+
+    /** bookedRoomNights over availableRoomNights, percentage: the occupancy already on the books. */
+    double occupancyOnTheBooks;
+
     /** Open bookings whose check-out day already passed - nobody checked the guest out. */
     BigDecimal overdueRevenue;
 

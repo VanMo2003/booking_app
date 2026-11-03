@@ -761,4 +761,29 @@ class RevenueFiguresTest {
         assertThat(outlook.getOutstandingAmount()).isEqualByComparingTo("300000");
         assertThat(outlook.getOutstandingBookings()).isEqualTo(1);
     }
+
+    @Test
+    void outlookCountsTheRoomsAlreadyBookedForEachNight() {
+        LocalDate today = OCT_10;
+        RevenueOutlookResponse outlook =
+                RevenueFigures.outlook(today, today.plusDays(3), List.of(), List.of(), List.of());
+
+        RevenueFigures.occupancyOnTheBooks(
+                outlook,
+                4,
+                List.of(
+                        // in house since yesterday, leaves on the 12th
+                        stayIn(1L, today.minusDays(1), 3),
+                        stayIn(2L, today, 1),
+                        // the same room twice that night (a second booking row) still counts once
+                        stayIn(2L, today, 1),
+                        stayIn(3L, today.plusDays(3), 2)));
+
+        assertThat(outlook.getByDate()).extracting(day -> day.getBookedRooms()).containsExactly(2L, 1L, 0L, 1L);
+        assertThat(outlook.getByDate().get(0).getOccupancyRate()).isEqualTo(50.0);
+        assertThat(outlook.getTotalRooms()).isEqualTo(4);
+        assertThat(outlook.getBookedRoomNights()).isEqualTo(4);
+        assertThat(outlook.getAvailableRoomNights()).isEqualTo(16);
+        assertThat(outlook.getOccupancyOnTheBooks()).isEqualTo(25.0);
+    }
 }

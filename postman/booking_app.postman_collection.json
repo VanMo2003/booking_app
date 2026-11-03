@@ -9361,7 +9361,8 @@
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
                   "pm.test('30 days by default, starting today', () => { pm.expect(d.byDate.length).to.eql(30); pm.expect(d.byDate[0].date).to.eql(d.from); });",
-                  "pm.test('the completed tour is no longer expected', () => pm.expect(d.tours).to.eql(0));"
+                  "pm.test('the completed tour is no longer expected', () => pm.expect(d.tours).to.eql(0));",
+                  "pm.test('rooms already booked: counted per night, never more than the branch has', () => { pm.expect(d.totalRooms).to.be.at.least(1); pm.expect(d.bookedRoomNights).to.be.a('number'); pm.expect(d.occupancyOnTheBooks).to.be.at.least(0); pm.expect(d.occupancyOnTheBooks).to.be.at.most(100); pm.expect(d.byDate[0].bookedRooms).to.be.at.most(d.totalRooms); });"
                 ]
               }
             }

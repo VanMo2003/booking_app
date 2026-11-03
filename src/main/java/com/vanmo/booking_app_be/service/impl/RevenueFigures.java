@@ -204,6 +204,30 @@ final class RevenueFigures {
      * @param booked rooms of every booking that was not cancelled overlapping [from, to + 1)
      * @param revenueByDate what each day earned (completed bookings by check-out day, completed tours by tour date)
      */
+    /**
+     * Fills in the rooms already booked for each night of an outlook and the occupancy that makes over the window -
+     * the hotel's "on the books" figure. A room counts once a night however many bookings overlap it.
+     */
+    static void occupancyOnTheBooks(RevenueOutlookResponse outlook, long totalRooms, List<BookedRoomNightRow> booked) {
+        long bookedNights = 0;
+        for (ExpectedRevenueDTO day : outlook.getByDate()) {
+            LocalDate date = day.getDate();
+            long rooms = booked.stream()
+                    .filter(r -> !date.isBefore(r.getCheckinDate()) && date.isBefore(r.getCheckoutDate()))
+                    .map(BookedRoomNightRow::getRoomId)
+                    .distinct()
+                    .count();
+            day.setBookedRooms(rooms);
+            day.setOccupancyRate(rate(rooms, totalRooms));
+            bookedNights += rooms;
+        }
+        long available = totalRooms * outlook.getByDate().size();
+        outlook.setTotalRooms(totalRooms);
+        outlook.setBookedRoomNights(bookedNights);
+        outlook.setAvailableRoomNights(available);
+        outlook.setOccupancyOnTheBooks(rate(bookedNights, available));
+    }
+
     static List<WeekdayStatsDTO> weekdays(
             LocalDate from,
             LocalDate to,
@@ -474,7 +498,7 @@ final class RevenueFigures {
             List<OpenBookingRow> unpaidCompleted) {
         Map<LocalDate, ExpectedRevenueDTO> byDate = new LinkedHashMap<>();
         for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
-            byDate.put(day, new ExpectedRevenueDTO(day, BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L));
+            byDate.put(day, new ExpectedRevenueDTO(day, BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L, 0L, 0d));
         }
         // slices double as count + amount accumulators
         RevenueShareDTO booked = slice("BOOKED");

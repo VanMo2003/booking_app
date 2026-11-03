@@ -425,6 +425,10 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   `weekdays`, `staff`, `topCustomers`). The JPQL projections that grew extra fields
   (`StaffPerformanceDTO`, `TopCustomerDTO`, `ReceivableDTO`) keep an explicit constructor matching the
   query's arguments - adding a field to them must not break that constructor.
+- **Outlook occupancy.** `revenueOutlook` adds the rooms booked per night and the window's on-the-books
+  occupancy with `RevenueFigures.occupancyOnTheBooks`, fed by the occupancy report's own query
+  (`findBookedRoomNights`: any booking not cancelled). `targetProgress` reuses `RevenueFigures.outlook`
+  without it.
 - **AI assistant report** (`/reports/ai-assistant`) is computed by `ChatFigures` (unit-tested in
   `ChatFiguresTest`) from `ChatMessageRepository.findForReport` - messages written in the period, thread by
   thread. A reply's wait runs from the first guest message still unanswered; the assistant's messages are
