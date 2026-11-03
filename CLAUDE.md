@@ -430,6 +430,10 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   (`findBookedRoomNights`: any booking not cancelled), and the same nights a year earlier for `lastYearOccupancy`
   (null when nothing was booked then). `targetProgress` reuses `RevenueFigures.outlook`
   without it.
+- **Cancellation lead time.** `Booking.canceledAt`/`canceledBy` are set by `cancelBooking` and by a tour
+  cancel that frees its rooms (copying the tour's side). `RevenueFigures.cancellationLeadTimes` buckets
+  `findCanceled` rows by days before check-in and falls back to `onUpdate` for rows cancelled before the
+  columns existed (those have no side). Any new place that cancels a booking must set both.
 - **AI assistant report** (`/reports/ai-assistant`) is computed by `ChatFigures` (unit-tested in
   `ChatFiguresTest`) from `ChatMessageRepository.findForReport` - messages written in the period, thread by
   thread. A reply's wait runs from the first guest message still unanswered; the assistant's messages are

@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -328,6 +329,8 @@ public class TourBookingServiceImpl implements TourBookingService {
         if (stay != null
                 && (WAITING.contains(stay.getBookingStatus()) || stay.getBookingStatus() == BookingStatus.CONFIRMED)) {
             stay.setBookingStatus(BookingStatus.CANCELED);
+            stay.setCanceledAt(new Date());
+            stay.setCanceledBy(booking.getCanceledBy());
         }
         tourBookingRepository.save(booking);
         if (byGuest) {

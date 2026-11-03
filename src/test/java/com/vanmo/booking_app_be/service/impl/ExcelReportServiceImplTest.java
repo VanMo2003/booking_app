@@ -74,8 +74,14 @@ class ExcelReportServiceImplTest {
     void stubTotals() {
         OccupancyResponse occupancy =
                 OccupancyResponse.builder().from(FROM).to(TO).totalRooms(10).build();
-        CancellationRateResponse cancellation =
-                CancellationRateResponse.builder().from(FROM).to(TO).build();
+        CancellationRateResponse cancellation = CancellationRateResponse.builder()
+                .from(FROM)
+                .to(TO)
+                .byLeadTime(List.of(
+                        new RevenueShareDTO("SAME_DAY", 2L, BigDecimal.valueOf(900_000), 66.67),
+                        new RevenueShareDTO("D1_2", 1L, BigDecimal.valueOf(300_000), 33.33)))
+                .lateCancellationShare(100.0)
+                .build();
         when(reports.getOccupancy(anyLong(), any(), any())).thenReturn(occupancy);
         when(reports.getOccupancyForChain(anyLong(), any(), any())).thenReturn(occupancy);
         when(reports.getCancellationRate(anyLong(), any(), any())).thenReturn(cancellation);
@@ -144,6 +150,9 @@ class ExcelReportServiceImplTest {
             // one spelling of "huỷ" across sheets, like the app
             Sheet overview = book.getSheet("Tổng quan");
             assertThat(overview.getRow(10).getCell(0).getStringCellValue()).isEqualTo("Tỷ lệ huỷ (%)");
+            assertThat(overview.getRow(11).getCell(0).getStringCellValue()).isEqualTo("Đơn huỷ trong ngày nhận phòng");
+            assertThat(overview.getRow(11).getCell(1).getNumericCellValue()).isEqualTo(2d);
+            assertThat(overview.getRow(13).getCell(1).getNumericCellValue()).isEqualTo(100d);
 
             Sheet shares = book.getSheet("Thanh toán & kênh bán");
             assertThat(shares.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Tiền mặt");

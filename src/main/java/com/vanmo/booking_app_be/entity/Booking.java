@@ -13,6 +13,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.ChatSide;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 
@@ -84,6 +85,13 @@ public class Booking {
 
     @Column(length = 5000, columnDefinition = "TEXT")
     String note;
+
+    /** When the booking was cancelled and from which side; null for bookings cancelled before this was recorded. */
+    Date canceledAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    ChatSide canceledBy;
 
     @CreationTimestamp
     @Column(updatable = false)

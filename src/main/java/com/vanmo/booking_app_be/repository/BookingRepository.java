@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.ReceivableDTO;
@@ -237,6 +238,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 		AND b.checkinDate BETWEEN :from AND :to
 	""")
     long countBookings(
+            @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Cancelled bookings checking in during [from, to], with when and by which side they were cancelled. */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.CanceledBookingRow(
+			b.id, b.totalAmount, b.checkinDate, b.canceledAt, b.onUpdate, b.canceledBy
+		)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = com.vanmo.booking_app_be.entity.enums.BookingStatus.CANCELED
+		AND b.checkinDate BETWEEN :from AND :to
+	""")
+    List<CanceledBookingRow> findCanceled(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /** Bookings in a status checking in during [from, to] that the front desk took (handledBy set). */

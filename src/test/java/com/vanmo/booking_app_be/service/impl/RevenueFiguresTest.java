@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
@@ -803,5 +804,50 @@ class RevenueFiguresTest {
 
         assertThat(outlook.getLastYearOccupancy()).isNull();
         assertThat(outlook.getLastYearBookedRoomNights()).isZero();
+    }
+
+    @Test
+    void cancellationsAreBucketedByHowLongBeforeCheckInTheyCame() {
+        LocalDate checkin = OCT_10;
+        List<CanceledBookingRow> rows = List.of(
+                canceled(500_000, checkin, checkin, ChatSide.CUSTOMER), // on the day
+                canceled(400_000, checkin, checkin.plusDays(1), ChatSide.HOTEL), // after check-in: a no-show
+                canceled(300_000, checkin, checkin.minusDays(2), ChatSide.CUSTOMER),
+                canceled(200_000, checkin, checkin.minusDays(5), null), // cancelled before the side was recorded
+                canceled(100_000, checkin, checkin.minusDays(45), ChatSide.CUSTOMER));
+
+        RevenueFigures.CancellationLeadTimes times = RevenueFigures.cancellationLeadTimes(rows);
+
+        assertThat(times.byLeadTime())
+                .extracting(RevenueShareDTO::getKey)
+                .containsExactly("SAME_DAY", "D1_2", "D3_7", "D8_30", "OVER_30");
+        assertThat(times.byLeadTime()).extracting(RevenueShareDTO::getCount).containsExactly(2L, 1L, 1L, 0L, 1L);
+        assertThat(times.byLeadTime().get(0).getRevenue()).isEqualByComparingTo("900000");
+        assertThat(times.byLeadTime().get(0).getShare()).isEqualTo(40.0);
+        // leads 0, 0, 2, 5, 45
+        assertThat(times.medianDays()).isEqualTo(2L);
+        assertThat(times.late()).isEqualTo(3);
+        assertThat(times.lateShare()).isEqualTo(60.0);
+        assertThat(times.byGuest()).isEqualTo(3);
+        assertThat(times.byHotel()).isEqualTo(1);
+    }
+
+    @Test
+    void anOlderCancellationWithoutItsTimeFallsBackToTheLastUpdate() {
+        Date updated = Date.from(
+                OCT_10.minusDays(10).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        CanceledBookingRow old = new CanceledBookingRow(1L, BigDecimal.valueOf(100_000), OCT_10, null, updated, null);
+
+        RevenueFigures.CancellationLeadTimes times = RevenueFigures.cancellationLeadTimes(List.of(old));
+
+        assertThat(times.medianDays()).isEqualTo(10L);
+        assertThat(times.byLeadTime().get(3).getCount()).isEqualTo(1L);
+        assertThat(RevenueFigures.cancellationLeadTimes(List.of()).medianDays()).isNull();
+    }
+
+    private static CanceledBookingRow canceled(long amount, LocalDate checkin, LocalDate canceledOn, ChatSide by) {
+        Date at = Date.from(
+                canceledOn.atTime(15, 30).atZone(ZoneId.systemDefault()).toInstant());
+        return new CanceledBookingRow(1L, BigDecimal.valueOf(amount), checkin, at, at, by);
     }
 }

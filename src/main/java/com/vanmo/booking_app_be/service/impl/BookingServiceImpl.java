@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.service.impl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -17,6 +18,7 @@ import com.vanmo.booking_app_be.dto.request.BookingUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.*;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.ChatSide;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.entity.enums.Role;
@@ -256,6 +258,9 @@ public class BookingServiceImpl implements BookingService {
             throw new ResourceNotFoundException("Booking already completed");
         } else {
             booking.setBookingStatus(BookingStatus.CANCELED);
+            booking.setCanceledAt(new Date());
+            booking.setCanceledBy(
+                    accessGuard.currentAccount().getRole() == Role.CUSTOMER ? ChatSide.CUSTOMER : ChatSide.HOTEL);
         }
 
         bookingRepository.saveAndFlush(booking);

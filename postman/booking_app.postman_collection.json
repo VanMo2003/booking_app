@@ -8172,7 +8172,9 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test('the tour cust_one cancelled counts as cancelled by the guest', () => pm.expect(d.tourCanceledByGuest).to.eql(1));"
+                  "pm.test('the tour cust_one cancelled counts as cancelled by the guest', () => pm.expect(d.tourCanceledByGuest).to.eql(1));",
+                  "pm.test('cancellations by lead time: five buckets, median in days', () => { pm.expect(d.byLeadTime.length).to.eql(5); pm.expect(d.byLeadTime[0].key).to.eql('SAME_DAY'); pm.expect(d.medianCancelLeadDays).to.be.a('number'); pm.expect(d.lateCancellationShare).to.be.at.most(100); });",
+                  "pm.test('the rooms of the tour cust_one cancelled were cancelled by the guest', () => pm.expect(d.canceledByGuest).to.be.at.least(1));"
                 ]
               }
             }

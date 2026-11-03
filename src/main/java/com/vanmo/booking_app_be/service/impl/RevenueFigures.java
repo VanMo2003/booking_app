@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.stream.Stream;
 
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
@@ -862,6 +864,65 @@ final class RevenueFigures {
             return 0d;
         }
         return Math.round((part * 10000d) / whole) / 100d;
+    }
+
+    /** How long before check-in bookings were cancelled, and by whom. */
+    record CancellationLeadTimes(
+            List<RevenueShareDTO> byLeadTime,
+            Long medianDays,
+            long late,
+            double lateShare,
+            long byGuest,
+            long byHotel) {}
+
+    /** At most this many days before check-in counts as a late cancellation. */
+    static final int LATE_CANCEL_DAYS = 2;
+
+    /**
+     * Buckets cancelled bookings by the days between the cancellation (its recorded time, else the last update) and
+     * the check-in day; a cancellation on that day or after it (a no-show cleared later) is SAME_DAY.
+     */
+    static CancellationLeadTimes cancellationLeadTimes(List<CanceledBookingRow> rows) {
+        Map<String, RevenueShareDTO> buckets = new LinkedHashMap<>();
+        for (String key : List.of("SAME_DAY", "D1_2", "D3_7", "D8_30", "OVER_30")) {
+            buckets.put(key, slice(key));
+        }
+        List<Long> leads = new ArrayList<>();
+        long late = 0;
+        long byGuest = 0;
+        long byHotel = 0;
+        for (CanceledBookingRow row : rows) {
+            Date canceled = row.getCanceledAt() != null ? row.getCanceledAt() : row.getOnUpdate();
+            long lead = canceled == null
+                    ? 0
+                    : Math.max(
+                            0,
+                            ChronoUnit.DAYS.between(
+                                    canceled.toInstant()
+                                            .atZone(ZoneId.systemDefault())
+                                            .toLocalDate(),
+                                    row.getCheckinDate()));
+            leads.add(lead);
+            String key =
+                    lead == 0 ? "SAME_DAY" : lead <= 2 ? "D1_2" : lead <= 7 ? "D3_7" : lead <= 30 ? "D8_30" : "OVER_30";
+            add(buckets.get(key), row.getTotalAmount());
+            if (lead <= LATE_CANCEL_DAYS) {
+                late++;
+            }
+            if (row.getCanceledBy() == ChatSide.CUSTOMER) {
+                byGuest++;
+            } else if (row.getCanceledBy() == ChatSide.HOTEL) {
+                byHotel++;
+            }
+        }
+        buckets.values().forEach(bucket -> bucket.setShare(rate(bucket.getCount(), rows.size())));
+        return new CancellationLeadTimes(
+                List.copyOf(buckets.values()),
+                ChatFigures.median(leads),
+                late,
+                rate(late, rows.size()),
+                byGuest,
+                byHotel);
     }
 
     /** Same rule as the room-type report: a stay is at least one night. */

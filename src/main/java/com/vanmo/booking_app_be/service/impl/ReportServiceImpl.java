@@ -904,6 +904,8 @@ public class ReportServiceImpl implements ReportService {
         long canceledAtDesk = bookingRepository.countTakenAtDeskByStatus(hotelIds, BookingStatus.CANCELED, from, to);
         RevenueFigures.TourCancellations tours =
                 RevenueFigures.tourCancellations(tourBookingRepository.countByStatus(hotelIds, from, to));
+        RevenueFigures.CancellationLeadTimes leadTimes =
+                RevenueFigures.cancellationLeadTimes(bookingRepository.findCanceled(hotelIds, from, to));
 
         return CancellationRateResponse.builder()
                 .from(from)
@@ -920,6 +922,12 @@ public class ReportServiceImpl implements ReportService {
                 .tourCanceledByGuest(tours.byGuest())
                 .tourCanceledByHotel(tours.byHotel())
                 .tourCancellationRate(tours.rate())
+                .byLeadTime(leadTimes.byLeadTime())
+                .medianCancelLeadDays(leadTimes.medianDays())
+                .lateCancellations(leadTimes.late())
+                .lateCancellationShare(leadTimes.lateShare())
+                .canceledByGuest(leadTimes.byGuest())
+                .canceledByHotel(leadTimes.byHotel())
                 .build();
     }
 

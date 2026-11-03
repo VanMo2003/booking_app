@@ -2,6 +2,7 @@ package com.vanmo.booking_app_be.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -40,4 +41,23 @@ public class CancellationRateResponse {
     long tourCanceledByGuest;
     long tourCanceledByHotel;
     double tourCancellationRate;
+
+    /**
+     * Cancelled bookings by how many days before check-in they were cancelled: key SAME_DAY (on the check-in day or
+     * later), D1_2, D3_7, D8_30, OVER_30; count, the bookings' value, share of the cancellations (%).
+     */
+    List<RevenueShareDTO> byLeadTime;
+
+    /** Median days between cancelling and the check-in day; null without cancellations. */
+    Long medianCancelLeadDays;
+
+    /** Cancelled two days or less before check-in - the ones a cancellation fee would cover. */
+    long lateCancellations;
+
+    double lateCancellationShare;
+
+    /** Who cancelled; bookings cancelled before this was recorded are in neither. */
+    long canceledByGuest;
+
+    long canceledByHotel;
 }

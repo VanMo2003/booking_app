@@ -43,6 +43,13 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             "NEW", "Khách mới",
             "RETURNING", "Khách quay lại");
 
+    private static final Map<String, String> LEAD_TIME_LABELS = Map.of(
+            "SAME_DAY", "Đơn huỷ trong ngày nhận phòng",
+            "D1_2", "Đơn huỷ trước 1-2 ngày",
+            "D3_7", "Đơn huỷ trước 3-7 ngày",
+            "D8_30", "Đơn huỷ trước 8-30 ngày",
+            "OVER_30", "Đơn huỷ trước hơn 30 ngày");
+
     private final ReportService reportService;
 
     @Override
@@ -130,7 +137,19 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         r = writeRow(sheet, r, header, "Tổng số đơn", cancellation.getTotalBooking());
         r = writeRow(sheet, r, header, "Đơn hoàn tất", cancellation.getCompletedBooking());
         r = writeRow(sheet, r, header, "Đơn bị huỷ", cancellation.getCanceledBooking());
-        writeRow(sheet, r, header, "Tỷ lệ huỷ (%)", cancellation.getCancellationRate());
+        r = writeRow(sheet, r, header, "Tỷ lệ huỷ (%)", cancellation.getCancellationRate());
+        if (cancellation.getByLeadTime() != null) {
+            for (RevenueShareDTO bucket : cancellation.getByLeadTime()) {
+                r = writeRow(
+                        sheet,
+                        r,
+                        header,
+                        LEAD_TIME_LABELS.getOrDefault(bucket.getKey(), bucket.getKey()),
+                        bucket.getCount());
+            }
+            writeRow(
+                    sheet, r, header, "Huỷ sát ngày, từ 2 ngày trở xuống (%)", cancellation.getLateCancellationShare());
+        }
         autoSize(sheet, 2);
     }
 
