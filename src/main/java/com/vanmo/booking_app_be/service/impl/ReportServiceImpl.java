@@ -727,6 +727,29 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    public CollectionsResponse getCollections(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return collections(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public CollectionsResponse getCollectionsForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return collections(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private CollectionsResponse collections(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        if (ChronoUnit.DAYS.between(from, to) > MAX_DAILY_RANGE) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Sổ thu tiền xem tối đa " + MAX_DAILY_RANGE + " ngày");
+        }
+        return RevenueFigures.collections(
+                from,
+                to,
+                bookingRepository.findCollections(
+                        hotelIds, from.atStartOfDay(), to.plusDays(1).atStartOfDay()));
+    }
+
+    @Override
     public List<GuestOriginDTO> getGuestOrigins(Long hotelId, LocalDate from, LocalDate to) {
         accessGuard.requireBranchManagerOrAbove(hotelId);
         return guestOrigins(List.of(hotelId), from, to);

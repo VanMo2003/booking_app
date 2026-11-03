@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
+import com.vanmo.booking_app_be.dto.response.CollectionRow;
+import com.vanmo.booking_app_be.dto.response.CollectionsResponse;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
@@ -997,5 +999,34 @@ class RevenueFiguresTest {
         // no seat limit known for a deleted tour
         assertThat(tours.get(1).getSeatsOffered()).isZero();
         assertThat(tours.get(1).getFillRate()).isZero();
+    }
+
+    @Test
+    void collectionsListEveryDayWithWhatEachMethodBroughtIn() {
+        List<CollectionRow> rows = List.of(
+                new CollectionRow(OCT_1.atTime(9, 0), PaymentMethod.CASH, BigDecimal.valueOf(1_000_000)),
+                new CollectionRow(OCT_1.atTime(23, 59), PaymentMethod.VN_PAY, BigDecimal.valueOf(2_000_000)),
+                new CollectionRow(
+                        OCT_1.plusDays(2).atTime(8, 0), PaymentMethod.BANK_TRANSFER, BigDecimal.valueOf(1_000_000)),
+                // outside the range
+                new CollectionRow(OCT_10.atTime(8, 0), PaymentMethod.CASH, BigDecimal.valueOf(9_000_000)));
+
+        CollectionsResponse ledger = RevenueFigures.collections(OCT_1, OCT_1.plusDays(2), rows);
+
+        assertThat(ledger.getByDate()).hasSize(3);
+        assertThat(ledger.getByDate().get(0).getCash()).isEqualByComparingTo("1000000");
+        assertThat(ledger.getByDate().get(0).getVnPay()).isEqualByComparingTo("2000000");
+        assertThat(ledger.getByDate().get(0).getPayments()).isEqualTo(2);
+        assertThat(ledger.getByDate().get(1).getTotal()).isEqualByComparingTo("0");
+        assertThat(ledger.getByDate().get(2).getBankTransfer()).isEqualByComparingTo("1000000");
+        assertThat(ledger.getTotal()).isEqualByComparingTo("4000000");
+        assertThat(ledger.getPayments()).isEqualTo(3);
+        assertThat(ledger.getByMethod()).extracting(RevenueShareDTO::getKey).contains("CASH", "VN_PAY");
+        assertThat(ledger.getByMethod().stream()
+                        .filter(m -> m.getKey().equals("VN_PAY"))
+                        .findFirst()
+                        .orElseThrow()
+                        .getShare())
+                .isEqualTo(50.0);
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
+import com.vanmo.booking_app_be.dto.response.CollectionRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.GuestOriginRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
@@ -241,6 +242,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 	""")
     long countBookings(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Payments of the branches' bookings recorded in [start, end), whatever the booking's status now. */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.CollectionRow(b.paidAt, b.paymentMethod, b.totalAmount)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.paymentStatus = com.vanmo.booking_app_be.entity.enums.PaymentStatus.PAID
+		AND b.paidAt >= :start AND b.paidAt < :end
+	""")
+    List<CollectionRow> findCollections(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 
     /** Bookings in a status checking out during [from, to], with when their payment was recorded. */
     @Query(

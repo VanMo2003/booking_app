@@ -9707,6 +9707,162 @@
           ]
         },
         {
+          "name": "GET collections ledger (manager, today + 30 days)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/collections?hotelId={{hotelId}}&from={{ledgerFrom}}&to={{ledgerTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "collections"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{ledgerFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{ledgerTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('ledgerFrom', new Date(Date.now() + 0 * 864e5).toISOString().slice(0, 10));",
+                  "pm.collectionVariables.set('ledgerTo', new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const ledger = pm.response.json().data;",
+                  "pm.test('every day of the range, every method', () => { pm.expect(ledger.byDate.length).to.eql(31); pm.expect(ledger.byMethod.length).to.eql(3); });",
+                  "pm.test('the payment recorded during this run is in it (by the day it was recorded)', () => { pm.expect(ledger.payments).to.be.at.least(1); pm.expect(ledger.total).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET chain collections ledger (owner)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/chain/collections?hotelChainId={{chainId}}&from={{ledgerFrom}}&to={{ledgerTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "chain",
+                "collections"
+              ],
+              "query": [
+                {
+                  "key": "hotelChainId",
+                  "value": "{{chainId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{ledgerFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{ledgerTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('same payments across the chain', () => pm.expect(pm.response.json().data.payments).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Collections ledger rejects more than 92 days -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/collections?hotelId={{hotelId}}&from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "collections"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "GET room performance (manager)",
           "request": {
             "method": "GET",

@@ -28,6 +28,9 @@ import java.util.stream.Stream;
 import com.vanmo.booking_app_be.dto.response.BookedRoomNightRow;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
+import com.vanmo.booking_app_be.dto.response.CollectionDayDTO;
+import com.vanmo.booking_app_be.dto.response.CollectionRow;
+import com.vanmo.booking_app_be.dto.response.CollectionsResponse;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
@@ -827,6 +830,58 @@ final class RevenueFigures {
         }
         buckets.values().forEach(b -> b.setTotalRevenue(b.getBookingRevenue().add(b.getTourRevenue())));
         return List.copyOf(buckets.values());
+    }
+
+    /** Payments recorded in [from, to] per day and per method (every day listed); no method counts as cash. */
+    static CollectionsResponse collections(LocalDate from, LocalDate to, List<CollectionRow> rows) {
+        Map<LocalDate, CollectionDayDTO> byDate = new LinkedHashMap<>();
+        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+            byDate.put(
+                    day,
+                    new CollectionDayDTO(day, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0L));
+        }
+        Map<PaymentMethod, RevenueShareDTO> byMethod = new LinkedHashMap<>();
+        for (PaymentMethod method : PaymentMethod.values()) {
+            byMethod.put(method, slice(method.name()));
+        }
+        BigDecimal total = BigDecimal.ZERO;
+        long payments = 0;
+        for (CollectionRow row : rows) {
+            CollectionDayDTO day =
+                    row.getPaidAt() == null ? null : byDate.get(row.getPaidAt().toLocalDate());
+            if (day == null) {
+                continue;
+            }
+            BigDecimal amount = row.getTotalAmount() == null ? BigDecimal.ZERO : row.getTotalAmount();
+            PaymentMethod method = row.getPaymentMethod() == null ? PaymentMethod.CASH : row.getPaymentMethod();
+            switch (method) {
+                case BANK_TRANSFER -> day.setBankTransfer(day.getBankTransfer().add(amount));
+                case VN_PAY -> day.setVnPay(day.getVnPay().add(amount));
+                default -> day.setCash(day.getCash().add(amount));
+            }
+            day.setTotal(day.getTotal().add(amount));
+            day.setPayments(day.getPayments() + 1);
+            add(byMethod.get(method), amount);
+            total = total.add(amount);
+            payments++;
+        }
+        for (RevenueShareDTO slice : byMethod.values()) {
+            slice.setShare(
+                    total.signum() == 0
+                            ? 0d
+                            : slice.getRevenue()
+                                    .multiply(HUNDRED)
+                                    .divide(total, 2, RoundingMode.HALF_UP)
+                                    .doubleValue());
+        }
+        return CollectionsResponse.builder()
+                .from(from)
+                .to(to)
+                .total(total)
+                .payments(payments)
+                .byMethod(List.copyOf(byMethod.values()))
+                .byDate(List.copyOf(byDate.values()))
+                .build();
     }
 
     /** When completed bookings were paid, and how long the late ones took. */

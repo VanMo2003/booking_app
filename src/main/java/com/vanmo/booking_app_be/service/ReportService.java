@@ -150,6 +150,12 @@ public interface ReportService {
 
     List<ReceivableDTO> getReceivablesForChain(Long hotelChainId);
 
+    // ---- money recorded as received, by day and method (at most 92 days) ----
+
+    CollectionsResponse getCollections(Long hotelId, LocalDate from, LocalDate to);
+
+    CollectionsResponse getCollectionsForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
     // ---- where guests come from, and what they rate ----
 
     List<GuestOriginDTO> getGuestOrigins(Long hotelId, LocalDate from, LocalDate to);
