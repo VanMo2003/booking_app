@@ -80,6 +80,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeTopCustomers(workbook, header, reportService.getTopCustomers(hotelId, from, to, 20));
             writeGuestOrigins(workbook, header, reportService.getGuestOrigins(hotelId, from, to));
             writeRatings(workbook, header, reportService.getRatings(hotelId, from, to), false);
+            writeBookingHours(workbook, header, reportService.getBookingHours(hotelId, from, to));
             writeStaffPerformance(workbook, header, reportService.getStaffPerformance(hotelId, from, to));
             writeAiAssistant(workbook, header, reportService.getAiAssistantReport(hotelId, from, to));
             if (ChronoUnit.DAYS.between(from, to) <= MAX_DAILY_RANGE) {
@@ -119,6 +120,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeTopCustomers(workbook, header, reportService.getTopCustomersForChain(hotelChainId, from, to, 20));
             writeGuestOrigins(workbook, header, reportService.getGuestOriginsForChain(hotelChainId, from, to));
             writeRatings(workbook, header, reportService.getRatingsForChain(hotelChainId, from, to), true);
+            writeBookingHours(workbook, header, reportService.getBookingHoursForChain(hotelChainId, from, to));
             writeStaffPerformance(workbook, header, reportService.getStaffPerformanceForChain(hotelChainId, from, to));
             writeAiAssistant(workbook, header, reportService.getAiAssistantReportForChain(hotelChainId, from, to));
             if (ChronoUnit.DAYS.between(from, to) <= MAX_DAILY_RANGE) {
@@ -401,6 +403,33 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         total.createCell(1).setCellValue(ledger.getPayments());
         total.createCell(5).setCellValue(toDouble(ledger.getTotal()));
         autoSize(sheet, 6);
+    }
+
+    /** Orders created per weekday (rows) and hour (columns); skipped when the service has nothing to give. */
+    private void writeBookingHours(Workbook workbook, CellStyle header, BookingHoursResponse hours) {
+        if (hours == null || hours.getCells() == null) {
+            return;
+        }
+        Sheet sheet = workbook.createSheet("Giờ khách đặt");
+        String[] titles = new String[25];
+        titles[0] = "Thứ";
+        for (int hour = 0; hour < 24; hour++) {
+            titles[hour + 1] = hour + "h";
+        }
+        writeHeader(sheet, header, titles);
+        String[] days = {"Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ nhật"};
+        for (int day = 0; day < Math.min(7, hours.getCells().size()); day++) {
+            Row line = sheet.createRow(day + 1);
+            line.createCell(0).setCellValue(days[day]);
+            List<Long> counts = hours.getCells().get(day);
+            for (int hour = 0; hour < counts.size(); hour++) {
+                line.createCell(hour + 1).setCellValue(counts.get(hour));
+            }
+        }
+        Row night = sheet.createRow(9);
+        night.createCell(0).setCellValue("Đặt từ 22h đến 6h (%)");
+        night.createCell(1).setCellValue(hours.getNightShare());
+        autoSize(sheet, 1);
     }
 
     private void writeGuestOrigins(Workbook workbook, CellStyle header, List<GuestOriginDTO> rows) {
