@@ -445,6 +445,14 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
 - **Guest reports** (`/reports/guest-origins`, `/reports/ratings`) are computed by `GuestFigures`
   (`GuestFiguresTest`); hometown is free text, grouped after trimming and lower-casing. Ratings use
   `Feedback.reviewDate`, and the branch comparison adds each branch's reviews and average.
+- **More report pieces** (all pure helpers in `RevenueFigures` unless noted): trend buckets carry
+  `payrollCost`/`grossProfit` (`withPayroll`); the summary adds `byPaymentTiming` from `paidAt`
+  (`paymentTiming`) and `uniqueGuests`/`revenuePerGuest`; `/reports/collections` (`collections`, cash basis by
+  `paidAt`, max 92 days); `/reports/booking-hours` (`OrderHours`, weekday x hour of `onCreate`); tours get
+  departures/seats/fill rate from `Tour.maxGuests`. `RevenueByTourDTO` and `TrendBucketDTO` keep their old
+  constructors for the callers that build them positionally.
+- **Low reviews** (`FeedbackServiceImpl.alertIfLow`): a review created at, or lowered to, 2 stars or fewer sends
+  `LOW_RATING_REVIEW` to the chain owner and branch manager - once, not on later edits of a low review.
 - **AI assistant report** (`/reports/ai-assistant`) is computed by `ChatFigures` (unit-tested in
   `ChatFiguresTest`) from `ChatMessageRepository.findForReport` - messages written in the period, thread by
   thread. A reply's wait runs from the first guest message still unanswered; the assistant's messages are
