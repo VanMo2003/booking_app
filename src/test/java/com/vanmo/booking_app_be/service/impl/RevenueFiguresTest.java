@@ -19,6 +19,7 @@ import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
+import com.vanmo.booking_app_be.dto.response.PaymentTimingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByRoomTypeDTO;
@@ -922,5 +923,56 @@ class RevenueFiguresTest {
     private static BookedRoomNightRow typedStay(long roomId, long typeId, String type, LocalDate checkin, int nights) {
         return new BookedRoomNightRow(
                 roomId, typeId, type, BigDecimal.valueOf(600_000), checkin, checkin.plusDays(nights));
+    }
+
+    @Test
+    void trendBucketsCarryTheirShareOfPayrollAndWhatIsLeft() {
+        List<TrendBucketDTO> buckets = RevenueFigures.withPayroll(
+                RevenueFigures.trend(
+                        OCT_1,
+                        LocalDate.of(2026, 11, 15),
+                        RevenueFigures.TrendGranularity.MONTH,
+                        List.of(new RevenueByDateDTO(OCT_10, BigDecimal.valueOf(5_000_000), 2L)),
+                        List.of()),
+                List.of(
+                        new PayrollCostRow(LocalDate.of(2026, 10, 1), BigDecimal.valueOf(3_100_000)),
+                        new PayrollCostRow(LocalDate.of(2026, 11, 1), BigDecimal.valueOf(3_000_000))));
+
+        assertThat(buckets.get(0).getPayrollCost()).isEqualByComparingTo("3100000");
+        assertThat(buckets.get(0).getGrossProfit()).isEqualByComparingTo("1900000");
+        // half of November is in the range
+        assertThat(buckets.get(1).getPayrollCost()).isEqualByComparingTo("1500000");
+        assertThat(buckets.get(1).getGrossProfit()).isEqualByComparingTo("-1500000");
+    }
+
+    @Test
+    void paymentTimingSplitsCompletedBookingsByWhenTheyWerePaid() {
+        LocalDate in = OCT_10;
+        LocalDate out = OCT_10.plusDays(2);
+        RevenueFigures.PaymentTiming timing = RevenueFigures.paymentTiming(List.of(
+                paid(400_000, in.minusDays(3), in, out),
+                paid(300_000, in, in, out),
+                paid(200_000, out, in, out),
+                paid(100_000, out.plusDays(4), in, out),
+                paid(100_000, out.plusDays(1), in, out),
+                new PaymentTimingRow(6L, BigDecimal.valueOf(500_000), PaymentStatus.UNPAID, null, in, out),
+                new PaymentTimingRow(7L, BigDecimal.valueOf(400_000), PaymentStatus.PAID, null, in, out)));
+
+        assertThat(timing.byTiming())
+                .extracting(RevenueShareDTO::getKey)
+                .containsExactly("PREPAID", "AT_STAY", "AFTER_CHECKOUT", "UNPAID", "UNKNOWN");
+        assertThat(timing.byTiming()).extracting(RevenueShareDTO::getCount).containsExactly(1L, 2L, 2L, 1L, 1L);
+        assertThat(timing.byTiming().get(1).getRevenue()).isEqualByComparingTo("500000");
+        // 500.000 of 2.000.000
+        assertThat(timing.byTiming().get(1).getShare()).isEqualTo(25.0);
+        // (4 + 1) / 2
+        assertThat(timing.averageDaysToCollect()).isEqualTo(2.5);
+        assertThat(RevenueFigures.paymentTiming(List.of()).averageDaysToCollect())
+                .isNull();
+    }
+
+    private static PaymentTimingRow paid(long amount, LocalDate paidOn, LocalDate checkin, LocalDate checkout) {
+        return new PaymentTimingRow(
+                1L, BigDecimal.valueOf(amount), PaymentStatus.PAID, paidOn.atTime(10, 0), checkin, checkout);
     }
 }

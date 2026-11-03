@@ -682,12 +682,18 @@ public class ReportServiceImpl implements ReportService {
                     ErrorCode.BAD_REQUEST,
                     "Xem theo ngày tối đa " + MAX_TREND_DAYS + " ngày, hãy chọn tuần hoặc tháng");
         }
-        return RevenueFigures.trend(
-                from,
-                to,
-                size,
-                bookingRepository.revenueByDateRangeForHotels(hotelIds, BookingStatus.COMPLETED, from, to),
-                tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to));
+        return RevenueFigures.withPayroll(
+                RevenueFigures.trend(
+                        from,
+                        to,
+                        size,
+                        bookingRepository.revenueByDateRangeForHotels(hotelIds, BookingStatus.COMPLETED, from, to),
+                        tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to)),
+                payrollRepository.findCosts(
+                        hotelIds,
+                        EnumSet.of(PayrollStatus.APPROVED, PayrollStatus.PAID),
+                        YearMonth.from(from).atDay(1),
+                        YearMonth.from(to).atEndOfMonth()));
     }
 
     @Override
@@ -850,6 +856,10 @@ public class ReportServiceImpl implements ReportService {
         summary.setByCustomerType(RevenueFigures.byCustomerType(
                 current.bookings(),
                 Set.copyOf(bookingRepository.findCustomerIdsBefore(hotelIds, BookingStatus.COMPLETED, from))));
+        RevenueFigures.PaymentTiming timing = RevenueFigures.paymentTiming(
+                bookingRepository.findPaymentTiming(hotelIds, BookingStatus.COMPLETED, from, to));
+        summary.setByPaymentTiming(timing.byTiming());
+        summary.setAverageDaysToCollect(timing.averageDaysToCollect());
         return summary;
     }
 

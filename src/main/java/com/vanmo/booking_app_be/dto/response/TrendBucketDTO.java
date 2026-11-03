@@ -31,4 +31,22 @@ public class TrendBucketDTO {
     BigDecimal totalRevenue;
     long bookings;
     long tours;
+
+    /** Approved and paid payslips spread over the bucket's days (see RevenuePeriodDTO#payrollCost). */
+    BigDecimal payrollCost;
+
+    /** totalRevenue - payrollCost; can be negative. */
+    BigDecimal grossProfit;
+
+    public TrendBucketDTO(
+            LocalDate start,
+            LocalDate end,
+            Integer week,
+            BigDecimal bookingRevenue,
+            BigDecimal tourRevenue,
+            BigDecimal totalRevenue,
+            long bookings,
+            long tours) {
+        this(start, end, week, bookingRevenue, tourRevenue, totalRevenue, bookings, tours, null, null);
+    }
 }

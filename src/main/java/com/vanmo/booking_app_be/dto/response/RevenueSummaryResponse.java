@@ -44,4 +44,13 @@ public class RevenueSummaryResponse {
      * period).
      */
     List<RevenueShareDTO> byCustomerType;
+
+    /**
+     * Completed bookings by when their payment was recorded: PREPAID (before check-in), AT_STAY (check-in to
+     * check-out day), AFTER_CHECKOUT, UNPAID (not recorded yet), UNKNOWN (paid, time not recorded).
+     */
+    List<RevenueShareDTO> byPaymentTiming;
+
+    /** Average days between check-out and the payment, for the ones paid after check-out; null without any. */
+    Double averageDaysToCollect;
 }

@@ -32,6 +32,7 @@ import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
 import com.vanmo.booking_app_be.dto.response.ExpectedRevenueDTO;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
+import com.vanmo.booking_app_be.dto.response.PaymentTimingRow;
 import com.vanmo.booking_app_be.dto.response.PayrollCostRow;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByRoomTypeDTO;
@@ -809,6 +810,61 @@ final class RevenueFigures {
         }
         buckets.values().forEach(b -> b.setTotalRevenue(b.getBookingRevenue().add(b.getTourRevenue())));
         return List.copyOf(buckets.values());
+    }
+
+    /** When completed bookings were paid, and how long the late ones took. */
+    record PaymentTiming(List<RevenueShareDTO> byTiming, Double averageDaysToCollect) {}
+
+    static PaymentTiming paymentTiming(List<PaymentTimingRow> rows) {
+        Map<String, RevenueShareDTO> slices = new LinkedHashMap<>();
+        for (String key : List.of("PREPAID", "AT_STAY", "AFTER_CHECKOUT", "UNPAID", "UNKNOWN")) {
+            slices.put(key, slice(key));
+        }
+        long lateDays = 0;
+        long late = 0;
+        BigDecimal total = BigDecimal.ZERO;
+        for (PaymentTimingRow row : rows) {
+            String key;
+            if (row.getPaymentStatus() != PaymentStatus.PAID) {
+                key = "UNPAID";
+            } else if (row.getPaidAt() == null) {
+                key = "UNKNOWN";
+            } else {
+                LocalDate paid = row.getPaidAt().toLocalDate();
+                if (paid.isBefore(row.getCheckinDate())) {
+                    key = "PREPAID";
+                } else if (!paid.isAfter(row.getCheckoutDate())) {
+                    key = "AT_STAY";
+                } else {
+                    key = "AFTER_CHECKOUT";
+                    lateDays += ChronoUnit.DAYS.between(row.getCheckoutDate(), paid);
+                    late++;
+                }
+            }
+            add(slices.get(key), row.getTotalAmount());
+            total = total.add(row.getTotalAmount() == null ? BigDecimal.ZERO : row.getTotalAmount());
+        }
+        for (RevenueShareDTO slice : slices.values()) {
+            slice.setShare(
+                    total.signum() == 0
+                            ? 0d
+                            : slice.getRevenue()
+                                    .multiply(HUNDRED)
+                                    .divide(total, 2, RoundingMode.HALF_UP)
+                                    .doubleValue());
+        }
+        return new PaymentTiming(
+                List.copyOf(slices.values()), late == 0 ? null : Math.round(lateDays * 10d / late) / 10d);
+    }
+
+    /** Adds each bucket's share of the payslips and what is left of its revenue after them. */
+    static List<TrendBucketDTO> withPayroll(List<TrendBucketDTO> buckets, List<PayrollCostRow> payslips) {
+        for (TrendBucketDTO bucket : buckets) {
+            BigDecimal cost = payrollCost(payslips, bucket.getStart(), bucket.getEnd());
+            bucket.setPayrollCost(cost);
+            bucket.setGrossProfit(bucket.getTotalRevenue().subtract(cost));
+        }
+        return buckets;
     }
 
     private static LocalDate bucketStart(LocalDate date, TrendGranularity granularity) {

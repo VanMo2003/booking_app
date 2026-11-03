@@ -17,6 +17,7 @@ import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
 import com.vanmo.booking_app_be.dto.response.GuestOriginRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
+import com.vanmo.booking_app_be.dto.response.PaymentTimingRow;
 import com.vanmo.booking_app_be.dto.response.ReceivableDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByMonthDTO;
@@ -240,6 +241,23 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 	""")
     long countBookings(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Bookings in a status checking out during [from, to], with when their payment was recorded. */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.PaymentTimingRow(
+			b.id, b.totalAmount, b.paymentStatus, b.paidAt, b.checkinDate, b.checkoutDate
+		)
+		FROM Booking b
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkoutDate BETWEEN :from AND :to
+	""")
+    List<PaymentTimingRow> findPaymentTiming(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 
     /** Bookings in a status checking out during [from, to] with their guest's hometown. */
     @Query(

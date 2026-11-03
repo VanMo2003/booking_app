@@ -8614,7 +8614,8 @@
                   "pm.test('channels: app, front desk, tour', () => { pm.expect(d.byChannel[0].key).to.eql('SELF_SERVICE'); pm.expect(d.byChannel[2].key).to.eql('TOUR'); });",
                   "pm.test('the November payslip (5.200.000, paid) is the payroll cost', () => pm.expect(d.current.payrollCost).to.eql(5200000));",
                   "pm.test('new then returning guests; nobody stayed before 2026, so nobody returns', () => { pm.expect(d.byCustomerType[0].key).to.eql('NEW'); pm.expect(d.byCustomerType[1].count).to.eql(0); });",
-                  "pm.test('service attach rate is a share of the completed bookings', () => { pm.expect(d.current.serviceAttachRate).to.be.at.most(100); pm.expect(d.current.serviceAttachRate).to.be.at.least(0); pm.expect(d.current.servicePerBooking).to.be.a('number'); });"
+                  "pm.test('service attach rate is a share of the completed bookings', () => { pm.expect(d.current.serviceAttachRate).to.be.at.most(100); pm.expect(d.current.serviceAttachRate).to.be.at.least(0); pm.expect(d.current.servicePerBooking).to.be.a('number'); });",
+                  "pm.test('payment timing: five groups', () => { pm.expect(d.byPaymentTiming.length).to.eql(5); pm.expect(d.byPaymentTiming[0].key).to.eql('PREPAID'); });"
                 ]
               }
             }
@@ -8768,7 +8769,8 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const months = pm.response.json().data;",
-                  "pm.test('twelve months, empty ones included', () => { pm.expect(months.length).to.eql(12); pm.expect(months[0].start).to.eql('2026-01-01'); pm.expect(months[11].end).to.eql('2026-12-31'); });"
+                  "pm.test('twelve months, empty ones included', () => { pm.expect(months.length).to.eql(12); pm.expect(months[0].start).to.eql('2026-01-01'); pm.expect(months[11].end).to.eql('2026-12-31'); });",
+                  "pm.test('the November payslip (5.200.000) is all in the November bar', () => { pm.expect(months[10].payrollCost).to.eql(5200000); pm.expect(months[9].payrollCost).to.eql(0); });"
                 ]
               }
             }

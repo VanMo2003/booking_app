@@ -33,15 +33,20 @@ public class ExcelReportServiceImpl implements ExcelReportService {
     private static final int MAX_TREND_DAYS = 400;
 
     /** Vietnamese names of the revenue summary's payment methods and sales channels. */
-    private static final Map<String, String> SHARE_LABELS = Map.of(
-            "CASH", "Tiền mặt",
-            "BANK_TRANSFER", "Chuyển khoản",
-            "VN_PAY", "VNPay",
-            "SELF_SERVICE", "Khách tự đặt trên app",
-            "FRONT_DESK", "Đặt tại quầy",
-            "TOUR", "Tour",
-            "NEW", "Khách mới",
-            "RETURNING", "Khách quay lại");
+    private static final Map<String, String> SHARE_LABELS = Map.ofEntries(
+            Map.entry("CASH", "Tiền mặt"),
+            Map.entry("BANK_TRANSFER", "Chuyển khoản"),
+            Map.entry("VN_PAY", "VNPay"),
+            Map.entry("SELF_SERVICE", "Khách tự đặt trên app"),
+            Map.entry("FRONT_DESK", "Đặt tại quầy"),
+            Map.entry("TOUR", "Tour"),
+            Map.entry("NEW", "Khách mới"),
+            Map.entry("RETURNING", "Khách quay lại"),
+            Map.entry("PREPAID", "Trả trước khi đến"),
+            Map.entry("AT_STAY", "Trả trong thời gian ở"),
+            Map.entry("AFTER_CHECKOUT", "Trả sau khi trả phòng"),
+            Map.entry("UNPAID", "Chưa thu"),
+            Map.entry("UNKNOWN", "Đã thu, không rõ thời điểm"));
 
     private static final Map<String, String> LEAD_TIME_LABELS = Map.of(
             "SAME_DAY", "Đơn huỷ trong ngày nhận phòng",
@@ -242,6 +247,18 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeHeaderAt(sheet, header, r++, "Loại khách", "Số đơn", "Doanh thu", "Tỷ trọng (%)");
             for (RevenueShareDTO share : summary.getByCustomerType()) {
                 r = shareRow(sheet, r, share);
+            }
+        }
+        if (summary.getByPaymentTiming() != null) {
+            r++;
+            writeHeaderAt(sheet, header, r++, "Thời điểm thu tiền", "Số đơn", "Doanh thu", "Tỷ trọng (%)");
+            for (RevenueShareDTO share : summary.getByPaymentTiming()) {
+                r = shareRow(sheet, r, share);
+            }
+            if (summary.getAverageDaysToCollect() != null) {
+                Row line = sheet.createRow(r);
+                line.createCell(0).setCellValue("Thu muộn trung bình (ngày sau trả phòng)");
+                line.createCell(1).setCellValue(summary.getAverageDaysToCollect());
             }
         }
         autoSize(sheet, 4);
@@ -445,7 +462,16 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         boolean daily = "day".equals(granularity);
         Sheet sheet = workbook.createSheet(daily ? "Doanh thu theo ngày" : "Doanh thu theo tháng");
         writeHeader(
-                sheet, header, daily ? "Ngày" : "Tháng", "Số đơn", "Tiền đơn phòng", "Số tour", "Tiền tour", "Tổng");
+                sheet,
+                header,
+                daily ? "Ngày" : "Tháng",
+                "Số đơn",
+                "Tiền đơn phòng",
+                "Số tour",
+                "Tiền tour",
+                "Tổng",
+                "Chi phí lương",
+                "Lợi nhuận sau lương");
         int r = 1;
         for (TrendBucketDTO row : rows) {
             Row line = sheet.createRow(r++);
@@ -459,8 +485,12 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             line.createCell(3).setCellValue(row.getTours());
             line.createCell(4).setCellValue(toDouble(row.getTourRevenue()));
             line.createCell(5).setCellValue(toDouble(row.getTotalRevenue()));
+            line.createCell(6).setCellValue(toDouble(row.getPayrollCost()));
+            line.createCell(7)
+                    .setCellValue(
+                            toDouble(row.getGrossProfit() == null ? row.getTotalRevenue() : row.getGrossProfit()));
         }
-        autoSize(sheet, 6);
+        autoSize(sheet, 8);
     }
 
     private void writeOccupancyDaily(Workbook workbook, CellStyle header, List<OccupancyByDateDTO> rows) {
