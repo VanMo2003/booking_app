@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
+import com.vanmo.booking_app_be.dto.response.GuestOriginRow;
 import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
@@ -68,6 +69,17 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
             + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to "
             + "group by c.id, c.fullName, c.phoneNumber")
     List<CustomerTourRow> findByCustomer(
+            @Param("hotelIds") Collection<Long> hotelIds,
+            @Param("status") TourBookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** Tour orders in a status with tour date in [from, to] with their guest's hometown (tour part only). */
+    @Query("select new com.vanmo.booking_app_be.dto.response.GuestOriginRow("
+            + "c.id, c.hometown, coalesce(b.tourAmount, b.totalAmount)) "
+            + "from TourBooking b join b.customer c "
+            + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to")
+    List<GuestOriginRow> findGuestOrigins(
             @Param("hotelIds") Collection<Long> hotelIds,
             @Param("status") TourBookingStatus status,
             @Param("from") LocalDate from,

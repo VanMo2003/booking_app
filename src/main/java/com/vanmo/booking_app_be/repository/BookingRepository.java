@@ -15,6 +15,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.vanmo.booking_app_be.dto.response.CanceledBookingRow;
 import com.vanmo.booking_app_be.dto.response.CompletedBookingRow;
+import com.vanmo.booking_app_be.dto.response.GuestOriginRow;
 import com.vanmo.booking_app_be.dto.response.OpenBookingRow;
 import com.vanmo.booking_app_be.dto.response.ReceivableDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByDateDTO;
@@ -239,6 +240,21 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 	""")
     long countBookings(
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Bookings in a status checking out during [from, to] with their guest's hometown. */
+    @Query(
+            """
+		SELECT new com.vanmo.booking_app_be.dto.response.GuestOriginRow(c.id, c.hometown, b.totalAmount)
+		FROM Booking b JOIN b.customer c
+		WHERE b.hotel.id IN :hotelIds
+		AND b.bookingStatus = :status
+		AND b.checkoutDate BETWEEN :from AND :to
+	""")
+    List<GuestOriginRow> findGuestOrigins(
+            @Param("hotelIds") List<Long> hotelIds,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 
     /** Cancelled bookings checking in during [from, to], with when and by which side they were cancelled. */
     @Query(

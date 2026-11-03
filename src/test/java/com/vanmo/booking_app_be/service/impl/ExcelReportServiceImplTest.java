@@ -23,7 +23,9 @@ import org.junit.jupiter.api.Test;
 import com.vanmo.booking_app_be.dto.response.AiAssistantReportResponse;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CancellationRateResponse;
+import com.vanmo.booking_app_be.dto.response.FeedbackRow;
 import com.vanmo.booking_app_be.dto.response.OccupancyResponse;
+import com.vanmo.booking_app_be.dto.response.RatingReportResponse;
 import com.vanmo.booking_app_be.dto.response.ReceivableDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -122,6 +124,16 @@ class ExcelReportServiceImplTest {
                 .aiTourRevenue(BigDecimal.valueOf(900_000))
                 .build();
         when(reports.getAiAssistantReport(anyLong(), any(), any())).thenReturn(ai);
+        RatingReportResponse ratings = RatingReportResponse.builder()
+                .reviews(2)
+                .averageRating(3.5)
+                .distribution(List.of(0L, 1L, 0L, 0L, 1L))
+                .reviewRate(50.0)
+                .lowReviews(List.of(new FeedbackRow(
+                        3L, 21L, 6L, "Hoàn Kiếm", "Nguyễn An", 2, "Phòng ồn", LocalDate.of(2026, 10, 15))))
+                .build();
+        when(reports.getRatings(anyLong(), any(), any())).thenReturn(ratings);
+        when(reports.getRatingsForChain(anyLong(), any(), any())).thenReturn(ratings);
         when(reports.getAiAssistantReportForChain(anyLong(), any(), any())).thenReturn(ai);
         when(reports.getRevenueByTour(anyLong(), any(), any()))
                 .thenReturn(List.of(new RevenueByTourDTO(
@@ -173,6 +185,15 @@ class ExcelReportServiceImplTest {
             assertThat(tours.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Hạ Long");
             assertThat(tours.getRow(1).getCell(3).getNumericCellValue()).isEqualTo(900_000d);
             assertThat(book.getSheet("So sánh cơ sở")).isNull();
+
+            Sheet ratings = book.getSheet("Đánh giá");
+            assertThat(ratings.getRow(1).getCell(1).getNumericCellValue()).isEqualTo(3.5d);
+            // no previous reviews
+            assertThat(ratings.getRow(2).getCell(1).getStringCellValue()).isEqualTo("–");
+            assertThat(ratings.getRow(4).getCell(0).getStringCellValue()).isEqualTo("5 sao");
+            assertThat(ratings.getRow(10).getCell(3).getStringCellValue()).isEqualTo("Nhận xét");
+            assertThat(ratings.getRow(11).getCell(3).getStringCellValue()).isEqualTo("Phòng ồn");
+            assertThat(book.getSheet("Khách theo quê quán")).isNotNull();
 
             Sheet ai = book.getSheet("Trợ lý AI");
             assertThat(ai.getRow(6).getCell(0).getStringCellValue()).isEqualTo("Tỷ lệ tin do AI trả lời (%)");

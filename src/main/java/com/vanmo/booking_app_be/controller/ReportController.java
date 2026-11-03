@@ -329,6 +329,40 @@ public class ReportController {
         return ApiResponse.ok(reportService.getWeekdayPatternForChain(hotelChainId, from, to));
     }
 
+    // ---- guests: where they come from, what they rate ----
+
+    @GetMapping("/guest-origins")
+    public ApiResponse<List<GuestOriginDTO>> guestOrigins(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getGuestOrigins(hotelId, from, to));
+    }
+
+    @GetMapping("/chain/guest-origins")
+    public ApiResponse<List<GuestOriginDTO>> guestOriginsForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getGuestOriginsForChain(hotelChainId, from, to));
+    }
+
+    @GetMapping("/ratings")
+    public ApiResponse<RatingReportResponse> ratings(
+            @RequestParam Long hotelId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRatings(hotelId, from, to));
+    }
+
+    @GetMapping("/chain/ratings")
+    public ApiResponse<RatingReportResponse> ratingsForChain(
+            @RequestParam Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(reportService.getRatingsForChain(hotelChainId, from, to));
+    }
+
     // ---- chat assistant ----
 
     @GetMapping("/ai-assistant")

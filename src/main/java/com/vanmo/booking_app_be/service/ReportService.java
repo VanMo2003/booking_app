@@ -150,6 +150,16 @@ public interface ReportService {
 
     List<ReceivableDTO> getReceivablesForChain(Long hotelChainId);
 
+    // ---- where guests come from, and what they rate ----
+
+    List<GuestOriginDTO> getGuestOrigins(Long hotelId, LocalDate from, LocalDate to);
+
+    List<GuestOriginDTO> getGuestOriginsForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
+    RatingReportResponse getRatings(Long hotelId, LocalDate from, LocalDate to);
+
+    RatingReportResponse getRatingsForChain(Long hotelChainId, LocalDate from, LocalDate to);
+
     // ---- what the chat assistant answered and sold over [from, to] ----
 
     AiAssistantReportResponse getAiAssistantReport(Long hotelId, LocalDate from, LocalDate to);

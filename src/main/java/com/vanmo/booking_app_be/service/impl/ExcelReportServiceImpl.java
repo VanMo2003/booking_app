@@ -73,6 +73,8 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRevenueByService(workbook, header, reportService.getRevenueByService(hotelId, from, to));
             writeRevenueByTour(workbook, header, reportService.getRevenueByTour(hotelId, from, to));
             writeTopCustomers(workbook, header, reportService.getTopCustomers(hotelId, from, to, 20));
+            writeGuestOrigins(workbook, header, reportService.getGuestOrigins(hotelId, from, to));
+            writeRatings(workbook, header, reportService.getRatings(hotelId, from, to), false);
             writeStaffPerformance(workbook, header, reportService.getStaffPerformance(hotelId, from, to));
             writeAiAssistant(workbook, header, reportService.getAiAssistantReport(hotelId, from, to));
             writeReceivables(workbook, header, reportService.getReceivables(hotelId), false);
@@ -107,6 +109,8 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRevenueByService(workbook, header, reportService.getRevenueByServiceForChain(hotelChainId, from, to));
             writeRevenueByTour(workbook, header, reportService.getRevenueByTourForChain(hotelChainId, from, to));
             writeTopCustomers(workbook, header, reportService.getTopCustomersForChain(hotelChainId, from, to, 20));
+            writeGuestOrigins(workbook, header, reportService.getGuestOriginsForChain(hotelChainId, from, to));
+            writeRatings(workbook, header, reportService.getRatingsForChain(hotelChainId, from, to), true);
             writeStaffPerformance(workbook, header, reportService.getStaffPerformanceForChain(hotelChainId, from, to));
             writeAiAssistant(workbook, header, reportService.getAiAssistantReportForChain(hotelChainId, from, to));
             writeReceivables(workbook, header, reportService.getReceivablesForChain(hotelChainId), true);
@@ -332,6 +336,64 @@ public class ExcelReportServiceImpl implements ExcelReportService {
                                             row.getPaymentMethod().name(),
                                             row.getPaymentMethod().name()));
             line.createCell(c).setCellValue(toDouble(row.getTotalAmount()));
+        }
+        autoSize(sheet, titles.size());
+    }
+
+    private void writeGuestOrigins(Workbook workbook, CellStyle header, List<GuestOriginDTO> rows) {
+        Sheet sheet = workbook.createSheet("Khách theo quê quán");
+        writeHeader(sheet, header, "Quê quán", "Số khách", "Đơn phòng", "Tour", "Doanh thu", "Tỷ trọng (%)");
+        int r = 1;
+        for (GuestOriginDTO row : rows) {
+            Row line = sheet.createRow(r++);
+            line.createCell(0).setCellValue(row.getHometown() == null ? "Chưa rõ" : row.getHometown());
+            line.createCell(1).setCellValue(row.getGuests());
+            line.createCell(2).setCellValue(row.getBookings());
+            line.createCell(3).setCellValue(row.getTours());
+            line.createCell(4).setCellValue(toDouble(row.getRevenue()));
+            line.createCell(5).setCellValue(row.getShare());
+        }
+        autoSize(sheet, 6);
+    }
+
+    private void writeRatings(Workbook workbook, CellStyle header, RatingReportResponse ratings, boolean withBranch) {
+        Sheet sheet = workbook.createSheet("Đánh giá");
+        int r = 0;
+        r = writeRow(sheet, r, header, "Số đánh giá", ratings.getReviews());
+        r = writeRow(
+                sheet,
+                r,
+                header,
+                "Điểm trung bình",
+                ratings.getAverageRating() == null ? "–" : ratings.getAverageRating());
+        r = writeRow(
+                sheet,
+                r,
+                header,
+                "Điểm trung bình kỳ trước",
+                ratings.getPreviousAverageRating() == null ? "–" : ratings.getPreviousAverageRating());
+        r = writeRow(sheet, r, header, "Tỷ lệ đơn hoàn tất có đánh giá (%)", ratings.getReviewRate());
+        for (int star = 5; star >= 1; star--) {
+            r = writeRow(
+                    sheet, r, header, star + " sao", ratings.getDistribution().get(star - 1));
+        }
+        r++;
+        List<String> titles = new ArrayList<>(List.of("Ngày", "Khách", "Số sao", "Nhận xét", "Đơn"));
+        if (withBranch) {
+            titles.add(1, "Cơ sở");
+        }
+        writeHeaderAt(sheet, header, r++, titles.toArray(String[]::new));
+        for (FeedbackRow review : ratings.getLowReviews()) {
+            Row line = sheet.createRow(r++);
+            int c = 0;
+            line.createCell(c++).setCellValue(String.valueOf(review.getReviewDate()));
+            if (withBranch) {
+                line.createCell(c++).setCellValue(review.getHotelName());
+            }
+            line.createCell(c++).setCellValue(review.getCustomerName() == null ? "" : review.getCustomerName());
+            line.createCell(c++).setCellValue(review.getRating() == null ? 0 : review.getRating());
+            line.createCell(c++).setCellValue(review.getComments() == null ? "" : review.getComments());
+            line.createCell(c).setCellValue("#" + review.getBookingId());
         }
         autoSize(sheet, titles.size());
     }

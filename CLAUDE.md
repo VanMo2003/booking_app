@@ -442,6 +442,9 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
   price) so unsold types are listed, completed stays for revenue/ADR, `findBookedRoomNights` for occupancy.
   `PeriodRows` gained `bookingsWithServices` (service attach rate); its old 12-argument constructor stays for
   the tests and passes 0.
+- **Guest reports** (`/reports/guest-origins`, `/reports/ratings`) are computed by `GuestFigures`
+  (`GuestFiguresTest`); hometown is free text, grouped after trimming and lower-casing. Ratings use
+  `Feedback.reviewDate`, and the branch comparison adds each branch's reviews and average.
 - **AI assistant report** (`/reports/ai-assistant`) is computed by `ChatFigures` (unit-tested in
   `ChatFiguresTest`) from `ChatMessageRepository.findForReport` - messages written in the period, thread by
   thread. A reply's wait runs from the first guest message still unanswered; the assistant's messages are

@@ -50,6 +50,7 @@ import com.vanmo.booking_app_be.repository.BookingServiceRepository;
 import com.vanmo.booking_app_be.repository.ChatMessageRepository;
 import com.vanmo.booking_app_be.repository.ConversationRepository;
 import com.vanmo.booking_app_be.repository.EmployeeRepository;
+import com.vanmo.booking_app_be.repository.FeedbackRepository;
 import com.vanmo.booking_app_be.repository.HotelChainRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.repository.PayrollRepository;
@@ -89,6 +90,7 @@ public class ReportServiceImpl implements ReportService {
     private final HotelChainRepository hotelChainRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ConversationRepository conversationRepository;
+    private final FeedbackRepository feedbackRepository;
     private final AccessGuard accessGuard;
 
     @Override
@@ -384,11 +386,15 @@ public class ReportServiceImpl implements ReportService {
                 .map(hotel -> {
                     List<Long> ids = List.of(hotel.getId());
                     long rooms = roomRepository.countByHotel_IdIn(ids);
-                    return RevenueFigures.branch(
+                    BranchPerformanceDTO branch = RevenueFigures.branch(
                             hotel.getId(),
                             hotel.getName(),
                             periodRows(ids, rooms, from, to),
                             periodRows(ids, rooms, previous.from(), previous.to()));
+                    List<FeedbackRow> reviews = feedbackRepository.findForReport(ids, from, to);
+                    branch.setReviews(reviews.size());
+                    branch.setAverageRating(GuestFigures.average(reviews));
+                    return branch;
                 })
                 .toList();
         return RevenueFigures.rankBranches(branches);
@@ -701,6 +707,48 @@ public class ReportServiceImpl implements ReportService {
                 bookingRepository.findReceivables(hotelIds, BookingStatus.COMPLETED, PaymentStatus.PAID);
         rows.forEach(row -> row.setDaysOverdue(Math.max(0, ChronoUnit.DAYS.between(row.getCheckoutDate(), today))));
         return rows;
+    }
+
+    @Override
+    public List<GuestOriginDTO> getGuestOrigins(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return guestOrigins(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public List<GuestOriginDTO> getGuestOriginsForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return guestOrigins(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private List<GuestOriginDTO> guestOrigins(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        return GuestFigures.origins(
+                bookingRepository.findGuestOrigins(hotelIds, BookingStatus.COMPLETED, from, to),
+                tourBookingRepository.findGuestOrigins(hotelIds, TourBookingStatus.COMPLETED, from, to));
+    }
+
+    @Override
+    public RatingReportResponse getRatings(Long hotelId, LocalDate from, LocalDate to) {
+        accessGuard.requireBranchManagerOrAbove(hotelId);
+        return ratings(List.of(hotelId), from, to);
+    }
+
+    @Override
+    public RatingReportResponse getRatingsForChain(Long hotelChainId, LocalDate from, LocalDate to) {
+        return ratings(accessGuard.hotelIdsForChain(requireChainAccess(hotelChainId)), from, to);
+    }
+
+    private RatingReportResponse ratings(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        requireInclusiveRange(from, to);
+        RevenueFigures.Period previous = RevenueFigures.previousPeriod(from, to);
+        return GuestFigures.ratings(
+                from,
+                to,
+                feedbackRepository.findForReport(hotelIds, from, to),
+                feedbackRepository.findForReport(hotelIds, previous.from(), previous.to()),
+                bookingRepository
+                        .findSales(hotelIds, BookingStatus.COMPLETED, from, to)
+                        .size());
     }
 
     @Override

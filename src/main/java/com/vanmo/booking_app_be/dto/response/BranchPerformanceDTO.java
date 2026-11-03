@@ -29,4 +29,9 @@ public class BranchPerformanceDTO {
 
     /** This branch's part of the chain's revenue in the period, 0-100. */
     double revenueShare;
+
+    /** Guest reviews written in the period and their average stars (null without reviews). */
+    long reviews;
+
+    Double averageRating;
 }
