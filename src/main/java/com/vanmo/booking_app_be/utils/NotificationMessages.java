@@ -137,6 +137,15 @@ public final class NotificationMessages {
                         + money(target) + "). Xem báo cáo để có kế hoạch kích cầu.");
     }
 
+    /** A guest review low enough to call the guest back. */
+    public static Message lowRatingReview(String hotelName, String customerName, int rating, String comments) {
+        String said = comments == null || comments.isBlank() ? "" : ": \"" + preview(comments.strip()) + "\"";
+        return new Message(
+                "Đánh giá " + rating + " sao · " + hotelName,
+                (customerName == null ? "Khách" : customerName) + " đánh giá " + rating + "/5" + said
+                        + ". Nên liên hệ lại khách sớm.");
+    }
+
     /** Last week's figures for a chain or a branch, against the week before. */
     public static Message weeklyReport(
             String scopeName,
