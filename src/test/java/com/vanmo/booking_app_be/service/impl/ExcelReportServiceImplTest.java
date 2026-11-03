@@ -20,6 +20,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.vanmo.booking_app_be.dto.response.AiAssistantReportResponse;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CancellationRateResponse;
 import com.vanmo.booking_app_be.dto.response.OccupancyResponse;
@@ -102,6 +103,20 @@ class ExcelReportServiceImplTest {
                         BigDecimal.valueOf(1_200_000),
                         PaymentMethod.CASH,
                         16L)));
+        AiAssistantReportResponse ai = AiAssistantReportResponse.builder()
+                .conversations(3)
+                .aiOnlyConversations(2)
+                .staffConversations(1)
+                .guestMessages(9)
+                .aiReplies(6)
+                .staffReplies(2)
+                .aiReplyShare(75.0)
+                .aiMedianReplySeconds(9L)
+                .staffMedianReplySeconds(null)
+                .aiTourRevenue(BigDecimal.valueOf(900_000))
+                .build();
+        when(reports.getAiAssistantReport(anyLong(), any(), any())).thenReturn(ai);
+        when(reports.getAiAssistantReportForChain(anyLong(), any(), any())).thenReturn(ai);
         when(reports.getRevenueByTour(anyLong(), any(), any()))
                 .thenReturn(List.of(new RevenueByTourDTO(
                         7L, "Hạ Long", 1, 2, BigDecimal.valueOf(900_000), BigDecimal.valueOf(550_000), 1)));
@@ -149,6 +164,14 @@ class ExcelReportServiceImplTest {
             assertThat(tours.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Hạ Long");
             assertThat(tours.getRow(1).getCell(3).getNumericCellValue()).isEqualTo(900_000d);
             assertThat(book.getSheet("So sánh cơ sở")).isNull();
+
+            Sheet ai = book.getSheet("Trợ lý AI");
+            assertThat(ai.getRow(6).getCell(0).getStringCellValue()).isEqualTo("Tỷ lệ tin do AI trả lời (%)");
+            assertThat(ai.getRow(6).getCell(1).getNumericCellValue()).isEqualTo(75d);
+            assertThat(ai.getRow(7).getCell(1).getNumericCellValue()).isEqualTo(0.2d);
+            // the team never replied
+            assertThat(ai.getRow(8).getCell(1).getStringCellValue()).isEqualTo("–");
+            assertThat(ai.getRow(14).getCell(1).getNumericCellValue()).isEqualTo(900_000d);
         }
     }
 

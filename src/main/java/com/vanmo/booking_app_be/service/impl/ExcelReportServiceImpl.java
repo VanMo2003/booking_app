@@ -67,6 +67,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRevenueByTour(workbook, header, reportService.getRevenueByTour(hotelId, from, to));
             writeTopCustomers(workbook, header, reportService.getTopCustomers(hotelId, from, to, 20));
             writeStaffPerformance(workbook, header, reportService.getStaffPerformance(hotelId, from, to));
+            writeAiAssistant(workbook, header, reportService.getAiAssistantReport(hotelId, from, to));
             writeReceivables(workbook, header, reportService.getReceivables(hotelId), false);
 
             return toBytes(workbook);
@@ -100,6 +101,7 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRevenueByTour(workbook, header, reportService.getRevenueByTourForChain(hotelChainId, from, to));
             writeTopCustomers(workbook, header, reportService.getTopCustomersForChain(hotelChainId, from, to, 20));
             writeStaffPerformance(workbook, header, reportService.getStaffPerformanceForChain(hotelChainId, from, to));
+            writeAiAssistant(workbook, header, reportService.getAiAssistantReportForChain(hotelChainId, from, to));
             writeReceivables(workbook, header, reportService.getReceivablesForChain(hotelChainId), true);
 
             return toBytes(workbook);
@@ -311,6 +313,34 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             line.createCell(c).setCellValue(toDouble(row.getTotalAmount()));
         }
         autoSize(sheet, titles.size());
+    }
+
+    private void writeAiAssistant(Workbook workbook, CellStyle header, AiAssistantReportResponse ai) {
+        Sheet sheet = workbook.createSheet("Trợ lý AI");
+        int r = 0;
+        r = writeRow(sheet, r, header, "Hội thoại có tin nhắn trong kỳ", ai.getConversations());
+        r = writeRow(sheet, r, header, "AI tự xử lý trọn", ai.getAiOnlyConversations());
+        r = writeRow(sheet, r, header, "Có nhân viên tham gia", ai.getStaffConversations());
+        r = writeRow(sheet, r, header, "Tin nhắn của khách", ai.getGuestMessages());
+        r = writeRow(sheet, r, header, "Tin AI trả lời", ai.getAiReplies());
+        r = writeRow(sheet, r, header, "Tin nhân viên trả lời", ai.getStaffReplies());
+        r = writeRow(sheet, r, header, "Tỷ lệ tin do AI trả lời (%)", ai.getAiReplyShare());
+        r = writeRow(sheet, r, header, "AI trả lời sau (trung vị, phút)", minutes(ai.getAiMedianReplySeconds()));
+        r = writeRow(
+                sheet, r, header, "Nhân viên trả lời sau (trung vị, phút)", minutes(ai.getStaffMedianReplySeconds()));
+        r = writeRow(sheet, r, header, "Hội thoại đang chờ nhân viên (lúc xuất file)", ai.getWaitingForStaff());
+        r = writeRow(sheet, r, header, "Đơn tour AI lên", ai.getAiTourOrders());
+        r = writeRow(sheet, r, header, "  - đang mở", ai.getAiTourOrdersOpen());
+        r = writeRow(sheet, r, header, "  - hoàn tất", ai.getAiTourOrdersCompleted());
+        r = writeRow(sheet, r, header, "  - đã huỷ", ai.getAiTourOrdersCanceled());
+        r = writeRow(sheet, r, header, "Doanh thu tour AI bán", toDouble(ai.getAiTourRevenue()));
+        writeRow(sheet, r, header, "Tỷ trọng trong doanh thu tour (%)", ai.getAiTourRevenueShare());
+        autoSize(sheet, 2);
+    }
+
+    /** Seconds as minutes with one decimal, or a dash when that side never replied. */
+    private Object minutes(Long seconds) {
+        return seconds == null ? "–" : Math.round(seconds / 6d) / 10d;
     }
 
     /** "+12.50%", or a dash when there was nothing to compare with. */

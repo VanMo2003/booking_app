@@ -287,7 +287,7 @@ nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của g
 | Khách chi tiêu nhiều nhất | `GET /reports/top-customers?from=&to=&limit=` | Tổng chi tiêu = đơn phòng hoàn tất (trả phòng trong kỳ) + tour hoàn tất (ngày đi trong kỳ), kèm số đơn, số tour, tiền tour; khách chỉ đi tour cũng được xếp hạng |
 | Tỷ lệ huỷ | `GET /reports/cancellation-rate?from=&to=` | Đơn nhận phòng trong kỳ: tổng, huỷ, hoàn tất, tỷ lệ; giá trị đơn bị huỷ; đơn huỷ chia khách tự đặt / đặt tại quầy; đơn tour có ngày đi trong kỳ: số đơn, số huỷ, khách huỷ / khách sạn huỷ, tỷ lệ huỷ tour |
 | Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | |
-| Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày (đơn phòng + tour, đủ mọi ngày; quá 400 ngày thì theo tháng) / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên, **tiền chưa thu** (danh sách tại thời điểm xuất); bản chuỗi thêm **so sánh cơ sở** |
+| Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày (đơn phòng + tour, đủ mọi ngày; quá 400 ngày thì theo tháng) / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên, **trợ lý AI**, **tiền chưa thu** (danh sách tại thời điểm xuất); bản chuỗi thêm **so sánh cơ sở** |
 
 Cách tính trong tổng quan: tiền phòng = tổng đơn − dòng dịch vụ; ADR = tiền phòng / đêm đã bán; RevPAR =
 tiền phòng / (số phòng × số ngày); lưu trú TB = số đêm trung bình mỗi đơn hoàn tất; đặt trước TB = số ngày
