@@ -486,7 +486,13 @@ final class RevenueFigures {
      * they kept, so two branches' tours with the same name stay apart while they exist.
      */
     static List<RevenueByTourDTO> byTour(List<TourSaleRow> tours) {
+        return byTour(tours, Map.of());
+    }
+
+    /** {@link #byTour(List)} plus how full each tour's departures ran, from its seats per departure. */
+    static List<RevenueByTourDTO> byTour(List<TourSaleRow> tours, Map<Long, Integer> seatsPerDeparture) {
         Map<String, RevenueByTourDTO> byKey = new LinkedHashMap<>();
+        Map<String, Set<LocalDate>> dates = new LinkedHashMap<>();
         for (TourSaleRow row : tours) {
             String key = row.getTourId() != null ? "id:" + row.getTourId() : "name:" + row.getTourName();
             RevenueByTourDTO acc = byKey.computeIfAbsent(
@@ -502,6 +508,17 @@ final class RevenueFigures {
             if (Boolean.TRUE.equals(row.getCreatedByAi())) {
                 acc.setAiOrders(acc.getAiOrders() + 1);
             }
+            if (row.getTourDate() != null) {
+                dates.computeIfAbsent(key, k -> new HashSet<>()).add(row.getTourDate());
+            }
+        }
+        for (Map.Entry<String, RevenueByTourDTO> entry : byKey.entrySet()) {
+            RevenueByTourDTO tour = entry.getValue();
+            long departures = dates.getOrDefault(entry.getKey(), Set.of()).size();
+            Integer seats = tour.getTourId() == null ? null : seatsPerDeparture.get(tour.getTourId());
+            tour.setDepartures(departures);
+            tour.setSeatsOffered(seats == null || seats <= 0 ? 0 : departures * seats);
+            tour.setFillRate(rate(tour.getGuests(), tour.getSeatsOffered()));
         }
         return byKey.values().stream()
                 .sorted(Comparator.comparing(RevenueByTourDTO::getTourRevenue).reversed())

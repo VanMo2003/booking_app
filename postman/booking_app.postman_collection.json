@@ -9176,7 +9176,8 @@
                   "const rows = pm.response.json().data;",
                   "pm.test('one tour with its completed order', () => { pm.expect(rows.length).to.eql(1); pm.expect(rows[0].orders).to.eql(1); pm.expect(rows[0].guests).to.eql(2); });",
                   "pm.test('tour revenue 450.000 x 2, package room shown apart', () => { pm.expect(rows[0].tourRevenue).to.eql(900000); pm.expect(rows[0].packageRoomAmount).to.eql(550000); });",
-                  "pm.test('placed in the app', () => pm.expect(rows[0].aiOrders).to.eql(0));"
+                  "pm.test('placed in the app', () => pm.expect(rows[0].aiOrders).to.eql(0));",
+                  "pm.test('one departure; the tour has no seat limit any more, so no fill rate', () => { pm.expect(rows[0].departures).to.eql(1); pm.expect(rows[0].fillRate).to.be.at.most(100); });"
                 ]
               }
             }

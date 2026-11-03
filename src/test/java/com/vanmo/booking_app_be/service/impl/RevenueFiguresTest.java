@@ -975,4 +975,27 @@ class RevenueFiguresTest {
         return new PaymentTimingRow(
                 1L, BigDecimal.valueOf(amount), PaymentStatus.PAID, paidOn.atTime(10, 0), checkin, checkout);
     }
+
+    @Test
+    void toursShowHowFullTheirDeparturesRan() {
+        TourSaleRow first = new TourSaleRow(
+                7L, "Hạ Long", 4, BigDecimal.valueOf(1_800_000), null, BigDecimal.valueOf(1_800_000), false, OCT_1);
+        TourSaleRow sameDay = new TourSaleRow(
+                7L, "Hạ Long", 2, BigDecimal.valueOf(900_000), null, BigDecimal.valueOf(900_000), false, OCT_1);
+        TourSaleRow later = new TourSaleRow(
+                7L, "Hạ Long", 4, BigDecimal.valueOf(1_800_000), null, BigDecimal.valueOf(1_800_000), true, OCT_10);
+        TourSaleRow deleted = new TourSaleRow(
+                null, "Sapa (đã xoá)", 2, BigDecimal.valueOf(700_000), null, BigDecimal.valueOf(700_000), false, OCT_1);
+
+        List<RevenueByTourDTO> tours = RevenueFigures.byTour(List.of(first, sameDay, later, deleted), Map.of(7L, 10));
+
+        RevenueByTourDTO haLong = tours.get(0);
+        assertThat(haLong.getDepartures()).isEqualTo(2);
+        assertThat(haLong.getSeatsOffered()).isEqualTo(20);
+        assertThat(haLong.getGuests()).isEqualTo(10);
+        assertThat(haLong.getFillRate()).isEqualTo(50.0);
+        // no seat limit known for a deleted tour
+        assertThat(tours.get(1).getSeatsOffered()).isZero();
+        assertThat(tours.get(1).getFillRate()).isZero();
+    }
 }

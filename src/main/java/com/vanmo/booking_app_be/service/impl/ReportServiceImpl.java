@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -58,6 +59,7 @@ import com.vanmo.booking_app_be.repository.ReportRepository;
 import com.vanmo.booking_app_be.repository.RevenueTargetRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.TourBookingRepository;
+import com.vanmo.booking_app_be.repository.TourRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.NotificationService;
 import com.vanmo.booking_app_be.service.ReportService;
@@ -83,6 +85,7 @@ public class ReportServiceImpl implements ReportService {
     private final EmployeeRepository employeeRepository;
     private final HotelRepository hotelRepository;
     private final TourBookingRepository tourBookingRepository;
+    private final TourRepository tourRepository;
     private final PayrollRepository payrollRepository;
     private final RevenueTargetRepository revenueTargetRepository;
     private final NotificationService notificationService;
@@ -374,7 +377,15 @@ public class ReportServiceImpl implements ReportService {
 
     private List<RevenueByTourDTO> revenueByTour(List<Long> hotelIds, LocalDate from, LocalDate to) {
         requireInclusiveRange(from, to);
-        return RevenueFigures.byTour(tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to));
+        List<TourSaleRow> sales = tourBookingRepository.findSales(hotelIds, TourBookingStatus.COMPLETED, from, to);
+        Map<Long, Integer> seats = new HashMap<>();
+        tourRepository
+                .findAllById(sales.stream()
+                        .map(TourSaleRow::getTourId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet()))
+                .forEach(tour -> seats.put(tour.getId(), tour.getMaxGuests()));
+        return RevenueFigures.byTour(sales, seats);
     }
 
     @Override

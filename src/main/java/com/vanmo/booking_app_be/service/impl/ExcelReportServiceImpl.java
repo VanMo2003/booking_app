@@ -310,7 +310,18 @@ public class ExcelReportServiceImpl implements ExcelReportService {
 
     private void writeRevenueByTour(Workbook workbook, CellStyle header, List<RevenueByTourDTO> rows) {
         Sheet sheet = workbook.createSheet("Doanh thu theo tour");
-        writeHeader(sheet, header, "Tour", "Số đơn", "Số khách", "Tiền tour", "Tiền phòng gói", "Đơn do AI lên");
+        writeHeader(
+                sheet,
+                header,
+                "Tour",
+                "Số đơn",
+                "Số khách",
+                "Tiền tour",
+                "Tiền phòng gói",
+                "Đơn do AI lên",
+                "Số chuyến",
+                "Số chỗ",
+                "Lấp chỗ (%)");
         int r = 1;
         for (RevenueByTourDTO row : rows) {
             Row line = sheet.createRow(r++);
@@ -320,8 +331,11 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             line.createCell(3).setCellValue(toDouble(row.getTourRevenue()));
             line.createCell(4).setCellValue(toDouble(row.getPackageRoomAmount()));
             line.createCell(5).setCellValue(row.getAiOrders());
+            line.createCell(6).setCellValue(row.getDepartures());
+            line.createCell(7).setCellValue(row.getSeatsOffered());
+            line.createCell(8).setCellValue(row.getFillRate());
         }
-        autoSize(sheet, 6);
+        autoSize(sheet, 9);
     }
 
     /** Today's list, whatever the export's period: completed stays whose payment was never recorded. */
