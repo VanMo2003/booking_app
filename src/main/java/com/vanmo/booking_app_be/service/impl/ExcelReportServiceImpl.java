@@ -82,6 +82,9 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRatings(workbook, header, reportService.getRatings(hotelId, from, to), false);
             writeStaffPerformance(workbook, header, reportService.getStaffPerformance(hotelId, from, to));
             writeAiAssistant(workbook, header, reportService.getAiAssistantReport(hotelId, from, to));
+            if (ChronoUnit.DAYS.between(from, to) <= MAX_DAILY_RANGE) {
+                writeCollections(workbook, header, reportService.getCollections(hotelId, from, to));
+            }
             writeReceivables(workbook, header, reportService.getReceivables(hotelId), false);
 
             return toBytes(workbook);
@@ -118,6 +121,9 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             writeRatings(workbook, header, reportService.getRatingsForChain(hotelChainId, from, to), true);
             writeStaffPerformance(workbook, header, reportService.getStaffPerformanceForChain(hotelChainId, from, to));
             writeAiAssistant(workbook, header, reportService.getAiAssistantReportForChain(hotelChainId, from, to));
+            if (ChronoUnit.DAYS.between(from, to) <= MAX_DAILY_RANGE) {
+                writeCollections(workbook, header, reportService.getCollectionsForChain(hotelChainId, from, to));
+            }
             writeReceivables(workbook, header, reportService.getReceivablesForChain(hotelChainId), true);
 
             return toBytes(workbook);
@@ -369,6 +375,30 @@ public class ExcelReportServiceImpl implements ExcelReportService {
             line.createCell(c).setCellValue(toDouble(row.getTotalAmount()));
         }
         autoSize(sheet, titles.size());
+    }
+
+    /** Money recorded as received each day, by method; skipped when the service has nothing to give. */
+    private void writeCollections(Workbook workbook, CellStyle header, CollectionsResponse ledger) {
+        if (ledger == null) {
+            return;
+        }
+        Sheet sheet = workbook.createSheet("Sổ thu tiền");
+        writeHeader(sheet, header, "Ngày thu", "Số khoản", "Tiền mặt", "Chuyển khoản", "VNPay", "Tổng");
+        int r = 1;
+        for (CollectionDayDTO day : ledger.getByDate()) {
+            Row line = sheet.createRow(r++);
+            line.createCell(0).setCellValue(String.valueOf(day.getDate()));
+            line.createCell(1).setCellValue(day.getPayments());
+            line.createCell(2).setCellValue(toDouble(day.getCash()));
+            line.createCell(3).setCellValue(toDouble(day.getBankTransfer()));
+            line.createCell(4).setCellValue(toDouble(day.getVnPay()));
+            line.createCell(5).setCellValue(toDouble(day.getTotal()));
+        }
+        Row total = sheet.createRow(r);
+        total.createCell(0).setCellValue("Cộng");
+        total.createCell(1).setCellValue(ledger.getPayments());
+        total.createCell(5).setCellValue(toDouble(ledger.getTotal()));
+        autoSize(sheet, 6);
     }
 
     private void writeGuestOrigins(Workbook workbook, CellStyle header, List<GuestOriginDTO> rows) {

@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import com.vanmo.booking_app_be.dto.response.AiAssistantReportResponse;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
 import com.vanmo.booking_app_be.dto.response.CancellationRateResponse;
+import com.vanmo.booking_app_be.dto.response.CollectionDayDTO;
+import com.vanmo.booking_app_be.dto.response.CollectionsResponse;
 import com.vanmo.booking_app_be.dto.response.FeedbackRow;
 import com.vanmo.booking_app_be.dto.response.OccupancyResponse;
 import com.vanmo.booking_app_be.dto.response.RatingReportResponse;
@@ -133,6 +135,19 @@ class ExcelReportServiceImplTest {
                         3L, 21L, 6L, "Hoàn Kiếm", "Nguyễn An", 2, "Phòng ồn", LocalDate.of(2026, 10, 15))))
                 .build();
         when(reports.getRatings(anyLong(), any(), any())).thenReturn(ratings);
+        when(reports.getCollections(anyLong(), any(), any()))
+                .thenReturn(CollectionsResponse.builder()
+                        .total(BigDecimal.valueOf(1_200_000))
+                        .payments(1)
+                        .byMethod(List.of())
+                        .byDate(List.of(new CollectionDayDTO(
+                                FROM,
+                                BigDecimal.valueOf(1_200_000),
+                                BigDecimal.ZERO,
+                                BigDecimal.ZERO,
+                                BigDecimal.valueOf(1_200_000),
+                                1L)))
+                        .build());
         when(reports.getRatingsForChain(anyLong(), any(), any())).thenReturn(ratings);
         when(reports.getAiAssistantReportForChain(anyLong(), any(), any())).thenReturn(ai);
         when(reports.getRevenueByTour(anyLong(), any(), any()))
@@ -194,6 +209,9 @@ class ExcelReportServiceImplTest {
             assertThat(ratings.getRow(10).getCell(3).getStringCellValue()).isEqualTo("Nhận xét");
             assertThat(ratings.getRow(11).getCell(3).getStringCellValue()).isEqualTo("Phòng ồn");
             assertThat(book.getSheet("Khách theo quê quán")).isNotNull();
+            Sheet ledger = book.getSheet("Sổ thu tiền");
+            assertThat(ledger.getRow(1).getCell(2).getNumericCellValue()).isEqualTo(1_200_000d);
+            assertThat(ledger.getRow(2).getCell(0).getStringCellValue()).isEqualTo("Cộng");
 
             Sheet ai = book.getSheet("Trợ lý AI");
             assertThat(ai.getRow(6).getCell(0).getStringCellValue()).isEqualTo("Tỷ lệ tin do AI trả lời (%)");
