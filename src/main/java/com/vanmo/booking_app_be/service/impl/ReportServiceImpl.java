@@ -407,6 +407,27 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    public List<BranchOutlookDTO> getBranchOutlookForChain(Long hotelChainId, int days) {
+        requireChainAccess(hotelChainId);
+        return hotelRepository.findAllByHotelChain_Id(hotelChainId).stream()
+                .map(hotel -> {
+                    RevenueOutlookResponse outlook = revenueOutlook(List.of(hotel.getId()), days);
+                    return BranchOutlookDTO.builder()
+                            .hotelId(hotel.getId())
+                            .hotelName(hotel.getName())
+                            .totalRooms(outlook.getTotalRooms())
+                            .bookedRoomNights(outlook.getBookedRoomNights())
+                            .availableRoomNights(outlook.getAvailableRoomNights())
+                            .occupancyOnTheBooks(outlook.getOccupancyOnTheBooks())
+                            .lastYearOccupancy(outlook.getLastYearOccupancy())
+                            .totalExpected(outlook.getTotalExpected())
+                            .build();
+                })
+                .sorted(Comparator.comparingDouble(BranchOutlookDTO::getOccupancyOnTheBooks))
+                .toList();
+    }
+
+    @Override
     public List<RoomPerformanceDTO> getRoomPerformance(Long hotelId, LocalDate from, LocalDate to) {
         accessGuard.requireBranchManagerOrAbove(hotelId);
         requireInclusiveRange(from, to);

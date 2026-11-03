@@ -299,6 +299,12 @@ public class ReportController {
         return ApiResponse.ok(reportService.getRevenueOutlookForChain(hotelChainId, days));
     }
 
+    @GetMapping("/chain/outlook/branches")
+    public ApiResponse<List<BranchOutlookDTO>> branchOutlookForChain(
+            @RequestParam Long hotelChainId, @RequestParam(defaultValue = "30") int days) {
+        return ApiResponse.ok(reportService.getBranchOutlookForChain(hotelChainId, days));
+    }
+
     @GetMapping("/rooms")
     public ApiResponse<List<RoomPerformanceDTO>> roomPerformance(
             @RequestParam Long hotelId,
