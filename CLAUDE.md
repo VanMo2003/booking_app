@@ -179,8 +179,10 @@ one exists), `HOTEL_MANAGER` needs an *approved* owner, and `STAFF` must go thro
 `BookingServiceImpl` is the one place `AccessGuard` isn't the whole story: bookings are created
 and read by both staff (scoped to their branch) and customers (self-service, any branch), so its
 mutation/read methods check `Role.CUSTOMER` first (must be booking for their own `Customer` record)
-and fall back to `accessGuard.requireBranchStaffOrAbove(...)` otherwise — see
-`BookingServiceImpl.requireBookingAccess`.
+and fall back to a branch check otherwise: `requireBookingAccess` (`requireBranchStaffOrAbove`) for
+reads, `requireBookingEditor` (`requireBranchEditor`, admin refused) for every write - create,
+update, confirm/cancel/complete, payment status/method, the VNPay callback's writes - and
+`requireBranchManagerEditor` for delete. Use the editor variant for any new booking write.
 
 ### Owner registration and admin review
 
@@ -211,7 +213,9 @@ without an extra call.
 `ADMIN` still reads everything, but no longer creates or edits branch content or accounts: rooms,
 room images, amenities (and room-amenity links), services and staff (`POST /employees` mints a
 login) go through `AccessGuard.requireBranchEditor` / `requireBranchManagerEditor`, which reject
-`ADMIN` with `ADMIN_READ_ONLY` (1012). In `AccountServiceImpl`, an admin can only lock/unlock an
+`ADMIN` with `ADMIN_READ_ONLY` (1012). Bookings and their `/bookingRooms` / `/bookingServices` lines
+are the same: admins read them but can't create, edit, confirm, cancel, complete, pay or delete
+them. In `AccountServiceImpl`, an admin can only lock/unlock an
 account (`status`); role changes are rejected for everyone, password changes are allowed only for
 the account holder, and `GET /accounts` / `DELETE /accounts/{id}` are admin-only (delete also removes
 the account's notifications and device tokens). The catalog (`/roomTypes`, `/positions`) is still

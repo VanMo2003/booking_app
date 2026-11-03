@@ -82,7 +82,7 @@ public class BookingServiceImpl implements BookingService {
                 throw new AppException(ErrorCode.UN_AUTHORIZED, "Customers can only book for themselves");
             }
         } else {
-            accessGuard.requireBranchStaffOrAbove(req.getHotelId());
+            accessGuard.requireBranchEditor(req.getHotelId());
         }
 
         Booking booking = bookingMapper.toEntity(req);
@@ -145,7 +145,7 @@ public class BookingServiceImpl implements BookingService {
         Booking entity = bookingRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + id));
-        requireBookingAccess(entity);
+        requireBookingEditor(entity);
         PaymentMethod previousMethod = entity.getPaymentMethod();
         bookingMapper.updateEntity(entity, req);
         // A new method on an unpaid booking needs its matching payment state (no VNPay timer on a cash booking).
@@ -217,7 +217,7 @@ public class BookingServiceImpl implements BookingService {
         Booking entity = bookingRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + id));
-        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
+        accessGuard.requireBranchManagerEditor(entity.getHotel().getId());
         bookingRepository.delete(entity);
     }
 
@@ -226,7 +226,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse confirmBooking(Long id) {
         Booking booking =
                 bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        requireBookingAccess(booking);
+        requireBookingEditor(booking);
         if (booking.getBookingStatus().equals(BookingStatus.COMPLETED)) {
             throw new ResourceNotFoundException("Booking already completed");
         } else if (booking.getBookingStatus().equals(BookingStatus.CANCELED)) {
@@ -244,7 +244,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse cancelBooking(Long id) {
         Booking booking =
                 bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        requireBookingAccess(booking);
+        requireBookingEditor(booking);
         // Rooms sold with a tour go with the tour order: cancelling that order frees them (and tells the other side).
         tourBookingRepository
                 .findFirstByBooking_IdAndStatusIn(
@@ -272,7 +272,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse completeBooking(Long id) {
         Booking booking =
                 bookingRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        requireBookingAccess(booking);
+        requireBookingEditor(booking);
         if (booking.getBookingStatus().equals(BookingStatus.CANCELED)) {
             throw new ResourceNotFoundException("Booking already cancelled");
         } else {
@@ -290,7 +290,7 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository
                 .findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
-        requireBookingAccess(booking);
+        requireBookingEditor(booking);
 
         booking.setPaymentStatus(paymentStatus);
 
@@ -334,7 +334,7 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository
                 .findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
-        requireBookingAccess(booking);
+        requireBookingEditor(booking);
 
         // The guest may have switched to cash after opening the VNPay page; the money still came through VNPay.
         booking.setPaymentMethod(PaymentMethod.VN_PAY);
@@ -364,7 +364,7 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository
                 .findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found id=" + bookingId));
-        requireBookingAccess(booking);
+        requireBookingEditor(booking);
 
         if (booking.getPaymentMethod() != PaymentMethod.VN_PAY) {
             throw new IllegalStateException("This booking does not use VN_PAY");
