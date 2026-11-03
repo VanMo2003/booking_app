@@ -205,6 +205,9 @@ class ExcelReportServiceImplTest {
             assertThat(receivables.getRow(1).getCell(1).getStringCellValue()).isEqualTo("Nguyễn An");
             assertThat(receivables.getRow(1).getCell(4).getNumericCellValue()).isEqualTo(16d);
             assertThat(receivables.getRow(1).getCell(5).getStringCellValue()).isEqualTo("Tiền mặt");
+            // 16 days overdue: in the 8-30 day bucket
+            assertThat(receivables.getRow(4).getCell(0).getStringCellValue()).isEqualTo("8-30 ngày");
+            assertThat(receivables.getRow(4).getCell(1).getNumericCellValue()).isEqualTo(1_200_000d);
 
             Sheet tours = book.getSheet("Doanh thu theo tour");
             assertThat(tours.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Hạ Long");

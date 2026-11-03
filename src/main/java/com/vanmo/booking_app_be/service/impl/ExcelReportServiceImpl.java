@@ -380,7 +380,19 @@ public class ExcelReportServiceImpl implements ExcelReportService {
                                             row.getPaymentMethod().name()));
             line.createCell(c).setCellValue(toDouble(row.getTotalAmount()));
         }
+        // ageing: how long the money has been owed since check-out
+        r++;
+        r = writeRow(sheet, r, header, "Trong 7 ngày", ageing(rows, 0, 7));
+        r = writeRow(sheet, r, header, "8-30 ngày", ageing(rows, 8, 30));
+        writeRow(sheet, r, header, "Trên 30 ngày", ageing(rows, 31, Long.MAX_VALUE));
         autoSize(sheet, titles.size());
+    }
+
+    private double ageing(List<ReceivableDTO> rows, long fromDays, long toDays) {
+        return rows.stream()
+                .filter(row -> row.getDaysOverdue() >= fromDays && row.getDaysOverdue() <= toDays)
+                .mapToDouble(row -> toDouble(row.getTotalAmount()))
+                .sum();
     }
 
     /** From today, whatever the export's period: rooms booked and revenue expected each coming day. */
