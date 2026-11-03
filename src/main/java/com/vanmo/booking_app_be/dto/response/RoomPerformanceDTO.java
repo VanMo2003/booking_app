@@ -27,6 +27,6 @@ public class RoomPerformanceDTO {
     /** Completed stays checking out in the period. */
     long completedStays;
 
-    /** room price x nights of those completed stays (same rule as revenue by room type). */
+    /** What those completed stays really earned: their bookings' room part shared out by price x nights. */
     BigDecimal revenue;
 }

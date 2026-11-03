@@ -9,9 +9,11 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.IsoFields;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -233,6 +235,54 @@ final class RevenueFigures {
                 .toList();
     }
 
+    /**
+     * What each completed room stay really earned: its booking's room part (total minus its service lines), shared
+     * among the booking's rooms by price x nights - so a room whose price changed since keeps what it was sold at. A row
+     * without its booking falls back to price x nights. The last room of a booking takes the rounding rest.
+     */
+    static Map<BookedRoomNightRow, BigDecimal> roomRevenue(
+            List<BookedRoomNightRow> rows, Map<Long, BigDecimal> servicesByBooking) {
+        Map<BookedRoomNightRow, BigDecimal> earned = new IdentityHashMap<>();
+        Map<Long, List<BookedRoomNightRow>> byBooking = new LinkedHashMap<>();
+        for (BookedRoomNightRow row : rows) {
+            if (row.getBookingId() == null || row.getBookingTotal() == null) {
+                earned.put(row, listPrice(row));
+            } else {
+                byBooking
+                        .computeIfAbsent(row.getBookingId(), id -> new ArrayList<>())
+                        .add(row);
+            }
+        }
+        byBooking.forEach((bookingId, rooms) -> {
+            BigDecimal roomPart = rooms.get(0)
+                    .getBookingTotal()
+                    .subtract(servicesByBooking.getOrDefault(bookingId, BigDecimal.ZERO))
+                    .max(BigDecimal.ZERO);
+            BigDecimal weights = sum(rooms.stream().map(RevenueFigures::listPrice));
+            BigDecimal allocated = BigDecimal.ZERO;
+            for (int i = 0; i < rooms.size(); i++) {
+                BigDecimal share;
+                if (i == rooms.size() - 1) {
+                    share = roomPart.subtract(allocated);
+                } else if (weights.signum() == 0) {
+                    share = roomPart.divide(BigDecimal.valueOf(rooms.size()), 0, RoundingMode.HALF_UP);
+                } else {
+                    share = roomPart.multiply(listPrice(rooms.get(i))).divide(weights, 0, RoundingMode.HALF_UP);
+                }
+                allocated = allocated.add(share);
+                earned.put(rooms.get(i), share);
+            }
+        });
+        return earned;
+    }
+
+    /** Today's price x nights of the stay. */
+    private static BigDecimal listPrice(BookedRoomNightRow row) {
+        return row.getRoomPrice() == null
+                ? BigDecimal.ZERO
+                : row.getRoomPrice().multiply(BigDecimal.valueOf(nights(row)));
+    }
+
     /** A room as the per-room report lists it. */
     record RoomInfo(Long id, String number, String typeName, BigDecimal price) {}
 
@@ -247,8 +297,10 @@ final class RevenueFigures {
             List<RoomInfo> rooms,
             List<BookedRoomNightRow> booked,
             List<BookedRoomNightRow> completed,
+            Map<Long, BigDecimal> servicesByBooking,
             LocalDate from,
             LocalDate to) {
+        Map<BookedRoomNightRow, BigDecimal> earned = roomRevenue(completed, servicesByBooking);
         LocalDate end = to.plusDays(1);
         long days = ChronoUnit.DAYS.between(from, end);
         Map<Long, RoomPerformanceDTO> byRoom = new LinkedHashMap<>();
@@ -266,9 +318,9 @@ final class RevenueFigures {
         }
         for (BookedRoomNightRow row : completed) {
             RoomPerformanceDTO room = byRoom.get(row.getRoomId());
-            if (room != null && row.getRoomPrice() != null) {
+            if (room != null) {
                 room.setCompletedStays(room.getCompletedStays() + 1);
-                room.setRevenue(room.getRevenue().add(row.getRoomPrice().multiply(BigDecimal.valueOf(nights(row)))));
+                room.setRevenue(room.getRevenue().add(earned.getOrDefault(row, BigDecimal.ZERO)));
             }
         }
         byRoom.values().forEach(room -> room.setOccupancyRate(rate(room.getOccupiedNights(), days)));

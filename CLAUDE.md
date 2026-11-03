@@ -387,9 +387,11 @@ revenue (by date/month/year/week, pre-existing) and the detailed set — `occupa
 (`ExcelReportServiceImpl`, Apache POI). Two things worth knowing about the numbers:
 
 - **Room revenue is derived, not stored.** `BookingRoom` has no price column and `Booking.totalAmount`
-  is a single client-supplied figure, so revenue-by-room-type computes `room.price × nights` per
-  booked room. Service revenue *is* stored (`BookingService.total`, set from
-  `service.unitPrice × quantity` at booking time).
+  is a single client-supplied figure, so revenue by room type / by room takes each completed
+  booking's room part (`totalAmount` − its `BookingService.total` lines) and shares it among the
+  booking's rooms by today's `room.price × nights` (`RevenueFigures.roomRevenue`) - a later price
+  change only shifts the split, never the amount. Service revenue *is* stored (`BookingService.total`,
+  set from `service.unitPrice × quantity` at booking time).
 - **Occupancy and room-night maths happen in Java**, not SQL (`BookedRoomNightRow` +
   `ReportServiceImpl.nightsWithin`), to avoid DB-specific date arithmetic. `occupancy/daily` is
   capped at 92 days (`MAX_DAILY_RANGE`).

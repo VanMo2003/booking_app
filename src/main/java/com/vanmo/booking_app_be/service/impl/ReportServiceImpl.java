@@ -416,8 +416,18 @@ public class ReportServiceImpl implements ReportService {
                 rooms,
                 bookingRoomRepository.findBookedRoomNights(hotelIds, from, to.plusDays(1)),
                 bookingRoomRepository.findRoomNightsByStatus(hotelIds, BookingStatus.COMPLETED, from, to),
+                servicesByBooking(hotelIds, from, to),
                 from,
                 to);
+    }
+
+    /** Service lines per completed booking checking out in [from, to], to take them out of the room revenue. */
+    private Map<Long, BigDecimal> servicesByBooking(List<Long> hotelIds, LocalDate from, LocalDate to) {
+        Map<Long, BigDecimal> totals = new HashMap<>();
+        bookingServiceRepository
+                .serviceTotalsByBooking(hotelIds, BookingStatus.COMPLETED, from, to)
+                .forEach(row -> totals.put(row.getBookingId(), row.getAmount()));
+        return totals;
     }
 
     @Override
@@ -794,13 +804,13 @@ public class ReportServiceImpl implements ReportService {
         requireRange(from, to);
         List<BookedRoomNightRow> rows =
                 bookingRoomRepository.findRoomNightsByStatus(hotelIds, BookingStatus.COMPLETED, from, to);
+        Map<BookedRoomNightRow, BigDecimal> earned =
+                RevenueFigures.roomRevenue(rows, servicesByBooking(hotelIds, from, to));
 
         Map<Long, RevenueByRoomTypeDTO> byType = new LinkedHashMap<>();
         for (BookedRoomNightRow row : rows) {
             long nights = Math.max(1, ChronoUnit.DAYS.between(row.getCheckinDate(), row.getCheckoutDate()));
-            BigDecimal revenue = row.getRoomPrice() == null
-                    ? BigDecimal.ZERO
-                    : row.getRoomPrice().multiply(BigDecimal.valueOf(nights));
+            BigDecimal revenue = earned.getOrDefault(row, BigDecimal.ZERO);
 
             RevenueByRoomTypeDTO acc = byType.computeIfAbsent(
                     row.getRoomTypeId(),

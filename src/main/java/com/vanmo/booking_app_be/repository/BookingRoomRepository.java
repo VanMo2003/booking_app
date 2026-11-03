@@ -58,13 +58,13 @@ public interface BookingRoomRepository extends JpaRepository<BookingRoom, Long> 
             @Param("hotelIds") List<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /**
-     * Same shape but only for bookings that actually completed - used for revenue attribution by
-     * room type (room.price x nights), since a cancelled stay earned nothing.
+     * Same shape, with the booking and its total, for the bookings in a status checking out in [from, to] - what the
+     * revenue by room type and by room share out (see RevenueFigures.roomRevenue).
      */
     @Query(
             """
 		select new com.vanmo.booking_app_be.dto.response.BookedRoomNightRow(
-			r.id, rt.id, rt.name, r.price, b.checkinDate, b.checkoutDate
+			r.id, rt.id, rt.name, r.price, b.checkinDate, b.checkoutDate, b.id, b.totalAmount
 		)
 		from BookingRoom br
 		join br.booking b

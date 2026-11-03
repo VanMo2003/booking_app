@@ -362,7 +362,7 @@ class RevenueFiguresTest {
                 stayIn(1L, OCT_1.plusDays(2), 2), stayIn(2L, OCT_1.minusDays(1), 3), stayIn(2L, OCT_1.plusDays(5), 3));
 
         List<RoomPerformanceDTO> result =
-                RevenueFigures.rooms(rooms, booked, List.of(stayIn(2L, OCT_1.plusDays(5), 3)), OCT_1, OCT_10);
+                RevenueFigures.rooms(rooms, booked, List.of(stayIn(2L, OCT_1.plusDays(5), 3)), Map.of(), OCT_1, OCT_10);
 
         assertThat(result).extracting(RoomPerformanceDTO::getRoomNumber).containsExactly("102", "101", "201");
         assertThat(result.get(0).getOccupiedNights()).isEqualTo(5);
@@ -395,6 +395,40 @@ class RevenueFiguresTest {
         assertThat(sunday.getTotalRevenue()).isEqualByComparingTo("1800000");
         assertThat(sunday.getAverageRevenue()).isEqualByComparingTo("900000");
         assertThat(week.get(0).getAverageOccupancy()).isZero();
+    }
+
+    @Test
+    void roomRevenueSharesWhatTheBookingReallyEarnedNotTodaysPrice() {
+        // booking 31: two rooms, 2 nights each, sold for 2.200.000 incl. 200.000 of services;
+        // since then room 1's price went up to 800.000 and room 2's to 400.000 (a 2:1 ratio)
+        BookedRoomNightRow first = new BookedRoomNightRow(
+                1L,
+                1L,
+                "Deluxe",
+                BigDecimal.valueOf(800_000),
+                OCT_1,
+                OCT_1.plusDays(2),
+                31L,
+                BigDecimal.valueOf(2_200_000));
+        BookedRoomNightRow second = new BookedRoomNightRow(
+                2L,
+                2L,
+                "Standard",
+                BigDecimal.valueOf(400_000),
+                OCT_1,
+                OCT_1.plusDays(2),
+                31L,
+                BigDecimal.valueOf(2_200_000));
+        // a row without its booking keeps price x nights
+        BookedRoomNightRow legacy = room(OCT_1, 2);
+
+        Map<BookedRoomNightRow, BigDecimal> earned =
+                RevenueFigures.roomRevenue(List.of(first, second, legacy), Map.of(31L, BigDecimal.valueOf(200_000)));
+
+        assertThat(earned.get(first)).isEqualByComparingTo("1333333");
+        assertThat(earned.get(second)).isEqualByComparingTo("666667");
+        assertThat(earned.get(first).add(earned.get(second))).isEqualByComparingTo("2000000");
+        assertThat(earned.get(legacy)).isEqualByComparingTo("1000000");
     }
 
     @Test
