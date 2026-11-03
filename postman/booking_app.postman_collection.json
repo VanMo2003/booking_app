@@ -8615,7 +8615,8 @@
                   "pm.test('the November payslip (5.200.000, paid) is the payroll cost', () => pm.expect(d.current.payrollCost).to.eql(5200000));",
                   "pm.test('new then returning guests; nobody stayed before 2026, so nobody returns', () => { pm.expect(d.byCustomerType[0].key).to.eql('NEW'); pm.expect(d.byCustomerType[1].count).to.eql(0); });",
                   "pm.test('service attach rate is a share of the completed bookings', () => { pm.expect(d.current.serviceAttachRate).to.be.at.most(100); pm.expect(d.current.serviceAttachRate).to.be.at.least(0); pm.expect(d.current.servicePerBooking).to.be.a('number'); });",
-                  "pm.test('payment timing: five groups', () => { pm.expect(d.byPaymentTiming.length).to.eql(5); pm.expect(d.byPaymentTiming[0].key).to.eql('PREPAID'); });"
+                  "pm.test('payment timing: five groups', () => { pm.expect(d.byPaymentTiming.length).to.eql(5); pm.expect(d.byPaymentTiming[0].key).to.eql('PREPAID'); });",
+                  "pm.test('guests counted once, with their average spend', () => { pm.expect(d.current.uniqueGuests).to.be.at.least(1); pm.expect(d.current.uniqueGuests).to.be.at.most(d.current.completedBookings); pm.expect(d.current.revenuePerGuest).to.be.at.least(d.current.averagePerBooking); });"
                 ]
               }
             }

@@ -223,6 +223,8 @@ final class RevenueFigures {
                 .adr(perUnit(roomRevenue, nightsSold))
                 .revpar(perUnit(roomRevenue, availableNights))
                 .averagePerBooking(perUnit(bookingRevenue, completed))
+                .uniqueGuests(guests(rows.bookings()))
+                .revenuePerGuest(perUnit(bookingRevenue, guests(rows.bookings())))
                 .serviceAttachRate(rate(rows.bookingsWithServices(), completed))
                 .servicePerBooking(perUnit(serviceRevenue, completed))
                 .totalBookings(rows.totalBookings())
@@ -1155,6 +1157,15 @@ final class RevenueFigures {
                 rate(late, rows.size()),
                 byGuest,
                 byHotel);
+    }
+
+    /** Distinct guests among the bookings (rows without a guest are left out). */
+    static long guests(List<CompletedBookingRow> bookings) {
+        return bookings.stream()
+                .map(CompletedBookingRow::getCustomerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
     }
 
     /** Same rule as the room-type report: a stay is at least one night. */

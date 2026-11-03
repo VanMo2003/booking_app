@@ -223,7 +223,9 @@ public class ExcelReportServiceImpl implements ExcelReportService {
         r = kpiRow(sheet, r, "Lưu trú trung bình (đêm)", now.getAverageStayNights(), before.getAverageStayNights(), "");
         r = kpiRow(sheet, r, "Đặt trước trung bình (ngày)", now.getAverageLeadDays(), before.getAverageLeadDays(), "");
         r = kpiRow(sheet, r, "Đơn có mua dịch vụ (%)", now.getServiceAttachRate(), before.getServiceAttachRate(), "");
-        kpiRow(sheet, r, "Dịch vụ TB mỗi đơn", now.getServicePerBooking(), before.getServicePerBooking(), "");
+        r = kpiRow(sheet, r, "Dịch vụ TB mỗi đơn", now.getServicePerBooking(), before.getServicePerBooking(), "");
+        r = kpiRow(sheet, r, "Số khách", now.getUniqueGuests(), before.getUniqueGuests(), "");
+        kpiRow(sheet, r, "Chi tiêu TB mỗi khách", now.getRevenuePerGuest(), before.getRevenuePerGuest(), "");
         autoSize(sheet, 4);
     }
 

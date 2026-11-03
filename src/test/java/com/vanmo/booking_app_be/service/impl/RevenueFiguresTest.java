@@ -1029,4 +1029,25 @@ class RevenueFiguresTest {
                         .getShare())
                 .isEqualTo(50.0);
     }
+
+    @Test
+    void revenuePerGuestCountsAGuestWithSeveralStaysOnce() {
+        RevenuePeriodDTO period = RevenueFigures.period(new RevenueFigures.PeriodRows(
+                OCT_1,
+                OCT_1,
+                List.of(bookedBy(1, 1_000_000), bookedBy(1, 500_000), bookedBy(2, 1_500_000)),
+                BigDecimal.ZERO,
+                List.of(),
+                List.of(),
+                10,
+                0,
+                3,
+                0,
+                null,
+                null));
+
+        assertThat(period.getUniqueGuests()).isEqualTo(2);
+        assertThat(period.getRevenuePerGuest()).isEqualByComparingTo("1500000");
+        assertThat(period.getAveragePerBooking()).isEqualByComparingTo("1000000");
+    }
 }

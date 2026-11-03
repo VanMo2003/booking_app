@@ -83,4 +83,9 @@ public class RevenuePeriodDTO {
 
     /** serviceRevenue per completed booking. */
     BigDecimal servicePerBooking;
+
+    /** Distinct guests among the completed bookings, and what they spent each on average (rooms + services). */
+    long uniqueGuests;
+
+    BigDecimal revenuePerGuest;
 }
