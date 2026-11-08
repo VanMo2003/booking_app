@@ -49,6 +49,7 @@ public class SecurityConfig {
         "/vouchers/available",
         "/tours/{id}/rooms/available",
         "/app-links/{target}",
+        "/app-links/tours/{id}",
         "/ai/status"
     };
     private final String[] PUBLIC_ENDPOINT_POST = {

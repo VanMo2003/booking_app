@@ -25,6 +25,11 @@ public final class AppLinks {
         return deepLink("chat/" + conversationId);
     }
 
+    /** Path of a tour's public share page, under the API's public URL. */
+    public static String tourSharePath(Long tourId) {
+        return "/app-links/tours/" + tourId;
+    }
+
     public static String tour(Long tourId) {
         return deepLink("tours/" + tourId);
     }

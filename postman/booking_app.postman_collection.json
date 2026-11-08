@@ -3240,6 +3240,66 @@
           ]
         },
         {
+          "name": "Anonymous opens the tour share page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/app-links/tours/{{tourId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "app-links",
+                "tours",
+                "{{tourId}}"
+              ],
+              "query": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share page of a missing tour -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/app-links/tours/999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "app-links",
+                "tours",
+                "999999999"
+              ],
+              "query": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "POST Tour image upload (manager, multipart - attach a file manually)",
           "request": {
             "method": "POST",
