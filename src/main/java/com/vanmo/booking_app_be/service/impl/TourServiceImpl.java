@@ -24,6 +24,7 @@ import com.vanmo.booking_app_be.dto.response.TourDestinationDTO;
 import com.vanmo.booking_app_be.dto.response.TourHomeResponse;
 import com.vanmo.booking_app_be.dto.response.TourResponse;
 import com.vanmo.booking_app_be.dto.response.TourRoomResponse;
+import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.ItineraryStep;
 import com.vanmo.booking_app_be.entity.Room;
@@ -34,10 +35,12 @@ import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.TourMapper;
+import com.vanmo.booking_app_be.repository.CustomerRepository;
 import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.TourRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.FileStorageService;
+import com.vanmo.booking_app_be.service.NotificationService;
 import com.vanmo.booking_app_be.service.TourService;
 
 import lombok.RequiredArgsConstructor;
@@ -61,6 +64,8 @@ public class TourServiceImpl implements TourService {
     private final TourMapper tourMapper;
     private final FileStorageService fileStorageService;
     private final AccessGuard accessGuard;
+    private final CustomerRepository customerRepository;
+    private final NotificationService notificationService;
 
     @Override
     public TourResponse create(TourCreateRequest req) {
@@ -81,6 +86,7 @@ public class TourServiceImpl implements TourService {
     public TourResponse update(Long id, TourUpdateRequest req) {
         Tour tour = findTour(id);
         accessGuard.requireBranchManagerEditor(tour.getHotel().getId());
+        boolean wasOnSale = TourPricing.onSale(tour, TourPricing.today());
         if (req.getName() != null && req.getName().isBlank()) {
             throw new AppException(ErrorCode.BAD_REQUEST, "name: must not be blank");
         }
@@ -96,7 +102,28 @@ public class TourServiceImpl implements TourService {
         if (req.getRoomIds() != null) {
             setRooms(tour, req.getRoomIds());
         }
-        return toResponse(tourRepository.save(tour));
+        Tour saved = tourRepository.save(tour);
+        if (!wasOnSale && saved.isAvailable() && TourPricing.onSale(saved, TourPricing.today())) {
+            announceSale(saved);
+        }
+        return toResponse(saved);
+    }
+
+    /** Guests whose interests match the tour hear that it just went on sale. */
+    private void announceSale(Tour tour) {
+        if (tour.getThemes() == null || tour.getThemes().isEmpty()) {
+            return;
+        }
+        List<Account> guests = customerRepository.findAccountsInterestedIn(tour.getThemes());
+        if (!guests.isEmpty()) {
+            notificationService.notifyAccounts(
+                    guests,
+                    com.vanmo.booking_app_be.entity.enums.NotificationType.PROMOTION,
+                    com.vanmo.booking_app_be.utils.NotificationMessages.tourOnSale(
+                            tour.getName(), tour.getDestination(), tour.getDiscountPercent()),
+                    com.vanmo.booking_app_be.utils.AppLinks.tour(tour.getId()),
+                    tour.getId());
+        }
     }
 
     /**

@@ -35,7 +35,11 @@ public class TourBookingResponse {
     Long conversationId;
     LocalDate tourDate;
     int guests;
+    int children;
     BigDecimal unitPrice;
+    BigDecimal childUnitPrice;
+    String voucherCode;
+    BigDecimal voucherDiscount;
     BigDecimal tourAmount;
     BigDecimal roomAmount;
     BigDecimal totalAmount;

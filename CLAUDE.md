@@ -136,6 +136,17 @@ removed in the same flush would hit the unique key - Hibernate inserts before de
 `GET /tours/{id}/rooms/available?date=` (`TourBookingService.availableRooms`) applies the hotel-page rule:
 not MAINTENANCE and not in an overlapping PENDING/CONFIRMED booking.
 
+**Orders, vouchers, interests, guest pushes.** An order has `guests` (total) and `children` (≥ 1 adult);
+`unitPrice`/`childUnitPrice` are `TourPricing`'s on the booking day. `voucherCode` goes through
+`VoucherService.reserve` (`VoucherRules`: dates, chain/branch, usage limit, once per guest by default, min
+order) and its discount comes off `tourAmount`, so revenue reports stay net; cancelling releases the use.
+`Voucher` (`vouchers`, unique code, chain-wide or one branch) is written by the chain owner or that branch's
+manager; `GET /vouchers/available` is public, `POST /vouchers/check` previews a discount. A new running voucher
+pushes `PROMOTION` to guests who ordered at the chain; a tour going on sale pushes it to guests whose
+`Customer.interests` (`/customers/me/interests`) share a theme. `TripReminderScheduler` (18:00 Vietnam) sends
+`TRIP_REMINDER` for tomorrow's tours and check-ins; `BookingServiceImpl` sends `BOOKING_UPDATED` when the
+branch confirms or cancels a guest's room booking. Deep links: `AppLinks.tour`, `AppLinks.booking`.
+
 `TourBooking` (`tour_bookings`) is a guest's tour order, paid at the hotel: it copies `tourName` and
 `unitPrice` at booking time and keeps `tour_id` with `ON DELETE SET NULL` (also `conversation_id`,
 `handled_by_account_id`, `booking_id`); hotel and customer cascade. For a tour with rooms the guest must

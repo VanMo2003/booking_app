@@ -51,6 +51,17 @@ public class AccessGuard {
                 .orElseThrow(() -> new AppException(ErrorCode.UN_AUTHENTICATED));
     }
 
+    /** The signed-in account, or null for an anonymous caller (public endpoints that answer more when signed in). */
+    public Account currentAccountOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || authentication instanceof AnonymousAuthenticationToken
+                || !authentication.isAuthenticated()) {
+            return null;
+        }
+        return accountRepository.findByUsername(authentication.getName()).orElse(null);
+    }
+
     public void requireAdmin() {
         if (currentAccount().getRole() != Role.ADMIN) {
             throw new AppException(ErrorCode.UN_AUTHORIZED);

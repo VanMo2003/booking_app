@@ -68,6 +68,28 @@ public class TourBooking {
     @Column(nullable = false)
     int guests;
 
+    /** Of the guests, how many are children (child price); the rest are adults. */
+    @Builder.Default
+    @Column(columnDefinition = "int default 0")
+    int children = 0;
+
+    /** Price per child when the order was placed. */
+    @Column(precision = 12)
+    BigDecimal childUnitPrice;
+
+    /** Voucher used on the order; its use is given back if the order is cancelled. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    Voucher voucher;
+
+    @Column(length = 30)
+    String voucherCode;
+
+    /** Taken off the tour amount by the voucher (tourAmount is after it). */
+    @Column(precision = 14)
+    BigDecimal voucherDiscount;
+
     /** Price per guest when the order was placed. */
     @NotNull
     @Column(nullable = false, precision = 12)

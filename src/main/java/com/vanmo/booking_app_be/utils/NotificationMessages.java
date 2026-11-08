@@ -137,6 +137,43 @@ public final class NotificationMessages {
                         + money(target) + "). Xem báo cáo để có kế hoạch kích cầu.");
     }
 
+    public static Message voucherLaunched(String chainName, String code, String title, LocalDate endsAt) {
+        return new Message(
+                "Mã giảm giá " + code + " · " + chainName,
+                title + ". Dùng khi đặt tour đến hết "
+                        + endsAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + ".");
+    }
+
+    public static Message tourOnSale(String tourName, String destination, int percent) {
+        return new Message(
+                "Giảm " + percent + "% · " + tourName,
+                (destination == null ? "" : destination + " · ") + "Tour hợp sở thích của bạn đang khuyến mãi.");
+    }
+
+    public static Message tourReminder(String tourName, LocalDate tourDate, String departure) {
+        return new Message(
+                "Ngày mai đi tour: " + tourName,
+                "Tour ngày " + tourDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM"))
+                        + (departure == null ? "" : " · khởi hành " + departure) + ". Chúc bạn có chuyến đi vui!");
+    }
+
+    public static Message stayReminder(String hotelName, LocalDate checkin) {
+        return new Message(
+                "Ngày mai nhận phòng · " + hotelName,
+                "Đơn phòng của bạn nhận phòng ngày "
+                        + checkin.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + ". Hẹn gặp bạn!");
+    }
+
+    public static Message bookingConfirmed(Long bookingId, String hotelName) {
+        return new Message("Đơn phòng #" + bookingId + " đã được xác nhận", hotelName + " đã xác nhận đơn của bạn.");
+    }
+
+    public static Message bookingCanceledByHotel(Long bookingId, String hotelName) {
+        return new Message(
+                "Đơn phòng #" + bookingId + " đã bị huỷ",
+                hotelName + " đã huỷ đơn của bạn. Liên hệ khách sạn nếu cần hỗ trợ.");
+    }
+
     /** A guest review low enough to call the guest back. */
     public static Message lowRatingReview(String hotelName, String customerName, int rating, String comments) {
         String said = comments == null || comments.isBlank() ? "" : ": \"" + preview(comments.strip()) + "\"";

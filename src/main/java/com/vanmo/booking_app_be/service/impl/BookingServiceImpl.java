@@ -19,6 +19,7 @@ import com.vanmo.booking_app_be.dto.response.*;
 import com.vanmo.booking_app_be.entity.*;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.ChatSide;
+import com.vanmo.booking_app_be.entity.enums.NotificationType;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.entity.enums.Role;
@@ -30,6 +31,9 @@ import com.vanmo.booking_app_be.mapper.*;
 import com.vanmo.booking_app_be.repository.*;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.BookingService;
+import com.vanmo.booking_app_be.service.NotificationService;
+import com.vanmo.booking_app_be.utils.AppLinks;
+import com.vanmo.booking_app_be.utils.NotificationMessages;
 
 import lombok.RequiredArgsConstructor;
 
@@ -52,6 +56,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRoomRepository bookingRoomRepository;
     private final AccessGuard accessGuard;
     private final TourBookingRepository tourBookingRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -236,6 +241,10 @@ public class BookingServiceImpl implements BookingService {
         }
 
         bookingRepository.saveAndFlush(booking);
+        tellGuest(
+                booking,
+                NotificationMessages.bookingConfirmed(
+                        booking.getId(), booking.getHotel().getName()));
 
         return convertToBookingResponse(booking);
     }
@@ -264,8 +273,27 @@ public class BookingServiceImpl implements BookingService {
         }
 
         bookingRepository.saveAndFlush(booking);
+        if (booking.getCanceledBy() == ChatSide.HOTEL) {
+            tellGuest(
+                    booking,
+                    NotificationMessages.bookingCanceledByHotel(
+                            booking.getId(), booking.getHotel().getName()));
+        }
 
         return convertToBookingResponse(booking);
+    }
+
+    /** The guest hears about what the branch did to their booking (walk-in guests have no account). */
+    private void tellGuest(Booking booking, NotificationMessages.Message message) {
+        if (booking.getCustomer() == null || booking.getCustomer().getAccount() == null) {
+            return;
+        }
+        notificationService.notify(
+                booking.getCustomer().getAccount(),
+                NotificationType.BOOKING_UPDATED,
+                message,
+                AppLinks.booking(booking.getId()),
+                booking.getId());
     }
 
     @Override

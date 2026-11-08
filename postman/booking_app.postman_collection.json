@@ -3191,6 +3191,55 @@
           ]
         },
         {
+          "name": "Manager ends the tour promotion (discountPercent 0)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discountPercent\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data;",
+                  "pm.test('back to the list price', () => { pm.expect(t.onSale).to.eql(false); pm.expect(t.salePrice).to.eql(450000); pm.expect(t.discountPercent).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "POST Tour image upload (manager, multipart - attach a file manually)",
           "request": {
             "method": "POST",
@@ -11327,6 +11376,522 @@
           }
         },
         {
+          "name": "Owner creates a 10% voucher for the chain",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"pm{{runSuffix}}\",\n  \"title\": \"Giam 10% tour\",\n  \"discountType\": \"PERCENT\",\n  \"value\": 10,\n  \"maxDiscount\": 100000,\n  \"startsAt\": \"2026-01-01\",\n  \"endsAt\": \"2027-12-31\",\n  \"usageLimit\": 5,\n  \"hotelChainId\": {{chainId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const v = pm.response.json().data;",
+                  "pm.collectionVariables.set('voucherId', v.id);",
+                  "pm.collectionVariables.set('voucherCode', v.code);",
+                  "pm.test('code upper-cased, chain-wide, unused', () => { pm.expect(v.code).to.include('PM'); pm.expect(v.usedCount).to.eql(0); pm.expect(v.hotelId).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff creates a voucher -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"staff{{runSuffix}}\",\n  \"title\": \"x\",\n  \"discountType\": \"AMOUNT\",\n  \"value\": 1000,\n  \"startsAt\": \"2026-01-01\",\n  \"endsAt\": \"2026-12-31\",\n  \"hotelId\": {{hotelId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Anonymous lists the vouchers usable at the branch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/available?hotelId={{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "available"
+              ],
+              "query": [
+                {
+                  "key": "hotelId",
+                  "value": "{{hotelId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the chain voucher is usable here', () => pm.expect(pm.response.json().data.some(h => h.id === Number(pm.collectionVariables.get('voucherId')))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cust_one checks the voucher for 1 adult + 1 child",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{custOneToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "check"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{voucherCode}}\",\n  \"tourId\": {{tourId}},\n  \"guests\": 2,\n  \"children\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().data;",
+                  "pm.test('450.000 + 200.000 child = 650.000, 10% off = 65.000', () => { pm.expect(c.valid).to.eql(true); pm.expect(c.tourAmount).to.eql(650000); pm.expect(c.discount).to.eql(65000); pm.expect(c.finalAmount).to.eql(585000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cust_one books 1 adult + 1 child with the voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{custOneToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tour-bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tour-bookings"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate3}}\",\n  \"guests\": 2,\n  \"children\": 1,\n  \"roomIds\": [\n    {{roomId}}\n  ],\n  \"voucherCode\": \"{{voucherCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('tourDate3', new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json().data;",
+                  "pm.collectionVariables.set('voucherTourBookingId', b.id);",
+                  "pm.collectionVariables.set('voucherRoomBookingId', b.bookingId);",
+                  "pm.test('child priced apart, voucher taken off the tour amount', () => { pm.expect(b.children).to.eql(1); pm.expect(b.childUnitPrice).to.eql(200000); pm.expect(b.voucherDiscount).to.eql(65000); pm.expect(b.tourAmount).to.eql(585000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cust_one uses the same voucher twice -> 400 (1020)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{custOneToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tour-bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tour-bookings"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tourId\": {{tourId}},\n  \"tourDate\": \"{{tourDate4}}\",\n  \"guests\": 1,\n  \"roomIds\": [\n    {{roomId}}\n  ],\n  \"voucherCode\": \"{{voucherCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('tourDate4', new Date(Date.now() + 16 * 864e5).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('one use per guest', () => pm.expect(pm.response.json().message).to.include('đã dùng'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cust_one cancels the voucher order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{custOneToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tour-bookings/{{voucherTourBookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tour-bookings",
+                "{{voucherTourBookingId}}",
+                "cancel"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner sees the voucher's use given back",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vouchers?hotelChainId={{chainId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers"
+              ],
+              "query": [
+                {
+                  "key": "hotelChainId",
+                  "value": "{{chainId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json().data;",
+                  "pm.test('used count back to 0 after the cancel', () => { pm.expect(list.length).to.be.at.least(1); pm.expect(list[0].usedCount).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cust_one saves travel interests",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{custOneToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers/me/interests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers",
+                "me",
+                "interests"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interests\": [\n    \"FOOD\",\n    \"BEACH\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('both kept', () => pm.expect(pm.response.json().data.length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cust_one reads travel interests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{custOneToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers/me/interests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers",
+                "me",
+                "interests"
+              ],
+              "query": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('FOOD is there', () => pm.expect(pm.response.json().data).to.include('FOOD'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff saves travel interests -> 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers/me/interests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers",
+                "me",
+                "interests"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interests\": [\n    \"FOOD\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "cust_one books on behalf of cust_two -> 403",
           "event": [
             {
@@ -12897,6 +13462,28 @@
               "path": [
                 "bookings",
                 "{{tourRoomBookingId2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete voucher tour room booking",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{voucherRoomBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{voucherRoomBookingId}}"
               ]
             }
           }

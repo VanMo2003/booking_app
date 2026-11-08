@@ -32,4 +32,11 @@ public class TourBookingCreateRequest {
 
     /** Rooms of the tour package for the stay; required when the tour comes with rooms. */
     Set<Long> roomIds;
+
+    /** Of the guests, how many are children; 0 when left out. */
+    @Min(0)
+    Integer children;
+
+    @Size(max = 30)
+    String voucherCode;
 }

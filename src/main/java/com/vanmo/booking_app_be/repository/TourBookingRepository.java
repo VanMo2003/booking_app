@@ -17,6 +17,7 @@ import com.vanmo.booking_app_be.dto.response.GuestOriginRow;
 import com.vanmo.booking_app_be.dto.response.StaffTourRow;
 import com.vanmo.booking_app_be.dto.response.TourSaleRow;
 import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
+import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.TourBooking;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 
@@ -34,6 +35,17 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
             Long customerId, Long tourId, LocalDate tourDate, Collection<TourBookingStatus> statuses);
 
     Optional<TourBooking> findFirstByBooking_IdAndStatusIn(Long bookingId, Collection<TourBookingStatus> statuses);
+
+    List<TourBooking> findAllByTourDateAndStatusIn(LocalDate tourDate, Collection<TourBookingStatus> statuses);
+
+    long countByCustomer_IdAndVoucher_IdAndStatusIn(
+            Long customerId, Long voucherId, Collection<TourBookingStatus> statuses);
+
+    /** Accounts of the guests who ordered a tour or booked a room at the chain - who hears about its vouchers. */
+    @Query("select distinct a from Customer c join c.account a where c.id in ("
+            + "select t.customer.id from TourBooking t where t.hotel.hotelChain.id = :chainId) "
+            + "or c.id in (select b.customer.id from Booking b where b.hotel.hotelChain.id = :chainId)")
+    List<Account> findCustomerAccountsOfChain(@Param("chainId") Long chainId);
 
     /** Seats already taken on one departure. */
     @Query("select coalesce(sum(b.guests), 0) from TourBooking b "

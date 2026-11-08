@@ -1,6 +1,7 @@
 package com.vanmo.booking_app_be.controller;
 
 import java.util.List;
+import java.util.Set;
 
 import jakarta.validation.Valid;
 
@@ -10,9 +11,12 @@ import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.CustomerCreateRequest;
 import com.vanmo.booking_app_be.dto.request.CustomerLinkByPhoneRequest;
 import com.vanmo.booking_app_be.dto.request.CustomerUpdateRequest;
+import com.vanmo.booking_app_be.dto.request.InterestsRequest;
 import com.vanmo.booking_app_be.dto.response.CustomerResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.entity.enums.TravelTheme;
 import com.vanmo.booking_app_be.service.CustomerService;
+import com.vanmo.booking_app_be.service.InterestService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +26,19 @@ import lombok.RequiredArgsConstructor;
 public class CustomerController {
 
     private final CustomerService customerService;
+
+    private final InterestService interestService;
+
+    /** The signed-in guest's travel interests (needs a customer profile). */
+    @GetMapping("/me/interests")
+    public ApiResponse<Set<TravelTheme>> myInterests() {
+        return ApiResponse.ok(interestService.mine());
+    }
+
+    @PutMapping("/me/interests")
+    public ApiResponse<Set<TravelTheme>> replaceInterests(@Valid @RequestBody InterestsRequest req) {
+        return ApiResponse.ok(interestService.replace(req.getInterests()));
+    }
 
     @GetMapping("/by-hotel")
     public ApiResponse<List<CustomerResponse>> getAllByHotel(@RequestParam Long hotelId) {

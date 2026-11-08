@@ -264,6 +264,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
+    /** Bookings checking in on a day, in one of the statuses - for the evening reminder. */
+    List<Booking> findAllByCheckinDateAndBookingStatusIn(LocalDate checkinDate, Collection<BookingStatus> statuses);
+
     /** Bookings in a status checking out during [from, to], with when their payment was recorded. */
     @Query(
             """

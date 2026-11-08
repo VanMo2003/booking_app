@@ -32,6 +32,7 @@ import com.vanmo.booking_app_be.entity.Room;
 import com.vanmo.booking_app_be.entity.Tour;
 import com.vanmo.booking_app_be.entity.TourBooking;
 import com.vanmo.booking_app_be.entity.TourRoom;
+import com.vanmo.booking_app_be.entity.Voucher;
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
 import com.vanmo.booking_app_be.entity.enums.ChatSide;
 import com.vanmo.booking_app_be.entity.enums.NotificationType;
@@ -53,6 +54,7 @@ import com.vanmo.booking_app_be.repository.TourRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.NotificationService;
 import com.vanmo.booking_app_be.service.TourBookingService;
+import com.vanmo.booking_app_be.service.VoucherService;
 import com.vanmo.booking_app_be.utils.AppLinks;
 import com.vanmo.booking_app_be.utils.NotificationMessages;
 
@@ -82,13 +84,24 @@ public class TourBookingServiceImpl implements TourBookingService {
     private final ConversationRepository conversationRepository;
     private final TourBookingMapper tourBookingMapper;
     private final NotificationService notificationService;
+    private final VoucherService voucherService;
     private final AccessGuard accessGuard;
 
     @Override
     public TourBookingResponse create(TourBookingCreateRequest req) {
         Customer customer = currentCustomer();
         Tour tour = tourRepository.findById(req.getTourId()).orElseThrow(() -> invalid("Không tìm thấy tour này."));
-        return place(tour, customer, null, req.getTourDate(), req.getGuests(), req.getRoomIds(), req.getNote(), false)
+        return place(
+                        tour,
+                        customer,
+                        null,
+                        req.getTourDate(),
+                        req.getGuests(),
+                        req.getChildren() == null ? 0 : req.getChildren(),
+                        req.getVoucherCode(),
+                        req.getRoomIds(),
+                        req.getNote(),
+                        false)
                 .booking();
     }
 
@@ -109,6 +122,8 @@ public class TourBookingServiceImpl implements TourBookingService {
                 conversation,
                 tourDate,
                 guests,
+                0,
+                null,
                 roomIdsByNumber(tour, roomNumbers),
                 note,
                 true);
@@ -150,6 +165,8 @@ public class TourBookingServiceImpl implements TourBookingService {
             Conversation conversation,
             LocalDate tourDate,
             int guests,
+            int children,
+            String voucherCode,
             Collection<Long> roomIds,
             String note,
             boolean byAi) {
@@ -166,6 +183,9 @@ public class TourBookingServiceImpl implements TourBookingService {
         }
         if (guests < 1 || guests > MAX_GUESTS_PER_ORDER) {
             throw invalid("Số khách mỗi đơn từ 1 đến " + MAX_GUESTS_PER_ORDER + ".");
+        }
+        if (children < 0 || children >= guests) {
+            throw invalid("Mỗi đơn cần ít nhất 1 người lớn.");
         }
 
         // Same guest, tour and day: the order is already there (the guest said "đồng ý" twice).
@@ -196,7 +216,14 @@ public class TourBookingServiceImpl implements TourBookingService {
 
         Stay stay = Stay.of(tour, tourDate);
         List<Room> rooms = chooseRooms(tour, stay, chosen, guests);
-        BigDecimal tourAmount = tour.getPrice().multiply(BigDecimal.valueOf(guests));
+        TourPricing.Price price = TourPricing.of(tour, TourPricing.today());
+        BigDecimal grossTourAmount = VoucherServiceImpl.tourAmount(tour, guests - children, children);
+        Voucher voucher = voucherCode == null || voucherCode.isBlank()
+                ? null
+                : voucherService.reserve(voucherCode, customer, tour.getHotel(), grossTourAmount);
+        BigDecimal voucherDiscount =
+                voucher == null ? BigDecimal.ZERO : VoucherRules.discount(voucher, grossTourAmount);
+        BigDecimal tourAmount = grossTourAmount.subtract(voucherDiscount);
         BigDecimal roomAmount = rooms.stream()
                 .map(Room::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
@@ -210,7 +237,12 @@ public class TourBookingServiceImpl implements TourBookingService {
                 .conversation(conversation)
                 .tourDate(tourDate)
                 .guests(guests)
-                .unitPrice(tour.getPrice())
+                .children(children)
+                .unitPrice(price.adult())
+                .childUnitPrice(children > 0 ? price.child() : null)
+                .voucher(voucher)
+                .voucherCode(voucher == null ? null : voucher.getCode())
+                .voucherDiscount(voucher == null ? null : voucherDiscount)
                 .tourAmount(tourAmount)
                 .roomAmount(roomAmount)
                 .totalAmount(tourAmount.add(roomAmount))
@@ -320,6 +352,7 @@ public class TourBookingServiceImpl implements TourBookingService {
         }
         booking.setStatus(TourBookingStatus.CANCELED);
         booking.setCancelReason(why);
+        voucherService.release(booking.getVoucher());
         booking.setCanceledBy(byGuest ? ChatSide.CUSTOMER : ChatSide.HOTEL);
         if (!byGuest) {
             booking.setHandledBy(caller);
