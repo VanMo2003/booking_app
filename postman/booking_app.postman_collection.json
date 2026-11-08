@@ -2964,6 +2964,233 @@
           ]
         },
         {
+          "name": "Manager adds destination, themes, itinerary, child price and a promotion",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tours/{{tourId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "{{tourId}}"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"Pho co Postman {{runSuffix}}\",\n  \"themes\": [\n    \"FOOD\",\n    \"CITY\"\n  ],\n  \"itinerary\": [\n    {\n      \"time\": \"18:00\",\n      \"title\": \"Gap huong dan vien\",\n      \"description\": \"Tai sanh khach san\"\n    },\n    {\n      \"time\": \"18:30\",\n      \"title\": \"Bun cha pho co\"\n    }\n  ],\n  \"childPrice\": 200000,\n  \"cancellationPolicy\": \"Huy mien phi truoc 24 gio\",\n  \"featured\": true,\n  \"discountPercent\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data;",
+                  "pm.test('destination, themes and a 2-step itinerary saved', () => { pm.expect(t.destination).to.include('Pho co Postman'); pm.expect(t.themes.length).to.eql(2); pm.expect(t.itinerary.length).to.eql(2); pm.expect(t.itinerary[0].title).to.eql('Gap huong dan vien'); });",
+                  "pm.test('20% off: 450.000 -> 360.000 per adult, 200.000 -> 160.000 per child', () => { pm.expect(t.onSale).to.eql(true); pm.expect(t.salePrice).to.eql(360000); pm.expect(t.saleChildPrice).to.eql(160000); pm.expect(t.featured).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Anonymous searches tours by destination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours/search?q=Pho co Postman {{runSuffix}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Pho co Postman {{runSuffix}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().data;",
+                  "pm.test('finds the branch tour by its destination', () => { pm.expect(r.content.length).to.eql(1); pm.expect(r.content[0].hotelName).to.be.a('string'); });",
+                  "pm.test('it is our tour', () => pm.expect(r.content.some(h => h.id === Number(pm.collectionVariables.get('tourId')))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Anonymous filters tours by theme",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours/search?theme=FOOD&size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "theme",
+                  "value": "FOOD"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().data;",
+                  "pm.test('the FOOD tour is listed', () => pm.expect(r.content.some(h => h.id === Number(pm.collectionVariables.get('tourId')))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Anonymous lists tour destinations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours/destinations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "destinations"
+              ],
+              "query": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('at least the one of this run', () => pm.expect(pm.response.json().data.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Anonymous home screen with interests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours/home?interests=FOOD,CITY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "home"
+              ],
+              "query": [
+                {
+                  "key": "interests",
+                  "value": "FOOD,CITY"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const home = pm.response.json().data;",
+                  "pm.test('featured, on sale and picked for FOOD/CITY', () => { pm.expect(home.featured.some(h => h.id === Number(pm.collectionVariables.get('tourId')))).to.eql(true); pm.expect(home.deals.some(h => h.id === Number(pm.collectionVariables.get('tourId')))).to.eql(true); pm.expect(home.forYou.some(h => h.id === Number(pm.collectionVariables.get('tourId')))).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tour search rejects an unknown theme -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tours/search?theme=SPACE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tours",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "theme",
+                  "value": "SPACE"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "POST Tour image upload (manager, multipart - attach a file manually)",
           "request": {
             "method": "POST",

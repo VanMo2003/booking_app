@@ -120,6 +120,15 @@ exactly: `Hotel.tours` cascade + orphanRemoval, `TourController` (`/tours`) publ
 blank string clears a text field or the photo (`TourServiceImpl.blankToNull`). The list sorts
 available tours first, then price, then name.
 
+Tours also carry what guests browse by: `destination` (free text, what the public search matches), `themes`
+(`TravelTheme`, element collection `tour_themes`), an ordered `itinerary` (`ItineraryStep` embeddables in
+`tour_itinerary`), `childPrice` (null = adult price), `cancellationPolicy`, `featured`, and a promotion
+(`discountPercent` 1-90 until `promotionEndsAt`; 0 switches it off). `TourPricing` is the one place a day's
+price is worked out (Vietnam date); `TourResponse` carries `onSale`/`salePrice`/`saleChildPrice`. Public
+`GET /tours/search` (q over name/destination/branch address - MySQL's collation ignores accents -, theme,
+maxPrice, paged), `/tours/destinations` and `/tours/home?interests=` (`TourDiscovery`: featured, deals,
+forYou) only list available tours of active branches.
+
 A tour is sold as a **tour + stay package**: `TourRoom` (`tour_rooms`, unique tour/room, both FKs
 `ON DELETE CASCADE`) lists the branch rooms the package uses and `Tour.stayNights` (column default 1) the
 nights from the tour date. `TourServiceImpl.setRooms` writes only the difference (re-inserting a pair

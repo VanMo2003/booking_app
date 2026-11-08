@@ -15,6 +15,9 @@ public interface TourMapper {
     @Mapping(target = "onUpdate", ignore = true)
     @Mapping(target = "tourRooms", ignore = true)
     @Mapping(target = "stayNights", ignore = true)
+    @Mapping(target = "themes", ignore = true)
+    @Mapping(target = "itinerary", ignore = true)
+    @Mapping(target = "featured", ignore = true)
     Tour toEntity(TourCreateRequest req);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -23,9 +26,18 @@ public interface TourMapper {
     @Mapping(target = "onCreate", ignore = true)
     @Mapping(target = "onUpdate", ignore = true)
     @Mapping(target = "tourRooms", ignore = true)
+    @Mapping(target = "themes", ignore = true)
+    @Mapping(target = "itinerary", ignore = true)
+    @Mapping(target = "featured", ignore = true)
     void updateEntity(@MappingTarget Tour entity, TourUpdateRequest req);
 
     @Mapping(source = "hotel.id", target = "hotelId")
+    @Mapping(source = "hotel.name", target = "hotelName")
+    @Mapping(source = "hotel.address", target = "hotelAddress")
     @Mapping(target = "rooms", ignore = true)
+    @Mapping(target = "itinerary", ignore = true)
+    @Mapping(target = "onSale", ignore = true)
+    @Mapping(target = "salePrice", ignore = true)
+    @Mapping(target = "saleChildPrice", ignore = true)
     TourResponse toResponse(Tour entity);
 }

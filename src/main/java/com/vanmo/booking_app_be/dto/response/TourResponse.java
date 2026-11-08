@@ -1,10 +1,14 @@
 package com.vanmo.booking_app_be.dto.response;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.vanmo.booking_app_be.dto.request.ItineraryStepRequest;
+import com.vanmo.booking_app_be.entity.enums.TravelTheme;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -32,6 +36,23 @@ public class TourResponse {
     List<TourRoomResponse> rooms;
 
     Long hotelId;
+    String hotelName;
+    String hotelAddress;
+    String destination;
+    Set<TravelTheme> themes;
+    List<ItineraryStepRequest> itinerary;
+    /** Null = children pay the adult price. */
+    BigDecimal childPrice;
+
+    String cancellationPolicy;
+    boolean featured;
+    Integer discountPercent;
+    LocalDate promotionEndsAt;
+    /** The promotion is running today: salePrice / saleChildPrice are what a guest pays. */
+    boolean onSale;
+
+    BigDecimal salePrice;
+    BigDecimal saleChildPrice;
     Date onCreate;
     Date onUpdate;
 }

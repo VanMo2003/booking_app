@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
@@ -30,6 +31,15 @@ public class GlobalExceptionHandler {
                 .map(err -> err.getField() + ": " + err.getDefaultMessage())
                 .orElse("Validation error");
         return ResponseEntity.badRequest().body(ApiResponse.fail(msg, 402));
+    }
+
+    /** A query or path parameter of the wrong type, e.g. an unknown enum value: the caller's mistake, not a 500. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(
+                        ex.getName() + ": giá trị không hợp lệ '" + ex.getValue() + "'",
+                        ErrorCode.BAD_REQUEST.getCode()));
     }
 
     @ExceptionHandler(Exception.class)

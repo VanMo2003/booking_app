@@ -1,7 +1,9 @@
 package com.vanmo.booking_app_be.controller;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.validation.Valid;
 
@@ -14,8 +16,12 @@ import org.springframework.web.multipart.MultipartFile;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.TourCreateRequest;
 import com.vanmo.booking_app_be.dto.request.TourUpdateRequest;
+import com.vanmo.booking_app_be.dto.response.PageResponse;
+import com.vanmo.booking_app_be.dto.response.TourDestinationDTO;
+import com.vanmo.booking_app_be.dto.response.TourHomeResponse;
 import com.vanmo.booking_app_be.dto.response.TourResponse;
 import com.vanmo.booking_app_be.dto.response.TourRoomAvailabilityResponse;
+import com.vanmo.booking_app_be.entity.enums.TravelTheme;
 import com.vanmo.booking_app_be.service.TourBookingService;
 import com.vanmo.booking_app_be.service.TourService;
 
@@ -48,6 +54,28 @@ public class TourController {
     @PreAuthorize(TOUR_EDITORS)
     public ApiResponse<TourResponse> uploadImage(@PathVariable Long id, @RequestPart("file") MultipartFile file) {
         return ApiResponse.ok(tourService.uploadImage(id, file));
+    }
+
+    /** Public: tours across every open branch, by text (name, destination, address), theme and price. */
+    @GetMapping("/search")
+    public ApiResponse<PageResponse<TourResponse>> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) TravelTheme theme,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(tourService.search(q, theme, maxPrice, page, size));
+    }
+
+    @GetMapping("/destinations")
+    public ApiResponse<List<TourDestinationDTO>> destinations() {
+        return ApiResponse.ok(tourService.destinations());
+    }
+
+    /** Public: the guests' home screen; {@code interests} = the themes the guest picked, comma separated. */
+    @GetMapping("/home")
+    public ApiResponse<TourHomeResponse> home(@RequestParam(required = false) Set<TravelTheme> interests) {
+        return ApiResponse.ok(tourService.home(interests == null ? Set.of() : interests));
     }
 
     @GetMapping("/{id}")

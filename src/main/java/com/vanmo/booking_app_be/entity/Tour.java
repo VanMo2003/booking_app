@@ -1,8 +1,11 @@
 package com.vanmo.booking_app_be.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import jakarta.persistence.*;
@@ -10,6 +13,8 @@ import jakarta.validation.constraints.NotNull;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import com.vanmo.booking_app_be.entity.enums.TravelTheme;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -54,6 +59,41 @@ public class Tour {
     /** What the price covers: transport, tickets, guide, meals… */
     @Column(length = 1000)
     String includes;
+
+    /** Where the tour goes, as guests search for it: "Hạ Long, Quảng Ninh", "Sa Pa, Lào Cai". */
+    @Column(length = 255)
+    String destination;
+
+    /** What the tour is about; matched against a guest's interests for suggestions. */
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "tour_themes", joinColumns = @JoinColumn(name = "tour_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "theme", length = 20)
+    Set<TravelTheme> themes = new HashSet<>();
+
+    /** The programme, in order, shown as a timeline. */
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "tour_itinerary", joinColumns = @JoinColumn(name = "tour_id"))
+    @OrderColumn(name = "step_order")
+    List<ItineraryStep> itinerary = new ArrayList<>();
+
+    /** Per child (under 12); null = children pay the adult price. */
+    @Column(precision = 12)
+    BigDecimal childPrice;
+
+    @Column(length = 2000)
+    String cancellationPolicy;
+
+    /** Shown first on the guests' home screen. */
+    @Builder.Default
+    boolean featured = false;
+
+    /** Promotion: percent off the tour price (1-90), until the end date (null = until switched off). */
+    Integer discountPercent;
+
+    LocalDate promotionEndsAt;
 
     /** Seats per departure, shared by every open order that day; null = not limited. */
     Integer maxGuests;
