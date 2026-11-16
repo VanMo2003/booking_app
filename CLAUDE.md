@@ -369,6 +369,16 @@ Two features, both grounded in database data rather than model knowledge:
   rules forbid prices and invented partners; nothing is written to a tour, the app only fills the form. `prompt`
   and `response` are pure (`TourDraftWriterTest`).
 
+- **Report analyst** (`AiReportAnalyst`, `POST /ai/reports/ask` with exactly one of `hotelId` / `hotelChainId`):
+  "Doanh thu tháng này so với tháng trước thế nào?" answered from the branch's or chain's own figures. Two model
+  calls and no model arithmetic: the fast model only reads the period out of the question
+  (`set_report_question`), the backend then calls the ordinary `ReportService` (`getRevenueSummary`,
+  `getRevenueByTour`, `getBranchPerformanceForChain`, `getRevenueOutlook`) - so the report guards apply and the
+  numbers match the report screens - and the assistant model writes the answer from `brief`, a plain-text block of
+  those figures, into `set_report_answer` (answer, highlights, suggestions). The KPIs travel back with the answer so
+  every claim can be checked. `period`, `brief`, `money` and `number` are pure (`AiReportAnalystTest`); the period
+  defaults to this month to date and is clamped to today and to `MAX_DAYS`.
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

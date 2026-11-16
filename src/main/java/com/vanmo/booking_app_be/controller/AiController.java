@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.ai.AiClient;
+import com.vanmo.booking_app_be.ai.AiReportAnalyst;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
 import com.vanmo.booking_app_be.ai.AiTripPlanner;
@@ -17,9 +18,11 @@ import com.vanmo.booking_app_be.ai.ReviewDigest;
 import com.vanmo.booking_app_be.ai.TourDraftWriter;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
+import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
+import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourDraftResponse;
@@ -45,6 +48,7 @@ public class AiController {
     private final AiTripPlanner aiTripPlanner;
     private final ReviewDigest reviewDigest;
     private final TourDraftWriter tourDraftWriter;
+    private final AiReportAnalyst aiReportAnalyst;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -93,6 +97,15 @@ public class AiController {
     @PostMapping("/tours/draft")
     public ApiResponse<AiTourDraftResponse> draftTour(@Valid @RequestBody AiTourDraftRequest req) {
         return ApiResponse.ok(tourDraftWriter.draft(req));
+    }
+
+    /**
+     * Branch manager (hotelId) or chain owner (hotelChainId): a question about the numbers, answered from the same
+     * report figures the report screens show - the access checks are the report service's own.
+     */
+    @PostMapping("/reports/ask")
+    public ApiResponse<AiReportAnswerResponse> askReports(@Valid @RequestBody AiReportQuestionRequest req) {
+        return ApiResponse.ok(aiReportAnalyst.ask(req));
     }
 
     /** Branch team: a draft reply to review and send (nothing reaches the guest). */
