@@ -361,6 +361,14 @@ Two features, both grounded in database data rather than model knowledge:
   `available = false` and the app hides the card; a model failure falls back to the stored text instead of failing
   the page. `stats`, `prompt` and `split` are unit-tested (`ReviewDigestTest`).
 
+- **Tour draft writer** (`TourDraftWriter`, `POST /ai/tours/draft`, owner/manager via
+  `AccessGuard.requireBranchManagerEditor`): the only AI feature that writes rather than reads the database. From
+  the few words a manager typed (name, destination, duration, departure, themes, notes) the assistant model fills
+  `set_tour_draft` with the tour's long fields - description, `includes`, cancellation terms and an itinerary that
+  matches the duration - and the branch's own name/address/category go in so the text fits the real place. The
+  rules forbid prices and invented partners; nothing is written to a tour, the app only fills the form. `prompt`
+  and `response` are pure (`TourDraftWriterTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

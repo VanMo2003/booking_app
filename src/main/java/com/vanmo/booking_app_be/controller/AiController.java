@@ -14,12 +14,15 @@ import com.vanmo.booking_app_be.ai.AiTourSearch;
 import com.vanmo.booking_app_be.ai.AiTripPlanner;
 import com.vanmo.booking_app_be.ai.ChatAssistant;
 import com.vanmo.booking_app_be.ai.ReviewDigest;
+import com.vanmo.booking_app_be.ai.TourDraftWriter;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
+import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
+import com.vanmo.booking_app_be.dto.response.AiTourDraftResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiTripPlanResponse;
 import com.vanmo.booking_app_be.dto.response.ReviewDigestResponse;
@@ -41,6 +44,7 @@ public class AiController {
     private final AiTourSearch aiTourSearch;
     private final AiTripPlanner aiTripPlanner;
     private final ReviewDigest reviewDigest;
+    private final TourDraftWriter tourDraftWriter;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -83,6 +87,12 @@ public class AiController {
     @GetMapping("/hotels/{hotelId}/review-digest")
     public ApiResponse<ReviewDigestResponse> reviewDigest(@PathVariable Long hotelId) {
         return ApiResponse.ok(reviewDigest.of(hotelId));
+    }
+
+    /** Branch owner or manager: the long fields of a tour drafted from a few words, to edit and save. */
+    @PostMapping("/tours/draft")
+    public ApiResponse<AiTourDraftResponse> draftTour(@Valid @RequestBody AiTourDraftRequest req) {
+        return ApiResponse.ok(tourDraftWriter.draft(req));
     }
 
     /** Branch team: a draft reply to review and send (nothing reaches the guest). */
