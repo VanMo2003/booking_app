@@ -379,6 +379,15 @@ Two features, both grounded in database data rather than model knowledge:
   every claim can be checked. `period`, `brief`, `money` and `number` are pure (`AiReportAnalystTest`); the period
   defaults to this month to date and is clamped to today and to `MAX_DAYS`.
 
+- **Pricing advisor** (`AiPricingAdvisor`, `GET /ai/branches/{hotelId}/pricing-advice`, branch manager or above
+  through the report service's guards): per room type, whether to raise, hold or lower the price. The brief is the
+  branch's last `HISTORY_DAYS` (30): the revenue summary, `getRevenueByRoomType` (list price vs real ADR and
+  occupancy), the weekday pattern and what is already booked for the next `OUTLOOK_DAYS`. The model answers
+  `set_pricing_advice` with a direction and a percentage; `build` drops room types that do not exist, clamps the
+  percentage to `MAX_PERCENT`, lists every untouched type as HOLD and works the suggested price out from the list
+  price itself (nearest thousand đồng), so no figure is the model's arithmetic. Nothing changes a room's price.
+  `brief`, `build`, `percent`, `action` and `suggestedPrice` are pure (`AiPricingAdvisorTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

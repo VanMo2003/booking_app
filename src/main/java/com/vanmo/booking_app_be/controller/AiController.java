@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.ai.AiClient;
+import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
@@ -22,6 +23,7 @@ import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
+import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
@@ -49,6 +51,7 @@ public class AiController {
     private final ReviewDigest reviewDigest;
     private final TourDraftWriter tourDraftWriter;
     private final AiReportAnalyst aiReportAnalyst;
+    private final AiPricingAdvisor aiPricingAdvisor;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -106,6 +109,15 @@ public class AiController {
     @PostMapping("/reports/ask")
     public ApiResponse<AiReportAnswerResponse> askReports(@Valid @RequestBody AiReportQuestionRequest req) {
         return ApiResponse.ok(aiReportAnalyst.ask(req));
+    }
+
+    /**
+     * Branch manager or above: what to do with the branch's room prices, per room type, from its own figures. The
+     * report service's guards apply; nothing changes a price.
+     */
+    @GetMapping("/branches/{hotelId}/pricing-advice")
+    public ApiResponse<AiPricingAdviceResponse> pricingAdvice(@PathVariable Long hotelId) {
+        return ApiResponse.ok(aiPricingAdvisor.advise(hotelId));
     }
 
     /** Branch team: a draft reply to review and send (nothing reaches the guest). */

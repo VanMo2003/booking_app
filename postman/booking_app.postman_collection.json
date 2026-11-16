@@ -7131,6 +7131,85 @@
           ]
         },
         {
+          "name": "AI: manager asks for pricing advice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/branches/{{hotelId}}/pricing-advice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "branches",
+                "{{hotelId}}",
+                "pricing-advice"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 503 when the server has no AI key', () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('every suggestion names a real room type and a known action', () => data.items.forEach(i => {",
+                  "        pm.expect(i.roomTypeName).to.be.a('string');",
+                  "        pm.expect(['RAISE','HOLD','LOWER']).to.include(i.action);",
+                  "    }));",
+                  "    pm.test('a price move stays within 30%', () => data.items.filter(i => i.percent).forEach(i => pm.expect(i.percent).to.be.at.most(30)));",
+                  "    pm.test('HOLD suggests no new price', () => data.items.filter(i => i.action === 'HOLD').forEach(i => pm.expect(i.suggestedPrice).to.be.undefined));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: staff cannot ask for pricing advice -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/branches/{{hotelId}}/pricing-advice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "branches",
+                "{{hotelId}}",
+                "pricing-advice"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: staff asks for a reply suggestion (nothing is sent)",
           "request": {
             "method": "POST",
