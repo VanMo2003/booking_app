@@ -436,6 +436,17 @@ Two features, both grounded in database data rather than model knowledge:
   no tours) passes rather than nagging. `checks`, `score`, `prompt`, `build` and `priority` are pure
   (`AiContentAuditTest`).
 
+- **Daily brief** (`AiDailyBrief`, `GET /ai/branches/{hotelId}/daily-brief`, branch manager or above): "việc hôm
+  nay" - arrivals and departures of the day, orders still waiting to be confirmed (URGENT once one has waited over
+  `STALE_PENDING_HOURS`), tours leaving today and tomorrow with their head count, unread chat and handed-off threads,
+  reviews of `LOW_RATING` stars or fewer in the last `REVIEW_DAYS`, money uncollected (URGENT past
+  `RECEIVABLE_OVERDUE_DAYS`), rooms in maintenance, and the month's target measured against the calendar rather than
+  against 100 (`TARGET_GAP_POINTS`). Every signal and its URGENT/WATCH/QUIET level is counted in `signals`, so the
+  endpoint still answers without an API key; the model only orders them and writes a line each, and `build` drops a
+  task pointing at a QUIET signal, a repeated one or a key nobody counted. `getTargetProgress` and `getReceivables`
+  come from `ReportService`, so the brief can never disagree with the report screens. `signals`, `targetSignal`,
+  `prompt` and `build` are pure (`AiDailyBriefTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

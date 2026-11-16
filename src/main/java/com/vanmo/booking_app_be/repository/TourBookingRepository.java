@@ -38,6 +38,10 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
 
     List<TourBooking> findAllByTourDateAndStatusIn(LocalDate tourDate, Collection<TourBookingStatus> statuses);
 
+    /** One branch's departures over a few days - what the desk has to get on the road. */
+    List<TourBooking> findAllByHotel_IdAndTourDateInAndStatusIn(
+            Long hotelId, Collection<LocalDate> tourDates, Collection<TourBookingStatus> statuses);
+
     long countByCustomer_IdAndVoucher_IdAndStatusIn(
             Long customerId, Long voucherId, Collection<TourBookingStatus> statuses);
 

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
+import com.vanmo.booking_app_be.ai.AiDailyBrief;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
@@ -30,6 +31,7 @@ import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
+import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
@@ -66,6 +68,7 @@ public class AiController {
     private final ChatSummarizer chatSummarizer;
     private final AiReviewThemes aiReviewThemes;
     private final AiContentAudit aiContentAudit;
+    private final AiDailyBrief aiDailyBrief;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -153,6 +156,15 @@ public class AiController {
     @GetMapping("/branches/{hotelId}/content-audit")
     public ApiResponse<AiContentAuditResponse> contentAudit(@PathVariable Long hotelId) {
         return ApiResponse.ok(aiContentAudit.of(hotelId));
+    }
+
+    /**
+     * Branch manager or above: what the branch has to deal with today. Every figure is counted from its own rows;
+     * the assistant only puts them in order and says what to do first.
+     */
+    @GetMapping("/branches/{hotelId}/daily-brief")
+    public ApiResponse<AiDailyBriefResponse> dailyBrief(@PathVariable Long hotelId) {
+        return ApiResponse.ok(aiDailyBrief.of(hotelId));
     }
 
     /** Chain owner: what guests across the chain keep talking about in a period, topic by topic. */

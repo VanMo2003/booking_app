@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
+import com.vanmo.booking_app_be.ai.AiDailyBrief;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
@@ -39,6 +40,7 @@ import com.vanmo.booking_app_be.ai.TourDraftWriter;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
+import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
@@ -73,6 +75,7 @@ class AiControllerTest {
     private final ChatSummarizer chatSummarizer = mock(ChatSummarizer.class);
     private final AiReviewThemes aiReviewThemes = mock(AiReviewThemes.class);
     private final AiContentAudit aiContentAudit = mock(AiContentAudit.class);
+    private final AiDailyBrief aiDailyBrief = mock(AiDailyBrief.class);
 
     private MockMvc mvc;
 
@@ -91,7 +94,8 @@ class AiControllerTest {
                 aiGuestAssistant,
                 chatSummarizer,
                 aiReviewThemes,
-                aiContentAudit);
+                aiContentAudit,
+                aiDailyBrief);
         // Spring Boot's own Jackson defaults, so dates serialise the way the app really answers.
         com.fasterxml.jackson.databind.ObjectMapper json = com.fasterxml.jackson.databind.json.JsonMapper.builder()
                 .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -321,6 +325,34 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.score").value(73))
                 .andExpect(jsonPath("$.data.checks[0].passed").value(false));
+    }
+
+    @Test
+    void dailyBriefComesBackWithItsSignalsAndTasks() throws Exception {
+        when(aiDailyBrief.of(6L))
+                .thenReturn(AiDailyBriefResponse.builder()
+                        .hotelId(6L)
+                        .date(LocalDate.of(2026, 11, 16))
+                        .headline("Hôm nay có hai đơn treo cần gọi lại.")
+                        .signals(List.of(AiDailyBriefResponse.Signal.builder()
+                                .key("pending_bookings")
+                                .label("Đơn phòng chờ xác nhận")
+                                .value("2 đơn")
+                                .level("URGENT")
+                                .build()))
+                        .tasks(List.of(AiDailyBriefResponse.Task.builder()
+                                .title("Xác nhận đơn đang treo")
+                                .priority("HIGH")
+                                .how("Mở danh sách đơn chờ và gọi cho khách.")
+                                .signalKey("pending_bookings")
+                                .build()))
+                        .build());
+
+        mvc.perform(get("/ai/branches/6/daily-brief"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.date").value("2026-11-16"))
+                .andExpect(jsonPath("$.data.signals[0].level").value("URGENT"))
+                .andExpect(jsonPath("$.data.tasks[0].signalKey").value("pending_bookings"));
     }
 
     @Test
