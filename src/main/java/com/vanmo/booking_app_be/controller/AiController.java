@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
+import com.vanmo.booking_app_be.ai.AiTripPlanner;
 import com.vanmo.booking_app_be.ai.ChatAssistant;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
@@ -19,6 +20,7 @@ import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourSearchResponse;
+import com.vanmo.booking_app_be.dto.response.AiTripPlanResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,6 +37,7 @@ public class AiController {
     private final AiSearchService aiSearchService;
     private final ChatAssistant chatAssistant;
     private final AiTourSearch aiTourSearch;
+    private final AiTripPlanner aiTripPlanner;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -60,6 +63,14 @@ public class AiController {
             @Valid @RequestBody AiSearchRequest req, Principal principal, HttpServletRequest http) {
         String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
         return ApiResponse.ok(aiTourSearch.search(req.getQuery(), client));
+    }
+
+    /** Public: a day-by-day plan built from branches with free rooms and running tours. */
+    @PostMapping("/trip-plan")
+    public ApiResponse<AiTripPlanResponse> planTrip(
+            @Valid @RequestBody AiSearchRequest req, Principal principal, HttpServletRequest http) {
+        String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
+        return ApiResponse.ok(aiTripPlanner.plan(req.getQuery(), client));
     }
 
     /** Branch team: a draft reply to review and send (nothing reaches the guest). */

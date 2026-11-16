@@ -60,7 +60,8 @@ public class SecurityConfig {
         "/auth/refreshToken",
         "/storage/upload",
         "/ai/search",
-        "/ai/tours/search"
+        "/ai/tours/search",
+        "/ai/trip-plan"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

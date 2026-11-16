@@ -6728,6 +6728,116 @@
           ]
         },
         {
+          "name": "AI: trip plan (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/trip-plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "trip-plan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Toi muon di Ha Long 3 ngay 2 dem, 2 nguoi lon 1 tre em, khoang 6 trieu, thich bien va am thuc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 503 when the server has no AI key', () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('the trip is dated and counted', () => {",
+                  "        pm.expect(data.startDate).to.be.a('string');",
+                  "        pm.expect(data.adults).to.be.at.least(1);",
+                  "    });",
+                  "    if (data.stay) {",
+                  "        pm.test('the stay is a real room with a real price', () => {",
+                  "            pm.expect(data.stay.roomId).to.be.a('number');",
+                  "            pm.expect(data.stay.pricePerNight).to.be.a('number');",
+                  "            pm.expect(data.stay.checkout > data.stay.checkin).to.be.true;",
+                  "        });",
+                  "        pm.test('every day of the plan has steps, no more than the trip is long', () => {",
+                  "            pm.expect(data.days.length).to.be.at.most(data.nights + 1);",
+                  "            data.days.forEach(d => pm.expect(d.steps.length).to.be.at.least(1));",
+                  "        });",
+                  "        pm.test('a step that names a tour names one the plan carries', () => {",
+                  "            const ids = data.tours.map(t => t.id);",
+                  "            data.days.forEach(d => d.steps.filter(s => s.tourId).forEach(s => pm.expect(ids).to.include(s.tourId)));",
+                  "        });",
+                  "        pm.test('the total is rooms plus tours minus the voucher', () => {",
+                  "            const c = data.cost;",
+                  "            pm.expect(c.total).to.eql(c.rooms + c.tours - (c.voucherDiscount || 0));",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: trip plan with a blank query -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/trip-plan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "trip-plan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: staff asks for a reply suggestion (nothing is sent)",
           "request": {
             "method": "POST",

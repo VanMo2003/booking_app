@@ -341,6 +341,17 @@ Two features, both grounded in database data rather than model knowledge:
   (`TourBookingRepository.sumGuests`, `TourBookingServiceImpl.OPEN`) and full tours are reported in `notes`.
   `filters` and `score` are pure and unit-tested (`AiTourSearchTest`).
 
+- **Trip planner** (`AiTripPlanner`, public `POST /ai/trip-plan`): "Hạ Long 3 ngày 2 đêm, 2 người lớn 1 trẻ em,
+  6 triệu, thích biển" → a day-by-day plan. Two model calls and the model decides nothing that costs money: the fast
+  model fills `set_trip_request` (destination, nights, start date, head count, budget, themes), the backend finds the
+  real candidates (`candidates`: active branches matching the place with a room free for the whole stay through
+  `HotelKnowledge.availableRooms`, and running tours that fit - package tours are left out and counted in `notes`),
+  and the assistant model only arranges them and writes the day titles (`set_trip_plan`, at most one tour a day).
+  `build` then drops any hotel or tour that was not offered, cuts days past `nights + 1`, dates each day, picks the
+  voucher that takes most off the tour part (`bestVoucher` + `VoucherRules.discountOf`) and sums rooms/tours/total/
+  per person from the rows. `request`, `build`, `bestVoucher`, `tourAmount` and `time` are pure
+  (`AiTripPlannerTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),
