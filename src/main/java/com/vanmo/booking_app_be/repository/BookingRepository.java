@@ -443,4 +443,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("hotelIds") List<Long> hotelIds,
             @Param("status") BookingStatus status,
             @Param("paid") PaymentStatus paid);
+
+    /**
+     * Open bookings of one guest at one branch for exactly this stay - how the AI receptionist notices it already
+     * placed the booking instead of making a second one.
+     */
+    @Query("select b from Booking b where b.hotel.id = :hotelId and b.customer.id = :customerId "
+            + "and b.checkinDate = :checkin and b.checkoutDate = :checkout and b.bookingStatus in :statuses")
+    List<Booking> findOpenForStay(
+            @Param("hotelId") Long hotelId,
+            @Param("customerId") Long customerId,
+            @Param("checkin") LocalDate checkin,
+            @Param("checkout") LocalDate checkout,
+            @Param("statuses") Collection<BookingStatus> statuses);
 }

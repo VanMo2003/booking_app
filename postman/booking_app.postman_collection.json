@@ -7245,6 +7245,46 @@
           ]
         },
         {
+          "name": "AI: staff asks for a reply suggestion after the guest asked to book",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/conversations/{{conversationId}}/suggest-reply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "conversations",
+                "{{conversationId}}",
+                "suggest-reply"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 503 when the server has no AI key', () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('a draft came back and nothing was sent to the guest', () => pm.expect(data.content).to.be.a('string'));",
+                  "    pm.test('no booking was placed without the guest agreeing', () => pm.expect(data.toolsUsed || []).to.not.include('create_room_booking'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: customer cannot ask for a suggestion -> 403",
           "request": {
             "method": "POST",

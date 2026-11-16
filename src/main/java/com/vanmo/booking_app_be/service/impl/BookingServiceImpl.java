@@ -1,11 +1,15 @@
 package com.vanmo.booking_app_be.service.impl;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import jakarta.transaction.Transactional;
 
@@ -23,6 +27,7 @@ import com.vanmo.booking_app_be.entity.enums.NotificationType;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 import com.vanmo.booking_app_be.entity.enums.Role;
+import com.vanmo.booking_app_be.entity.enums.RoomStatus;
 import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
@@ -57,6 +62,22 @@ public class BookingServiceImpl implements BookingService {
     private final AccessGuard accessGuard;
     private final TourBookingRepository tourBookingRepository;
     private final NotificationService notificationService;
+    private final ConversationRepository conversationRepository;
+
+    /** Vietnam time, like every other date the app shows. */
+    private static final java.time.ZoneId CHAT_ZONE = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+
+    private static final java.time.format.DateTimeFormatter STAY_DAY =
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private static final int MAX_STAY_DAYS_AHEAD = 365;
+
+    private static final int MAX_NIGHTS = 30;
+
+    private static final String CHAT_BOOKING_NOTE = "Đặt qua trợ lý AI trong tin nhắn.";
+
+    private static final java.util.Set<BookingStatus> OPEN_BOOKING_STATUSES =
+            java.util.EnumSet.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
 
     @Override
     @Transactional
@@ -384,6 +405,110 @@ public class BookingServiceImpl implements BookingService {
         }
 
         bookingRepository.saveAll(expiredBookings);
+    }
+
+    /**
+     * The AI receptionist's room booking: the conversation says which branch and which guest, the room numbers come
+     * from what {@code find_available_rooms} offered, and the stay is checked again here because the model may be
+     * working from an older answer. Paid at the hotel, PENDING until the branch confirms, and the branch team is
+     * notified because nobody of theirs typed it in.
+     */
+    @Override
+    @Transactional
+    public PlacedBooking placeRoomsFromChat(
+            Long conversationId, List<String> roomNumbers, LocalDate checkin, LocalDate checkout, String note) {
+        Conversation conversation = conversationRepository
+                .findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found id=" + conversationId));
+        Hotel hotel = conversation.getHotel();
+        Customer customer = conversation.getCustomer();
+        if (customer == null) {
+            throw invalidBooking("Khách chưa có hồ sơ nên chưa đặt phòng được.");
+        }
+        LocalDate today = LocalDate.now(CHAT_ZONE);
+        if (checkin == null || checkout == null || !checkout.isAfter(checkin)) {
+            throw invalidBooking("Ngày trả phòng phải sau ngày nhận phòng.");
+        }
+        if (checkin.isBefore(today)) {
+            throw invalidBooking("Ngày nhận phòng đã qua.");
+        }
+        if (checkin.isAfter(today.plusDays(MAX_STAY_DAYS_AHEAD))) {
+            throw invalidBooking("Chỉ đặt phòng trong vòng một năm tới.");
+        }
+        if (ChronoUnit.DAYS.between(checkin, checkout) > MAX_NIGHTS) {
+            throw invalidBooking("Mỗi đơn đặt tối đa " + MAX_NIGHTS + " đêm.");
+        }
+        if (roomNumbers == null || roomNumbers.isEmpty()) {
+            throw invalidBooking("Chưa chọn phòng nào.");
+        }
+
+        // The same stay asked for twice (the model repeating itself) returns the open booking, not a second one.
+        List<Booking> open = bookingRepository.findOpenForStay(
+                hotel.getId(), customer.getId(), checkin, checkout, OPEN_BOOKING_STATUSES);
+        if (!open.isEmpty()) {
+            return new PlacedBooking(convertToBookingResponse(open.getFirst()), false);
+        }
+
+        List<Room> rooms = new ArrayList<>();
+        for (String number : roomNumbers.stream().map(String::strip).distinct().toList()) {
+            Room room = roomRepository.findAllByHotel_Id(hotel.getId()).stream()
+                    .filter(candidate -> candidate.getRoomNumber().equalsIgnoreCase(number))
+                    .findFirst()
+                    .orElseThrow(() -> invalidBooking("Cơ sở không có phòng số " + number + "."));
+            if (room.getStatus() == RoomStatus.MAINTENANCE) {
+                throw invalidBooking("Phòng " + number + " đang bảo trì.");
+            }
+            if (bookingRoomRepository.existsRoomBooked(room.getId(), checkin, checkout)) {
+                throw invalidBooking("Phòng " + number + " đã có khách trong khoảng ngày này.");
+            }
+            rooms.add(room);
+        }
+
+        long nights = ChronoUnit.DAYS.between(checkin, checkout);
+        BigDecimal total = rooms.stream()
+                .map(room -> room.getPrice().multiply(BigDecimal.valueOf(nights)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Booking booking = Booking.builder()
+                .checkinDate(checkin)
+                .checkoutDate(checkout)
+                .bookingStatus(BookingStatus.PENDING)
+                .paymentMethod(PaymentMethod.CASH)
+                .paymentStatus(PaymentStatus.UNPAID)
+                .hotel(hotel)
+                .customer(customer)
+                .totalAmount(total)
+                .note(chatNote(note))
+                .bookingServices(new HashSet<>())
+                .build();
+        booking.setBookingRooms(rooms.stream()
+                .map(room -> BookingRoom.builder().booking(booking).room(room).build())
+                .collect(Collectors.toCollection(HashSet::new)));
+        Booking saved = bookingRepository.save(booking);
+
+        String numbers = rooms.stream().map(Room::getRoomNumber).collect(Collectors.joining(", "));
+        notificationService.notifyAccounts(
+                accessGuard.branchTeam(hotel),
+                NotificationType.BOOKING_CREATED,
+                NotificationMessages.bookingCreatedByAssistant(
+                        saved.getId(),
+                        customer.getFullName(),
+                        numbers,
+                        checkin.format(STAY_DAY),
+                        checkout.format(STAY_DAY)),
+                AppLinks.booking(saved.getId()),
+                saved.getId());
+        return new PlacedBooking(convertToBookingResponse(saved), true);
+    }
+
+    private static String chatNote(String note) {
+        String own = note == null ? "" : note.strip();
+        return own.isEmpty() ? CHAT_BOOKING_NOTE : CHAT_BOOKING_NOTE + " Ghi chú của khách: " + own;
+    }
+
+    /** Vietnamese, because the assistant reads the message back to the guest. */
+    private static AppException invalidBooking(String message) {
+        return new AppException(ErrorCode.BAD_REQUEST, message);
     }
 
     @Override

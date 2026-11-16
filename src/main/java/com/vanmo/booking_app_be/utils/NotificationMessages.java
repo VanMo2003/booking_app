@@ -164,6 +164,15 @@ public final class NotificationMessages {
                         + checkin.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + ". Hẹn gặp bạn!");
     }
 
+    /** The branch team hears about a booking the AI receptionist placed in chat; they still confirm it. */
+    public static Message bookingCreatedByAssistant(
+            Long bookingId, String guestName, String rooms, String checkin, String checkout) {
+        return new Message(
+                "Trợ lý AI đã lên đơn phòng #" + bookingId,
+                guestName + " đã đồng ý trong tin nhắn: phòng " + rooms + ", " + checkin + " → " + checkout
+                        + ". Đơn đang chờ xác nhận.");
+    }
+
     public static Message bookingConfirmed(Long bookingId, String hotelName) {
         return new Message("Đơn phòng #" + bookingId + " đã được xác nhận", hotelName + " đã xác nhận đơn của bạn.");
     }

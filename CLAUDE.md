@@ -316,8 +316,16 @@ Two features, both grounded in database data rather than model knowledge:
   with `find_tour_rooms`, send a summary (rooms, stay, tour + room amounts) and ask for "Đồng ý", then
   call `create_tour_booking` with the room numbers. `ChatAssistant.bookTour` refuses the call unless the newest message is the
   guest's and `looksLikeConsent` matches it (accent-insensitive word list), so a model that skips the
-  summary books nothing; the tool runs in both suggest and auto-reply mode. Besides
-  `create_tour_booking` the model gets `find_available_rooms` (a real availability lookup, same rule as the
+  summary books nothing; the tool runs in both suggest and auto-reply mode. It also books **rooms** the same
+  way: `create_room_booking` (room numbers from `find_available_rooms`, check-in and check-out) goes through
+  `BookingService.placeRoomsFromChat`, which takes the branch and guest from the conversation (auto-reply has no
+  signed-in caller), re-checks the stay and every room (exists at the branch, not MAINTENANCE, free for the whole
+  range), sums `price x nights`, saves it CASH/UNPAID/PENDING with the note "Đặt qua trợ lý AI trong tin nhắn",
+  returns the open booking instead of a second one for the same stay, and sends `BOOKING_CREATED` to the branch
+  team (the only place that notification is used). `ChatAssistant.bookRooms` applies the same consent gate as
+  tours. `looksLikeConsent` also refuses a message that is really a question ("đổi sang ngày 20 được không") -
+  `QUESTION` - because a false yes would place an order the guest never agreed to (`ChatAssistantConsentTest`).
+  Besides the two booking tools the model gets `find_available_rooms` (a real availability lookup, same rule as the
   hotel detail page) and `handoff_to_staff` (sets `Conversation.needsStaff` + `handoffReason`, shown
   only on the hotel side, cleared when a person on the team replies). Guest text goes inside
   `<conversation>` tags and the rules tell the model it is data, not instructions. Two entry points:

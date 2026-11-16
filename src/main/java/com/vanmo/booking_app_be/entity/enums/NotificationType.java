@@ -23,5 +23,7 @@ public enum NotificationType {
     /** Sent to the guest the evening before a tour date or a check-in. */
     TRIP_REMINDER,
     /** Sent to the guest when the branch confirms or cancels their room booking. */
-    BOOKING_UPDATED
+    BOOKING_UPDATED,
+    /** Sent to the branch team when the AI receptionist places a room booking for a guest in chat. */
+    BOOKING_CREATED
 }

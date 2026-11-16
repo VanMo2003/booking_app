@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
+import com.vanmo.booking_app_be.dto.response.BookingResponse;
 import com.vanmo.booking_app_be.dto.response.TourBookingResponse;
 import com.vanmo.booking_app_be.dto.response.TourRoomAvailabilityResponse;
 import com.vanmo.booking_app_be.dto.response.TourRoomResponse;
@@ -47,6 +48,7 @@ import com.vanmo.booking_app_be.repository.ChatMessageRepository;
 import com.vanmo.booking_app_be.repository.ConversationRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
+import com.vanmo.booking_app_be.service.BookingService;
 import com.vanmo.booking_app_be.service.ChatService;
 import com.vanmo.booking_app_be.service.TourBookingService;
 import com.vanmo.booking_app_be.utils.TextNormalizer;
@@ -85,8 +87,10 @@ public class ChatAssistant {
 			- Trả lời bằng ngôn ngữ khách đang dùng (mặc định tiếng Việt), lịch sự, xưng "em"/"khách sạn" và gọi khách là "anh/chị"; ngắn gọn (tối đa khoảng 120 từ), văn bản thường, không dùng markdown hay emoji.
 			- Chỉ dùng HỒ SƠ CƠ SỞ và kết quả công cụ. Không tự bịa giá, phòng trống, giờ giấc, chính sách hay khuyến mãi. Thông tin không có thì nói thật là chưa có và gọi handoff_to_staff.
 			- Hỏi còn phòng hay giá theo ngày: luôn gọi find_available_rooms (tự tính ngày cụ thể từ "Hôm nay"). Khách chưa nói ngày thì hỏi lại ngày nhận và trả phòng.
-			- Bạn không đặt, giữ, huỷ, đổi phòng và không nhận thanh toán. Muốn đặt phòng: hướng dẫn khách mở trang cơ sở trong ứng dụng, chọn ngày rồi bấm "Đặt phòng".
-			- Khách muốn huỷ/đổi đơn, thanh toán, hoàn tiền, khiếu nại, yêu cầu đặc biệt, hoặc bạn không chắc: gọi handoff_to_staff rồi báo khách nhân viên sẽ phản hồi sớm.
+			- Đặt phòng gồm 2 bước. Bước 1: cần đủ ngày nhận, ngày trả và số khách (tự tính ngày cụ thể từ "Hôm nay"); thiếu thì hỏi lại. Gọi find_available_rooms rồi để khách chọn phòng (khách chưa chọn thì gợi ý phòng rẻ nhất đủ chỗ), không mời phòng ngoài kết quả công cụ. Đủ thông tin thì gửi tóm tắt: số phòng và loại phòng, ngày nhận và ngày trả (thứ, dd/MM/yyyy), số đêm, giá mỗi đêm, tổng tiền phòng, thanh toán tại khách sạn; cuối tin mời khách nhắn "Đồng ý" để lên đơn. Ở lượt này KHÔNG gọi create_room_booking.
+			- Bước 2: chỉ gọi create_room_booking (kèm đúng số phòng trong tóm tắt) khi tin nhắn mới nhất của khách đồng ý rõ ràng (như "đồng ý", "ok", "xác nhận", "chốt") với đúng bản tóm tắt khách sạn gửi ngay trước đó. Khách đổi ngày, số khách hay phòng thì quay lại bước 1. Lên đơn xong: báo mã đơn, đơn đang chờ khách sạn xác nhận, khách theo dõi trong mục "Đơn của tôi" của ứng dụng; không nói là đã chắc chắn giữ phòng. Công cụ báo lỗi (phòng đã có khách, đang bảo trì, ngày đã qua…) thì giải thích cho khách và gợi ý phòng hoặc ngày khác.
+			- Bạn không nhận thanh toán, không huỷ và không đổi đơn đã đặt.
+			- Khách muốn huỷ hay đổi đơn đã đặt, thanh toán, hoàn tiền, khiếu nại, yêu cầu đặc biệt, hoặc bạn không chắc: gọi handoff_to_staff rồi báo khách nhân viên sẽ phản hồi sớm. Không gọi handoff_to_staff cho việc đặt phòng hay đặt tour, trừ khi lên đơn lỗi mà không tự xử lý được.
 			- Tour: khi khách hỏi đi chơi, tham quan, ăn uống quanh khu vực, lịch trình, hoặc nói sẽ ở vài ngày, gợi ý 1–3 tour phù hợp nhất trong mục "Tour tham quan" (tên, giá mỗi khách, thời lượng, giờ khởi hành). Không gợi ý tour đang TẠM NGỪNG, không bịa tour ngoài danh sách.
 			- Đặt tour gồm 2 bước. Bước 1: cần đủ tour, ngày đi (tự tính ngày cụ thể từ "Hôm nay") và số khách; thiếu thì hỏi lại. Tour kèm phòng (xem mục "Tour tham quan") nghĩa là đặt tour cũng là đặt phòng ở từ ngày đi tour: gọi find_tour_rooms để biết phòng nào của gói còn trống, cho khách chọn (khách chưa chọn thì gợi ý phòng rẻ nhất đủ chỗ cho số khách), không mời phòng ngoài kết quả công cụ. Đủ thông tin thì gửi tóm tắt: tên tour, ngày đi (thứ, dd/MM/yyyy), giờ khởi hành, số khách, phòng (số phòng, loại, ngày nhận và trả phòng), tiền tour = giá mỗi khách × số khách, tiền phòng = giá phòng × số đêm, tổng tiền, thanh toán tại khách sạn; cuối tin mời khách nhắn "Đồng ý" để lên đơn. Ở lượt này KHÔNG gọi create_tour_booking.
 			- Bước 2: chỉ gọi create_tour_booking (kèm đúng các phòng trong tóm tắt) khi tin nhắn mới nhất của khách đồng ý rõ ràng (như "đồng ý", "ok", "xác nhận", "chốt") với đúng bản tóm tắt khách sạn gửi ngay trước đó. Khách đổi tour, ngày, số khách hay phòng thì quay lại bước 1. Lên đơn xong: báo mã đơn, đơn đang chờ khách sạn xác nhận, khách theo dõi trong mục "Đơn tour" của ứng dụng; không nói là đã chắc chắn giữ chỗ. Công cụ báo lỗi (kín chỗ, tạm ngừng, ngày đã qua…) thì giải thích cho khách và gợi ý ngày hoặc tour khác. Không gọi handoff_to_staff cho việc đặt tour, trừ khi lên đơn lỗi mà không tự xử lý được.
@@ -109,6 +113,20 @@ public class ChatAssistant {
 					"guests": {"type": "integer", "description": "Số khách ở chung một phòng, nếu khách có nói"}
 				},
 				"required": ["checkin", "checkout"]
+				}
+			},
+			{
+				"name": "create_room_booking",
+				"description": "Lên đơn đặt phòng cho khách (thanh toán tại khách sạn, khách sạn xác nhận sau). CHỈ gọi khi tin nhắn mới nhất của khách đồng ý rõ ràng với bản tóm tắt (phòng, ngày nhận, ngày trả, tổng tiền) khách sạn vừa gửi.",
+				"input_schema": {
+				"type": "object",
+				"properties": {
+					"rooms": {"type": "array", "items": {"type": "string"}, "description": "Số các phòng khách chọn, ví dụ 101 và 102"},
+					"checkin": {"type": "string", "description": "Ngày nhận phòng, dạng YYYY-MM-DD"},
+					"checkout": {"type": "string", "description": "Ngày trả phòng, dạng YYYY-MM-DD, sau ngày nhận"},
+					"note": {"type": "string", "description": "Ghi chú khách muốn gửi khách sạn (giờ đến muộn, phòng tầng cao…), nếu có"}
+				},
+				"required": ["rooms", "checkin", "checkout"]
 				}
 			},
 			{
@@ -174,6 +192,7 @@ public class ChatAssistant {
     private final AccessGuard accessGuard;
     private final AiRateLimiter rateLimiter;
     private final TourBookingService tourBookingService;
+    private final BookingService bookingService;
     private final long autoReplyDelaySeconds;
     private final JsonNode tools;
 
@@ -191,6 +210,7 @@ public class ChatAssistant {
             AccessGuard accessGuard,
             AiRateLimiter rateLimiter,
             TourBookingService tourBookingService,
+            BookingService bookingService,
             @Value("${ai.auto-reply-delay-seconds:90}") long autoReplyDelaySeconds)
             throws JsonProcessingException {
         this.ai = ai;
@@ -202,6 +222,7 @@ public class ChatAssistant {
         this.accessGuard = accessGuard;
         this.rateLimiter = rateLimiter;
         this.tourBookingService = tourBookingService;
+        this.bookingService = bookingService;
         this.autoReplyDelaySeconds = autoReplyDelaySeconds;
         this.tools = ai.json().readTree(TOOLS);
     }
@@ -364,6 +385,14 @@ public class ChatAssistant {
                             result.put("is_error", true);
                         }
                     }
+                    case "create_room_booking" -> {
+                        try {
+                            result.put("content", bookRooms(conversation, history, block.path("input")));
+                        } catch (IllegalArgumentException | AppException e) {
+                            result.put("content", e.getMessage());
+                            result.put("is_error", true);
+                        }
+                    }
                     case "create_tour_booking" -> {
                         try {
                             result.put("content", bookTour(conversation, history, block.path("input")));
@@ -436,6 +465,65 @@ public class ChatAssistant {
                 "note",
                 "Tổng tiền là tiền phòng, chưa gồm dịch vụ tính thêm. Phòng chỉ được giữ khi khách đặt trong ứng dụng.");
         return out.toString();
+    }
+
+    /**
+     * {@code create_room_booking}: places the room booking for the conversation's guest. Refused unless the guest's
+     * latest message reads as an agreement, the same rule as a tour order, so a model that skips the "summary, then
+     * wait for đồng ý" step books nothing.
+     */
+    String bookRooms(Conversation conversation, List<ChatMessage> history, JsonNode input) {
+        ChatMessage latest = history.isEmpty() ? null : history.getLast();
+        if (latest == null || latest.getSenderSide() != ChatSide.CUSTOMER || !looksLikeConsent(latest.getContent())) {
+            throw new IllegalArgumentException("Khách chưa nhắn đồng ý. Hãy gửi tóm tắt (phòng, ngày nhận, ngày trả,"
+                    + " tổng tiền) và mời khách nhắn \"Đồng ý\"; chỉ lên đơn sau khi khách đồng ý.");
+        }
+        LocalDate checkin;
+        LocalDate checkout;
+        try {
+            checkin = LocalDate.parse(input.path("checkin").asText());
+            checkout = LocalDate.parse(input.path("checkout").asText());
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("Ngày phải có dạng YYYY-MM-DD.");
+        }
+        List<String> rooms = new ArrayList<>();
+        input.path("rooms").forEach(room -> rooms.add(room.asText()));
+        if (rooms.isEmpty()) {
+            throw new IllegalArgumentException("Chưa chọn phòng nào. Hãy gọi find_available_rooms rồi để khách chọn.");
+        }
+        BookingService.PlacedBooking placed = bookingService.placeRoomsFromChat(
+                conversation.getId(),
+                rooms,
+                checkin,
+                checkout,
+                input.path("note").asText(null));
+        BookingResponse booking = placed.booking();
+        ObjectNode out = ai.json().createObjectNode();
+        out.put("booking_code", "#" + booking.getId());
+        out.put("already_existed", !placed.created());
+        out.put("rooms", roomNumbersOf(booking));
+        out.put("checkin", booking.getCheckinDate());
+        out.put("checkout", booking.getCheckoutDate());
+        out.put("nights", ChronoUnit.DAYS.between(checkin, checkout));
+        out.put("total", HotelKnowledge.money(booking.getTotalAmount()));
+        out.put("status", "Chờ khách sạn xác nhận");
+        out.put(
+                "note",
+                "Báo khách mã đơn và tổng tiền; đơn chờ khách sạn xác nhận, khách theo dõi ở mục Đơn của tôi trong"
+                        + " ứng dụng; thanh toán tại khách sạn.");
+        return out.toString();
+    }
+
+    /** Room numbers of a booking, for the message the assistant writes back. */
+    private static String roomNumbersOf(BookingResponse booking) {
+        if (booking.getBookingRooms() == null) {
+            return "";
+        }
+        return booking.getBookingRooms().stream()
+                .map(line ->
+                        line.getRoomInfo() == null ? "" : line.getRoomInfo().getRoomNumber())
+                .filter(number -> number != null && !number.isEmpty())
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     /**
@@ -542,9 +630,21 @@ public class ChatAssistant {
     private static final Pattern CONSENT = Pattern.compile("\\b(dong y|nhat tri|xac nhan|chot|ok|oke|okay|okie|yes|"
             + "agree|confirm|sure|duoc|vang|u|uh|uhm|um|chuan|dung roi|dat di|dat luon|dat nhe|dat giup|len don)\\b");
 
-    /** The guest's message reads as "yes": accents and case ignored, any of the usual Vietnamese/English words. */
+    /**
+     * A message that is really a question, even though it contains a word from {@link #CONSENT}: "đổi sang ngày 20
+     * được không", "phòng nào cũng được chứ". Blocking these matters because the only thing consent unlocks is
+     * placing an order, so a false yes books something the guest never agreed to - a false no only asks again.
+     */
+    private static final Pattern QUESTION = Pattern.compile("\\b(duoc khong|duoc chu|duoc ko|phai khong|dung khong|"
+            + "co khong|co the|the nao|bao nhieu|may gio|khi nao|nao khong|nao cung)\\b");
+
+    /**
+     * The guest's message reads as "yes": accents and case ignored, any of the usual Vietnamese/English words, and
+     * not a question that happens to contain one of them.
+     */
     static boolean looksLikeConsent(String text) {
-        return CONSENT.matcher(TextNormalizer.normalize(text)).find();
+        String plain = TextNormalizer.normalize(text);
+        return CONSENT.matcher(plain).find() && !QUESTION.matcher(plain).find();
     }
 
     static String tourBookingLines(List<TourBookingResponse> bookings) {

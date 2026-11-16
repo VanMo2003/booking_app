@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import com.vanmo.booking_app_be.dto.request.BookingCreateRequest;
@@ -36,4 +37,16 @@ public interface BookingService {
     void markExpiredPendingPaymentsAsFailed();
 
     BookingResponse resetPendingPayment(Long bookingId);
+
+    /**
+     * A room booking the AI receptionist places for the guest of a conversation, after they agreed to the summary in
+     * chat. There is no signed-in caller on that path (auto-reply runs on its own thread), so the conversation
+     * decides the branch and the guest. Rooms are named by their number, must be free for the whole stay and belong
+     * to that branch; paid at the hotel, PENDING until the branch confirms. Asking twice for the same stay returns
+     * the open booking instead of a second one ({@link PlacedBooking#created()} false).
+     */
+    PlacedBooking placeRoomsFromChat(
+            Long conversationId, List<String> roomNumbers, LocalDate checkin, LocalDate checkout, String note);
+
+    record PlacedBooking(BookingResponse booking, boolean created) {}
 }
