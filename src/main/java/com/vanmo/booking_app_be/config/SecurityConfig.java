@@ -50,7 +50,8 @@ public class SecurityConfig {
         "/tours/{id}/rooms/available",
         "/app-links/{target}",
         "/app-links/tours/{id}",
-        "/ai/status"
+        "/ai/status",
+        "/ai/hotels/{hotelId}/review-digest"
     };
     private final String[] PUBLIC_ENDPOINT_POST = {
         "/accounts",

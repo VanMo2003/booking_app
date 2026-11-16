@@ -6838,6 +6838,44 @@
           ]
         },
         {
+          "name": "AI: review digest of a branch (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/{{hotelId}}/review-digest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "{{hotelId}}",
+                "review-digest"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('the counts come from the reviews, not the model', () => {",
+                  "    pm.expect(data.reviewCount).to.be.a('number');",
+                  "    pm.expect(data.ratingCounts.length).to.eql(5);",
+                  "});",
+                  "pm.test('a new branch has too few reviews to summarise', () => {",
+                  "    if (data.reviewCount < 4) pm.expect(data.available).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: staff asks for a reply suggestion (nothing is sent)",
           "request": {
             "method": "POST",

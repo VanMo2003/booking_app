@@ -20,4 +20,11 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
             + "order by f.reviewDate desc, f.id desc")
     List<FeedbackRow> findForReport(
             @Param("hotelIds") Collection<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Every review of one branch, newest first - what the AI review digest reads. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.FeedbackRow("
+            + "f.id, b.id, h.id, h.name, c.fullName, f.rating, f.comments, f.reviewDate) "
+            + "from Feedback f join f.booking b join b.hotel h join f.customer c "
+            + "where h.id = :hotelId order by f.reviewDate desc, f.id desc")
+    List<FeedbackRow> findByHotel(@Param("hotelId") Long hotelId);
 }

@@ -352,6 +352,15 @@ Two features, both grounded in database data rather than model knowledge:
   per person from the rows. `request`, `build`, `bestVoucher`, `tourAmount` and `time` are pure
   (`AiTripPlannerTest`).
 
+- **Review digest** (`ReviewDigest`, public `GET /ai/hotels/{hotelId}/review-digest`): "Khách thường khen… /
+  thường phàn nàn…" read out of that branch's own reviews (`FeedbackRepository.findByHotel`, newest 40 comments
+  inside `<reviews>` tags) through a forced `set_review_digest` call. The text is cached in `HotelReviewDigest`
+  (one row per branch, `hotel_id` unique, FK `ON DELETE CASCADE`) and rewritten only when the review count changes,
+  so a hotel page costs no model call; the star breakdown and average are computed in `ReviewDigest.stats`, never
+  asked of the model. Fewer than `MIN_REVIEWS` (4) reviews, or no API key with nothing cached, answers
+  `available = false` and the app hides the card; a model failure falls back to the stored text instead of failing
+  the page. `stats`, `prompt` and `split` are unit-tested (`ReviewDigestTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

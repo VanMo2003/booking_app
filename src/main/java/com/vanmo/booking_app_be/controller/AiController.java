@@ -13,6 +13,7 @@ import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
 import com.vanmo.booking_app_be.ai.AiTripPlanner;
 import com.vanmo.booking_app_be.ai.ChatAssistant;
+import com.vanmo.booking_app_be.ai.ReviewDigest;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
@@ -21,6 +22,7 @@ import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiTripPlanResponse;
+import com.vanmo.booking_app_be.dto.response.ReviewDigestResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,6 +40,7 @@ public class AiController {
     private final ChatAssistant chatAssistant;
     private final AiTourSearch aiTourSearch;
     private final AiTripPlanner aiTripPlanner;
+    private final ReviewDigest reviewDigest;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -71,6 +74,15 @@ public class AiController {
             @Valid @RequestBody AiSearchRequest req, Principal principal, HttpServletRequest http) {
         String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
         return ApiResponse.ok(aiTripPlanner.plan(req.getQuery(), client));
+    }
+
+    /**
+     * Public: what guests keep saying about a branch, read out of its own reviews. Cached per branch, so opening a
+     * hotel page does not call the model again.
+     */
+    @GetMapping("/hotels/{hotelId}/review-digest")
+    public ApiResponse<ReviewDigestResponse> reviewDigest(@PathVariable Long hotelId) {
+        return ApiResponse.ok(reviewDigest.of(hotelId));
     }
 
     /** Branch team: a draft reply to review and send (nothing reaches the guest). */
