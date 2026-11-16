@@ -7491,6 +7491,88 @@
           ]
         },
         {
+          "name": "AI: manager reads today's brief",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/branches/{{hotelId}}/daily-brief",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "branches",
+                "{{hotelId}}",
+                "daily-brief"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('the signals are counted by the server, so they work without an AI key', () => {",
+                  "    pm.expect(data.signals.length).to.be.at.least(1);",
+                  "    pm.expect(data.date).to.be.a('string');",
+                  "});",
+                  "pm.test('every signal carries a level the app knows', () => {",
+                  "    data.signals.forEach(s => pm.expect(['URGENT', 'WATCH', 'QUIET']).to.include(s.level));",
+                  "});",
+                  "pm.test('every task points at a signal that is not quiet', () => {",
+                  "    const live = data.signals.filter(s => s.level !== 'QUIET').map(s => s.key);",
+                  "    (data.tasks || []).forEach(t => pm.expect(live).to.include(t.signalKey));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: staff cannot read the daily brief -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/branches/{{hotelId}}/daily-brief",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "branches",
+                "{{hotelId}}",
+                "daily-brief"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: staff asks for a reply suggestion (nothing is sent)",
           "request": {
             "method": "POST",
