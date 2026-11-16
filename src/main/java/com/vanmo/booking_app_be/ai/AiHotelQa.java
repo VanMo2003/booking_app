@@ -106,7 +106,7 @@ public class AiHotelQa {
 
         Hotel hotel = knowledge.hotel(hotelId);
         String facts = knowledge.factSheet(hotelId);
-        Set<String> allowed = allowedTargets(hotelId, tourRepository.findAllByHotel_Id(hotelId));
+        Set<String> allowed = allowedTargets(tourRepository.findAllByHotel_Id(hotelId));
         String asked = question;
         JsonNode answer = ai.withModelFallback(ai.getAssistantModels(), model -> answer(model, facts, asked));
         List<String> notes = new ArrayList<>();
@@ -116,10 +116,12 @@ public class AiHotelQa {
         return build(hotelId, question, answer, allowed, notes);
     }
 
-    /** The branch's own page and its own tours - nothing else may be linked from an answer about it. */
-    static Set<String> allowedTargets(Long hotelId, List<Tour> tours) {
+    /**
+     * The branch's own tours, and nothing else: {@code tours/<id>} is the only target the app's own
+     * {@code AppLink.parse} understands here, so a link to anything else would open nothing.
+     */
+    static Set<String> allowedTargets(List<Tour> tours) {
         Set<String> targets = new HashSet<>();
-        targets.add("hotels/" + hotelId);
         tours.forEach(tour -> targets.add("tours/" + tour.getId()));
         return targets;
     }

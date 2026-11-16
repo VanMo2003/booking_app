@@ -35,7 +35,7 @@ public class AiHotelAnswerResponse {
     /** False when the branch's published data does not cover the question. */
     boolean answered;
 
-    /** Where to look next, only ever this branch's own page or one of its tours. */
+    /** Where to look next, only ever one of this branch's own tours. */
     List<Link> links;
 
     List<String> notes;
@@ -52,7 +52,7 @@ public class AiHotelAnswerResponse {
         /** "Xem tour Food tour phố cổ". */
         String label;
 
-        /** A deep-link target the app understands: {@code tours/7} or {@code hotels/6}. */
+        /** A deep-link target the app understands: {@code tours/7}. */
         String target;
     }
 }

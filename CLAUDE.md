@@ -452,7 +452,8 @@ Two features, both grounded in database data rather than model knowledge:
   The rules make the model set `answered = false` for anything the branch never published (check-in time, refunds,
   promotions - the fact sheet itself ends with that list), and `build` then drops every link, so the app offers to
   ask the branch instead of showing a guess; an empty answer counts as not knowing. Links survive only when they
-  point at this branch or one of its own tours (`allowedTargets`). The question goes inside `<question>` tags as
+  point at one of this branch's own tours (`allowedTargets`) - `tours/<id>` is the only target the app's
+  `AppLink.parse` understands, so anything else would open nothing. The question goes inside `<question>` tags as
   data. Public like `/ai/search`, so it needs both halves: no guard and an entry in
   `SecurityConfig.PUBLIC_ENDPOINT_POST` (`/ai/hotels/*/ask`). `allowedTargets`, `prompt` and `build` are pure
   (`AiHotelQaTest`).

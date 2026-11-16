@@ -296,7 +296,7 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
 14. **Hỏi nhanh về một cơ sở** (`ai/AiHotelQa`): `POST /ai/hotels/{hotelId}/ask` (công khai, không cần đăng nhập).
     Khách đang xem trang cơ sở hỏi một câu, model trả lời **chỉ** từ hồ sơ cơ sở (`HotelKnowledge.factSheet`).
     Hồ sơ không có thông tin (giờ nhận phòng, chính sách huỷ, khuyến mãi) thì `answered = false` và app mời khách
-    nhắn thẳng cho cơ sở thay vì hiện câu đoán. Liên kết trả về chỉ được trỏ tới chính cơ sở đó hoặc tour của nó.
+    nhắn thẳng cho cơ sở thay vì hiện câu đoán. Liên kết trả về chỉ được trỏ tới tour của chính cơ sở đó — dạng duy nhất app mở được.
 
 **Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
 experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi

@@ -28,10 +28,11 @@ class AiHotelQaTest {
     }
 
     @Test
-    void chi_cho_phep_tro_toi_chinh_co_so_va_tour_cua_no() {
-        Set<String> targets = AiHotelQa.allowedTargets(6L, List.of(tour(7), tour(9)));
+    void chi_cho_phep_tro_toi_tour_cua_chinh_co_so() {
+        Set<String> targets = AiHotelQa.allowedTargets(List.of(tour(7), tour(9)));
 
-        assertThat(targets).containsExactlyInAnyOrder("hotels/6", "tours/7", "tours/9");
+        // Chỉ tours/<mã> mới mở được trong app, nên không mở đường cho bất kỳ dạng liên kết nào khác.
+        assertThat(targets).containsExactlyInAnyOrder("tours/7", "tours/9");
     }
 
     @Test
@@ -60,17 +61,17 @@ class AiHotelQaTest {
 						]
 						}
 						"""),
-                AiHotelQa.allowedTargets(6L, List.of(tour(7))),
+                AiHotelQa.allowedTargets(List.of(tour(7))),
                 notes);
 
         assertThat(answer.isAnswered()).isTrue();
         assertThat(answer.getHotelId()).isEqualTo(6L);
-        // Tiền tố bookingapp:// và dấu / đầu được bỏ, bản trùng và tour của cơ sở khác bị loại.
-        assertThat(answer.getLinks()).hasSize(2);
+        // Tiền tố bookingapp:// được bỏ; bản trùng, tour của cơ sở khác và liên kết trang cơ sở đều bị loại.
+        assertThat(answer.getLinks()).hasSize(1);
         assertThat(answer.getLinks().stream().map(AiHotelAnswerResponse.Link::getTarget))
-                .containsExactly("tours/7", "hotels/6");
+                .containsExactly("tours/7");
         assertThat(notes).hasSize(1);
-        assertThat(notes.getFirst()).contains("2 liên kết");
+        assertThat(notes.getFirst()).contains("3 liên kết");
     }
 
     @Test
@@ -86,7 +87,7 @@ class AiHotelQaTest {
 						"links": [{"label": "Trang cơ sở", "target": "hotels/6"}]
 						}
 						"""),
-                AiHotelQa.allowedTargets(6L, List.of()),
+                AiHotelQa.allowedTargets(List.of()),
                 new ArrayList<>());
 
         assertThat(answer.isAnswered()).isFalse();
@@ -102,7 +103,7 @@ class AiHotelQaTest {
                 input("""
 						{"answered": true, "answer": "   "}
 						"""),
-                AiHotelQa.allowedTargets(6L, List.of()),
+                AiHotelQa.allowedTargets(List.of()),
                 new ArrayList<>());
 
         assertThat(answer.isAnswered()).isFalse();
