@@ -6975,6 +6975,104 @@
           ]
         },
         {
+          "name": "AI: owner reads the chain's review themes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/chains/{{hotelChainId}}/review-themes?from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "chains",
+                "{{hotelChainId}}",
+                "review-themes"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 503 when the server has no AI key', () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('every branch listed per theme belongs to the chain', () => {",
+                  "        const names = data.byBranch.map(b => b.hotelName);",
+                  "        (data.themes || []).forEach(t => (t.branches || []).forEach(n => pm.expect(names).to.include(n)));",
+                  "    });",
+                  "    pm.test('sentiment is one of the three the app knows', () => (data.themes || []).forEach(t => pm.expect(['GOOD','MIXED','BAD']).to.include(t.sentiment)));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: manager cannot read the chain's review themes -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/chains/{{hotelChainId}}/review-themes?from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "chains",
+                "{{hotelChainId}}",
+                "review-themes"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: manager drafts a tour's content",
           "request": {
             "method": "POST",

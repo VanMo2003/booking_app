@@ -1,17 +1,20 @@
 package com.vanmo.booking_app_be.controller;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
+import com.vanmo.booking_app_be.ai.AiReviewThemes;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
 import com.vanmo.booking_app_be.ai.AiTripPlanner;
@@ -28,6 +31,7 @@ import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
+import com.vanmo.booking_app_be.dto.response.AiReviewThemesResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourDraftResponse;
@@ -58,6 +62,7 @@ public class AiController {
     private final AiPricingAdvisor aiPricingAdvisor;
     private final AiGuestAssistant aiGuestAssistant;
     private final ChatSummarizer chatSummarizer;
+    private final AiReviewThemes aiReviewThemes;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -136,6 +141,15 @@ public class AiController {
     @PostMapping("/conversations/{id}/suggest-reply")
     public ApiResponse<AiSuggestionResponse> suggestReply(@PathVariable Long id) {
         return ApiResponse.ok(chatAssistant.suggest(id));
+    }
+
+    /** Chain owner: what guests across the chain keep talking about in a period, topic by topic. */
+    @GetMapping("/chains/{hotelChainId}/review-themes")
+    public ApiResponse<AiReviewThemesResponse> reviewThemes(
+            @PathVariable Long hotelChainId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(aiReviewThemes.of(hotelChainId, from, to));
     }
 
     /** Branch team: a long thread in one note - what the guest wants, what is open, how urgent. */

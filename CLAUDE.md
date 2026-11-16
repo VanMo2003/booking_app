@@ -413,6 +413,15 @@ Two features, both grounded in database data rather than model knowledge:
   wrote last, and `needsStaff`/`handoffReason` come from the conversation row - never from the model. `transcript`,
   `build` and `urgency` are pure (`ChatSummarizerTest`).
 
+- **Review themes of a chain** (`AiReviewThemes`, `GET /ai/chains/{hotelChainId}/review-themes?from=&to=`, chain
+  owner): the owner's version of the review digest - what guests keep talking about across the chain (cleanliness,
+  staff, location, noise…) with a GOOD/MIXED/BAD reading and which branches raised it. The prompt groups the
+  period's comments under their branch (`MAX_COMMENTS` 80 in total, 20 per branch so one busy branch cannot crowd
+  the others out) and lists the chain's real branch names; `build` keeps only names that match one of them, drops a
+  repeated topic and reads an unknown sentiment as MIXED. Reviews and averages per branch are computed in
+  `byBranch`. Fewer than `MIN_COMMENTS` (6) commented reviews answers with no themes and a note. `byBranch`,
+  `prompt`, `build` and `sentiment` are pure (`AiReviewThemesTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),
