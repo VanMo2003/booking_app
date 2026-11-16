@@ -707,7 +707,17 @@ public class ChatAssistant {
                 .append(", giờ Việt Nam).\n")
                 .append("Đơn tour của khách tại cơ sở (mới nhất trước):\n")
                 .append(tourBookings)
-                .append("<conversation>\n");
+                .append(transcript(history))
+                .append(mode.instruction);
+        return out.toString();
+    }
+
+    /**
+     * The thread as plain lines inside {@code <conversation>} tags, so every prompt that shows a chat says the same
+     * thing: who wrote each message and when, with the guest's own words left as data.
+     */
+    static String transcript(List<ChatMessage> history) {
+        StringBuilder out = new StringBuilder("<conversation>\n");
         for (ChatMessage message : history) {
             String stamp = message.getOnCreate() == null
                     ? ""
@@ -728,8 +738,7 @@ public class ChatAssistant {
                     .append(message.getContent().replace("</conversation>", ""))
                     .append('\n');
         }
-        out.append("</conversation>\n").append(mode.instruction);
-        return out.toString();
+        return out.append("</conversation>\n").toString();
     }
 
     private static String clean(String text) {

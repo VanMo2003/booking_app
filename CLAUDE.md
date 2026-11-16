@@ -405,6 +405,14 @@ Two features, both grounded in database data rather than model knowledge:
   book, cancel or pay - the rules point at the app's own screens. `brief`, `allowedTargets` and `build` are pure
   (`AiGuestAssistantTest`).
 
+- **Chat summary** (`ChatSummarizer`, `GET /ai/conversations/{id}/summary`, branch team via
+  `AccessGuard.requireBranchTeam`): a long thread in one note - what the guest came for, `openItems`, `nextSteps`
+  and `urgency` (LOW/NORMAL/HIGH, anything else read as NORMAL). The prompt is only the newest `MAX_MESSAGES` (40)
+  through `ChatAssistant.transcript` (extracted so every chat prompt shows the thread the same way, guest words
+  inside `<conversation>` tags), with no prices or policies to invent from. `waitingOnHotel` is worked out from who
+  wrote last, and `needsStaff`/`handoffReason` come from the conversation row - never from the model. `transcript`,
+  `build` and `urgency` are pure (`ChatSummarizerTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

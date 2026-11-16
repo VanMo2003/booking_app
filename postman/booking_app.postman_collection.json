@@ -7419,6 +7419,81 @@
           ]
         },
         {
+          "name": "AI: staff reads the thread summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/conversations/{{conversationId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "conversations",
+                "{{conversationId}}",
+                "summary"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 503 when the server has no AI key', () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('urgency is one of the three the app knows', () => pm.expect(['LOW','NORMAL','HIGH']).to.include(data.urgency));",
+                  "    pm.test('the message count is the thread it read', () => pm.expect(data.messageCount).to.be.at.least(0));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: customer cannot read the thread summary -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/conversations/{{conversationId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "conversations",
+                "{{conversationId}}",
+                "summary"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: staff reads the branch assistant settings",
           "request": {
             "method": "GET",

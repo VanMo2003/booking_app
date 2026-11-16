@@ -16,6 +16,7 @@ import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
 import com.vanmo.booking_app_be.ai.AiTripPlanner;
 import com.vanmo.booking_app_be.ai.ChatAssistant;
+import com.vanmo.booking_app_be.ai.ChatSummarizer;
 import com.vanmo.booking_app_be.ai.ReviewDigest;
 import com.vanmo.booking_app_be.ai.TourDraftWriter;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
@@ -32,6 +33,7 @@ import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourDraftResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiTripPlanResponse;
+import com.vanmo.booking_app_be.dto.response.ChatSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.ReviewDigestResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -55,6 +57,7 @@ public class AiController {
     private final AiReportAnalyst aiReportAnalyst;
     private final AiPricingAdvisor aiPricingAdvisor;
     private final AiGuestAssistant aiGuestAssistant;
+    private final ChatSummarizer chatSummarizer;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -133,6 +136,12 @@ public class AiController {
     @PostMapping("/conversations/{id}/suggest-reply")
     public ApiResponse<AiSuggestionResponse> suggestReply(@PathVariable Long id) {
         return ApiResponse.ok(chatAssistant.suggest(id));
+    }
+
+    /** Branch team: a long thread in one note - what the guest wants, what is open, how urgent. */
+    @GetMapping("/conversations/{id}/summary")
+    public ApiResponse<ChatSummaryResponse> chatSummary(@PathVariable Long id) {
+        return ApiResponse.ok(chatSummarizer.of(id));
     }
 
     @GetMapping("/branches/{hotelId}/settings")
