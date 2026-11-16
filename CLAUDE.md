@@ -396,6 +396,15 @@ Two features, both grounded in database data rather than model knowledge:
   price itself (nearest thousand đồng), so no figure is the model's arithmetic. Nothing changes a room's price.
   `brief`, `build`, `percent`, `action` and `suggestedPrice` are pure (`AiPricingAdvisorTest`).
 
+- **The guest's own assistant** (`AiGuestAssistant`, `POST /ai/assistant/ask`, CUSTOMER only): "đơn sắp tới của
+  tôi thế nào?", "tôi còn mã giảm giá nào?". The brief is the signed-in guest's own rows - their last 8 room
+  bookings and tour orders (status, dates, rooms, amounts, voucher used), the usable vouchers and their interests -
+  and the model may mention nothing else. `set_guest_answer` may offer deep links, but `build` keeps only the
+  targets in `allowedTargets` (`bookings/<id>`, `tour-bookings/<id>`, `tours/<id>` of those rows), stripping a
+  `bookingapp://` prefix and dropping duplicates, so a link always opens something the guest really has. It cannot
+  book, cancel or pay - the rules point at the app's own screens. `brief`, `allowedTargets` and `build` are pure
+  (`AiGuestAssistantTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

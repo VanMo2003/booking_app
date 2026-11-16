@@ -6685,6 +6685,105 @@
           ]
         },
         {
+          "name": "AI: guest asks their own assistant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/assistant/ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "assistant",
+                "ask"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Don sap toi cua toi the nao?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, or 503 when the server has no AI key', () => pm.expect([200,503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json().data;",
+                  "    pm.test('an answer came back', () => pm.expect(data.answer).to.be.a('string'));",
+                  "    pm.test('every link points at one of the guest own rows', () => (data.links || []).forEach(l => pm.expect(l.target).to.match(/^(bookings|tour-bookings|tours)\\/[0-9]+$/)));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: manager cannot use the guest assistant -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/assistant/ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "assistant",
+                "ask"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Don cua toi the nao?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: tour search with a blank query -> 400",
           "request": {
             "method": "POST",

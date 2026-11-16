@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.ai.AiClient;
+import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
 import com.vanmo.booking_app_be.ai.AiSearchService;
@@ -23,6 +24,7 @@ import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
+import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
@@ -52,6 +54,7 @@ public class AiController {
     private final TourDraftWriter tourDraftWriter;
     private final AiReportAnalyst aiReportAnalyst;
     private final AiPricingAdvisor aiPricingAdvisor;
+    private final AiGuestAssistant aiGuestAssistant;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -118,6 +121,12 @@ public class AiController {
     @GetMapping("/branches/{hotelId}/pricing-advice")
     public ApiResponse<AiPricingAdviceResponse> pricingAdvice(@PathVariable Long hotelId) {
         return ApiResponse.ok(aiPricingAdvisor.advise(hotelId));
+    }
+
+    /** A guest asking about their own trips; it reads only their own bookings, orders and vouchers. */
+    @PostMapping("/assistant/ask")
+    public ApiResponse<AiGuestAnswerResponse> askAssistant(@Valid @RequestBody AiSearchRequest req) {
+        return ApiResponse.ok(aiGuestAssistant.ask(req.getQuery()));
     }
 
     /** Branch team: a draft reply to review and send (nothing reaches the guest). */
