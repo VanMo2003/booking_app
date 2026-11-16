@@ -11,6 +11,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.ai.AiClient;
+import com.vanmo.booking_app_be.ai.AiContentAudit;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
@@ -28,6 +29,7 @@ import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
+import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
@@ -63,6 +65,7 @@ public class AiController {
     private final AiGuestAssistant aiGuestAssistant;
     private final ChatSummarizer chatSummarizer;
     private final AiReviewThemes aiReviewThemes;
+    private final AiContentAudit aiContentAudit;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -141,6 +144,15 @@ public class AiController {
     @PostMapping("/conversations/{id}/suggest-reply")
     public ApiResponse<AiSuggestionResponse> suggestReply(@PathVariable Long id) {
         return ApiResponse.ok(chatAssistant.suggest(id));
+    }
+
+    /**
+     * Branch manager or above: how ready the branch's page is to sell. The checks and the score are counted from
+     * its own rows; only the advice is written by the assistant.
+     */
+    @GetMapping("/branches/{hotelId}/content-audit")
+    public ApiResponse<AiContentAuditResponse> contentAudit(@PathVariable Long hotelId) {
+        return ApiResponse.ok(aiContentAudit.of(hotelId));
     }
 
     /** Chain owner: what guests across the chain keep talking about in a period, topic by topic. */

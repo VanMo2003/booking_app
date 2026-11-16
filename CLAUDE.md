@@ -422,6 +422,15 @@ Two features, both grounded in database data rather than model knowledge:
   `byBranch`. Fewer than `MIN_COMMENTS` (6) commented reviews answers with no themes and a note. `byBranch`,
   `prompt`, `build` and `sentiment` are pure (`AiReviewThemesTest`).
 
+- **Content audit** (`AiContentAudit`, `GET /ai/branches/{hotelId}/content-audit`, branch manager or above): how
+  ready a branch's page is to sell. The eleven checks (description long enough, photos, amenities, services, rooms
+  with a photo and a price, tours with a destination / itinerary / photo, dishes priced) and the `score` (share of
+  checks passed) are counted here from the branch's own rows, so the endpoint still answers without an API key -
+  only the advice is missing then. The model is told the results and writes `set_content_audit`; `build` drops
+  advice pointing at a check that passed, does not exist, or repeats one. A section with no rows (a branch selling
+  no tours) passes rather than nagging. `checks`, `score`, `prompt`, `build` and `priority` are pure
+  (`AiContentAuditTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

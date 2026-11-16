@@ -7407,6 +7407,90 @@
           ]
         },
         {
+          "name": "AI: manager checks how ready the branch page is",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/branches/{{hotelId}}/content-audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "branches",
+                "{{hotelId}}",
+                "content-audit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('the checks and the score come from the rows, so they work without an AI key', () => {",
+                  "    pm.expect(data.checks.length).to.be.at.least(1);",
+                  "    pm.expect(data.score).to.be.at.least(0);",
+                  "    pm.expect(data.score).to.be.at.most(100);",
+                  "});",
+                  "pm.test('the score is the share of checks that passed', () => {",
+                  "    const passed = data.checks.filter(c => c.passed).length;",
+                  "    pm.expect(data.score).to.eql(Math.round(passed * 100 / data.checks.length));",
+                  "});",
+                  "pm.test('every piece of advice points at a check that failed', () => {",
+                  "    const failed = data.checks.filter(c => !c.passed).map(c => c.key);",
+                  "    (data.items || []).filter(i => i.checkKey).forEach(i => pm.expect(failed).to.include(i.checkKey));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: staff cannot run the content audit -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/branches/{{hotelId}}/content-audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "branches",
+                "{{hotelId}}",
+                "content-audit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: staff asks for a reply suggestion (nothing is sent)",
           "request": {
             "method": "POST",
