@@ -15,7 +15,9 @@ tốt nghiệp 2026.
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
 - **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
 - **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
-  trợ lý lễ tân AI và tìm phòng bằng câu nói tự nhiên
+  12 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
+  câu nói, lên kế hoạch chuyến đi, trợ lý riêng của khách, tóm tắt và phân tích đánh giá, soạn nội dung
+  tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -33,7 +35,10 @@ config      -> security, CORS, VNPay, seed admin mặc định
 security    -> AccessGuard - kiểm tra quyền theo phân cấp khách sạn/cơ sở
 event       -> sự kiện sau khi commit: gửi push, gửi email xét duyệt, phát tin nhắn chat
 websocket   -> kênh chat realtime /ws/chat (xác thực token, danh sách kết nối)
-ai          -> gọi model AI: trợ lý lễ tân trong chat, tìm phòng bằng câu nói
+ai          -> gọi model AI: trợ lý lễ tân (đặt phòng/tour trong chat), tóm tắt hội thoại,
+               tìm phòng và tìm tour bằng câu nói, lên kế hoạch chuyến đi, trợ lý của khách,
+               tóm tắt & phân tích đánh giá, soạn nội dung tour, hỏi đáp số liệu,
+               tư vấn giá phòng, kiểm tra mức hoàn thiện trang
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -215,6 +220,13 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
    - **Gợi ý tour:** khách hỏi đi chơi, tham quan, ăn uống quanh khu vực hoặc nói sẽ ở vài ngày thì
      trợ lý gợi ý 1–3 tour phù hợp của cơ sở (tên, giá mỗi khách, thời lượng, giờ khởi hành), không
      gợi ý tour tạm ngừng.
+   - **Lên đơn phòng (công cụ `find_available_rooms` + `create_room_booking`), 2 bước:** (1) đủ ngày nhận,
+     ngày trả, số khách thì trợ lý tra phòng trống thật, để khách chọn (hoặc gợi ý phòng rẻ nhất đủ chỗ),
+     gửi tóm tắt gồm phòng, loại phòng, ngày nhận/trả, số đêm, giá mỗi đêm, tổng tiền phòng rồi mời khách
+     nhắn "Đồng ý"; (2) khách đồng ý thì trợ lý lên đơn (thanh toán tại khách sạn, chờ cơ sở xác nhận) và
+     đội ngũ cơ sở nhận thông báo `BOOKING_CREATED`. Máy chủ kiểm lại từng phòng (thuộc cơ sở, không bảo
+     trì, còn trống cả kỳ), tính tiền theo giá × số đêm, và hỏi lại cùng kỳ nghỉ thì trả về đơn đang mở
+     thay vì tạo đơn thứ hai.
    - **Lên đơn tour (công cụ `find_tour_rooms` + `create_tour_booking`), 2 bước:** (1) đủ tour, ngày đi,
      số khách thì trợ lý tra phòng của gói còn trống (tour kèm phòng), cho khách chọn hoặc gợi ý phòng rẻ
      nhất đủ chỗ, gửi tóm tắt gồm phòng, ngày nhận/trả, tiền tour + tiền phòng và mời khách nhắn "Đồng ý"; (2) khách đồng ý thì trợ lý lên đơn, báo mã đơn,
@@ -228,10 +240,50 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
      {"autoReply": true}` (`GET` để xem). Khách nhắn mà sau `AI_AUTO_REPLY_DELAY_SECONDS` (mặc định 90
      giây) chưa ai của cơ sở trả lời thì trợ lý trả lời, tin mang nhãn "Trợ lý AI" (`aiGenerated`).
      Nhân viên trả lời kịp hoặc khách nhắn tiếp thì bỏ lượt đó; nhân viên trả lời thì `needsStaff` tự xoá.
-2. **Tìm phòng bằng câu nói tự nhiên:** `POST /ai/search {"query": "..."}` (công khai, 20 lần/10 phút mỗi
+2. **Tóm tắt hội thoại cho nhân viên** (`ai/ChatSummarizer`): `GET /ai/conversations/{id}/summary` đọc 40
+   tin nhắn mới nhất và trả về một ghi chú ngắn — khách cần gì, việc gì còn treo, nên làm gì tiếp, mức gấp
+   (LOW/NORMAL/HIGH). "Khách đang chờ" suy ra từ ai nhắn cuối, không hỏi model. Không gửi gì cho khách.
+3. **Tìm phòng bằng câu nói tự nhiên:** `POST /ai/search {"query": "..."}` (công khai, 20 lần/10 phút mỗi
    tài khoản hoặc IP). Model nhanh chỉ **tách câu thành bộ lọc** (ngày, số khách, giá, khu vực, tiện ích);
    lọc cơ sở và phòng trống do BE làm trên dữ liệu thật. Điều kiện không dùng được (ngày đã qua, tiện ích
    không cơ sở nào có) được bỏ kèm ghi chú `notes`.
+
+4. **Tìm tour bằng câu nói tự nhiên** (`ai/AiTourSearch`): `POST /ai/tours/search` (công khai). Model nhanh
+   tách câu thành bộ lọc (điểm đến, chủ đề `TravelTheme`, giá mỗi người lớn, số người lớn/trẻ em, ngày đi,
+   số đêm, kèm phòng, từ khoá); BE chọn và xếp hạng tour trên dữ liệu thật. Điểm đến, giá, số khách, kèm
+   phòng, số đêm là điều kiện bắt buộc; chủ đề và từ khoá chỉ đẩy tour lên trên. Có ngày đi thì kiểm tra
+   chỗ còn lại thật theo các đơn đang mở.
+5. **Lên kế hoạch chuyến đi** (`ai/AiTripPlanner`): `POST /ai/trip-plan` (công khai). Hai lượt gọi model và
+   model không quyết định gì liên quan tiền: model nhanh đọc câu thành yêu cầu chuyến đi, BE tìm cơ sở còn
+   phòng trống và tour phù hợp, model trợ lý chỉ xếp chúng thành từng ngày. BE loại mọi khách sạn/tour
+   không có trong danh sách, cắt ngày thừa, chọn voucher giảm nhiều nhất cho phần tour và tính tiền
+   phòng/tour/tổng/mỗi người.
+6. **Trợ lý riêng của khách** (`ai/AiGuestAssistant`): `POST /ai/assistant/ask` (chỉ khách). Chỉ đọc đơn
+   phòng, đơn tour, mã giảm giá và sở thích của chính khách đang đăng nhập; deep link trả về được BE kiểm
+   là trỏ đúng đơn của khách. Không đặt, không huỷ, không thanh toán hộ.
+7. **Tóm tắt đánh giá của cơ sở** (`ai/ReviewDigest`): `GET /ai/hotels/{hotelId}/review-digest` (công khai)
+   — "khách thường khen / thường phàn nàn", đọc từ chính đánh giá của cơ sở. Lưu cache trong
+   `HotelReviewDigest`, chỉ viết lại khi số đánh giá đổi; phổ sao và điểm trung bình do BE tự tính. Dưới 4
+   đánh giá thì trả `available: false` để app ẩn thẻ.
+8. **Phân tích đánh giá toàn chuỗi** (`ai/AiReviewThemes`): `GET /ai/chains/{id}/review-themes?from=&to=`
+   (chủ chuỗi) — khách nói nhiều về chủ đề gì (sạch sẽ, nhân viên, vị trí, tiếng ồn…), mức
+   GOOD/MIXED/BAD và cơ sở nào bị nhắc. BE chỉ giữ tên cơ sở thuộc chuỗi; số đánh giá và điểm từng cơ sở
+   do BE tính.
+9. **Soạn nội dung tour giúp quản lý** (`ai/TourDraftWriter`): `POST /ai/tours/draft` (chủ/quản lý cơ sở) —
+   từ tên tour và vài thông tin đã nhập, model viết mô tả, phần bao gồm, lịch trình theo chặng và điều
+   khoản huỷ để quản lý sửa rồi tự lưu. Không ghi gì vào tour; quy tắc cấm nhắc giá và cấm bịa dịch vụ.
+10. **Hỏi đáp số liệu** (`ai/AiReportAnalyst`): `POST /ai/reports/ask` (quản lý cơ sở với `hotelId`, chủ
+    chuỗi với `hotelChainId`). Model nhanh chỉ đọc khoảng thời gian từ câu hỏi, BE gọi đúng
+    `ReportService` (nên quyền và con số khớp các trang báo cáo), model trợ lý viết nhận xét từ khối số
+    liệu dạng văn bản. KPI trả về kèm câu trả lời để người đọc tự kiểm.
+11. **Tư vấn giá phòng** (`ai/AiPricingAdvisor`): `GET /ai/branches/{hotelId}/pricing-advice` (quản lý trở
+    lên) — mỗi loại phòng nên tăng/giữ/giảm bao nhiêu phần trăm, dựa trên 30 ngày lấp phòng, ADR thực so
+    với giá niêm yết, lấp phòng theo ngày trong tuần và lượng đã đặt trước. BE chặn phần trăm quá 30, loại
+    loại phòng không tồn tại và tự tính giá đề xuất. Không đổi giá phòng nào.
+12. **Kiểm tra mức hoàn thiện trang** (`ai/AiContentAudit`): `GET /ai/branches/{hotelId}/content-audit`
+    (quản lý trở lên) — 11 tiêu chí (mô tả, ảnh, tiện ích, dịch vụ, phòng có ảnh/giá, tour có điểm
+    đến/lịch trình/ảnh, món có giá) và điểm số đều do BE đếm, nên vẫn trả về được khi chưa có API key;
+    model chỉ diễn đạt nên sửa gì trước.
 
 **Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
 experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi
