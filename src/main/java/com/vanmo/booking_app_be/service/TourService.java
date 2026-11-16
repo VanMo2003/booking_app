@@ -34,5 +34,8 @@ public interface TourService {
 
     List<TourDestinationDTO> destinations();
 
+    /** Every running tour of an open branch, promotion prices applied - what the AI tour search filters. */
+    List<TourResponse> publicTours();
+
     TourHomeResponse home(Set<TravelTheme> interests);
 }

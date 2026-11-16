@@ -67,8 +67,10 @@ public class TourBookingServiceImpl implements TourBookingService {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final Set<TourBookingStatus> OPEN =
+    /** Orders that still hold a seat; the AI tour search counts them too. */
+    public static final Set<TourBookingStatus> OPEN =
             EnumSet.of(TourBookingStatus.PENDING, TourBookingStatus.CONFIRMED);
+
     private static final int MAX_DAYS_AHEAD = 365;
     private static final int MAX_GUESTS_PER_ORDER = 50;
     private static final int ASSISTANT_HISTORY = 5;

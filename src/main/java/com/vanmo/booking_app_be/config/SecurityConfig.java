@@ -59,7 +59,8 @@ public class SecurityConfig {
         "/auth/introspect",
         "/auth/refreshToken",
         "/storage/upload",
-        "/ai/search"
+        "/ai/search",
+        "/ai/tours/search"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

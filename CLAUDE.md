@@ -332,6 +332,15 @@ Two features, both grounded in database data rather than model knowledge:
   the sentence into filters through a forced tool call (`set_search_filters`); matching branches and
   free rooms is plain Java. Unusable filters are dropped with a note instead of failing.
 
+- **Natural-language tour search** (`AiTourSearch`, public `POST /ai/tours/search`): the same shape for tours.
+  The fast model fills `set_tour_filters` (destinations plus the province it knows, `TravelTheme`s, price per adult,
+  adults/children, tour day, nights, "kèm phòng", keywords); `TourService.publicTours()` supplies the rows and
+  `AiTourSearch.score` ranks them. Place, price, head count, rooms and nights are hard conditions; themes, keywords,
+  a child price, a sale and `featured` only move a tour up the list, so a wish nobody matches exactly still returns
+  the closest tours. With a day named, seats are checked for real against open orders
+  (`TourBookingRepository.sumGuests`, `TourBookingServiceImpl.OPEN`) and full tours are reported in `notes`.
+  `filters` and `score` are pure and unit-tested (`AiTourSearchTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

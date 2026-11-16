@@ -264,6 +264,14 @@ public class TourServiceImpl implements TourService {
     }
 
     @Override
+    public List<TourResponse> publicTours() {
+        return tourRepository.findAllPublic().stream()
+                .sorted(LIST_ORDER)
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
     public List<TourDestinationDTO> destinations() {
         return tourRepository.findDestinations();
     }
