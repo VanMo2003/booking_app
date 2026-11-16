@@ -447,6 +447,16 @@ Two features, both grounded in database data rather than model knowledge:
   come from `ReportService`, so the brief can never disagree with the report screens. `signals`, `targetSignal`,
   `prompt` and `build` are pure (`AiDailyBriefTest`).
 
+- **Branch Q&A** (`AiHotelQa`, public `POST /ai/hotels/{hotelId}/ask`): a visitor reading a branch's page asks a
+  question and is answered from `HotelKnowledge.factSheet` alone - no login, no conversation, nothing written.
+  The rules make the model set `answered = false` for anything the branch never published (check-in time, refunds,
+  promotions - the fact sheet itself ends with that list), and `build` then drops every link, so the app offers to
+  ask the branch instead of showing a guess; an empty answer counts as not knowing. Links survive only when they
+  point at this branch or one of its own tours (`allowedTargets`). The question goes inside `<question>` tags as
+  data. Public like `/ai/search`, so it needs both halves: no guard and an entry in
+  `SecurityConfig.PUBLIC_ENDPOINT_POST` (`/ai/hotels/*/ask`). `allowedTargets`, `prompt` and `build` are pure
+  (`AiHotelQaTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

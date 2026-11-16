@@ -62,7 +62,9 @@ public class SecurityConfig {
         "/storage/upload",
         "/ai/search",
         "/ai/tours/search",
-        "/ai/trip-plan"
+        "/ai/trip-plan",
+        // Asking about one branch is part of browsing it: same surface as GET /hotels/detail/{id}.
+        "/ai/hotels/*/ask"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

@@ -15,9 +15,10 @@ tốt nghiệp 2026.
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
 - **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
 - **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
-  12 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
+  14 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
   câu nói, lên kế hoạch chuyến đi, trợ lý riêng của khách, tóm tắt và phân tích đánh giá, soạn nội dung
-  tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang
+  tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay, hỏi nhanh
+  về một cơ sở
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -38,7 +39,8 @@ websocket   -> kênh chat realtime /ws/chat (xác thực token, danh sách kết
 ai          -> gọi model AI: trợ lý lễ tân (đặt phòng/tour trong chat), tóm tắt hội thoại,
                tìm phòng và tìm tour bằng câu nói, lên kế hoạch chuyến đi, trợ lý của khách,
                tóm tắt & phân tích đánh giá, soạn nội dung tour, hỏi đáp số liệu,
-               tư vấn giá phòng, kiểm tra mức hoàn thiện trang
+               tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay,
+               hỏi nhanh về một cơ sở
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -284,6 +286,17 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
     (quản lý trở lên) — 11 tiêu chí (mô tả, ảnh, tiện ích, dịch vụ, phòng có ảnh/giá, tour có điểm
     đến/lịch trình/ảnh, món có giá) và điểm số đều do BE đếm, nên vẫn trả về được khi chưa có API key;
     model chỉ diễn đạt nên sửa gì trước.
+
+13. **Bản tin "việc hôm nay"** (`ai/AiDailyBrief`): `GET /ai/branches/{hotelId}/daily-brief` (quản lý trở lên) —
+    khách nhận/trả phòng hôm nay, đơn còn chờ xác nhận (gấp khi đã quá 24 giờ), tour khởi hành hôm nay và ngày
+    mai, tin nhắn khách chưa trả lời, đánh giá từ 2 sao trở xuống trong 7 ngày, tiền chưa thu, phòng bảo trì và
+    chỉ tiêu doanh thu tháng đo theo lịch. Mọi con số và mức URGENT/WATCH/QUIET do BE đếm nên vẫn trả về được khi
+    chưa có API key; model chỉ xếp thứ tự việc và viết mỗi việc một câu, và việc trỏ vào dòng không cần xử lý thì
+    bị loại.
+14. **Hỏi nhanh về một cơ sở** (`ai/AiHotelQa`): `POST /ai/hotels/{hotelId}/ask` (công khai, không cần đăng nhập).
+    Khách đang xem trang cơ sở hỏi một câu, model trả lời **chỉ** từ hồ sơ cơ sở (`HotelKnowledge.factSheet`).
+    Hồ sơ không có thông tin (giờ nhận phòng, chính sách huỷ, khuyến mãi) thì `answered = false` và app mời khách
+    nhắn thẳng cho cơ sở thay vì hiện câu đoán. Liên kết trả về chỉ được trỏ tới chính cơ sở đó hoặc tour của nó.
 
 **Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
 experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi

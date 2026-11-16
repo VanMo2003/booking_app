@@ -14,6 +14,7 @@ import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
 import com.vanmo.booking_app_be.ai.AiDailyBrief;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
+import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
@@ -33,6 +34,7 @@ import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
+import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewThemesResponse;
@@ -69,6 +71,7 @@ public class AiController {
     private final AiReviewThemes aiReviewThemes;
     private final AiContentAudit aiContentAudit;
     private final AiDailyBrief aiDailyBrief;
+    private final AiHotelQa aiHotelQa;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -94,6 +97,17 @@ public class AiController {
             @Valid @RequestBody AiSearchRequest req, Principal principal, HttpServletRequest http) {
         String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
         return ApiResponse.ok(aiTourSearch.search(req.getQuery(), client));
+    }
+
+    /** Public: a question about one branch, answered only from what that branch published. */
+    @PostMapping("/hotels/{hotelId}/ask")
+    public ApiResponse<AiHotelAnswerResponse> askHotel(
+            @PathVariable Long hotelId,
+            @Valid @RequestBody AiSearchRequest req,
+            Principal principal,
+            HttpServletRequest http) {
+        String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
+        return ApiResponse.ok(aiHotelQa.ask(hotelId, req.getQuery(), client));
     }
 
     /** Public: a day-by-day plan built from branches with free rooms and running tours. */

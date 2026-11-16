@@ -27,6 +27,7 @@ import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
 import com.vanmo.booking_app_be.ai.AiDailyBrief;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
+import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
@@ -42,6 +43,7 @@ import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
+import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewThemesResponse;
@@ -76,6 +78,7 @@ class AiControllerTest {
     private final AiReviewThemes aiReviewThemes = mock(AiReviewThemes.class);
     private final AiContentAudit aiContentAudit = mock(AiContentAudit.class);
     private final AiDailyBrief aiDailyBrief = mock(AiDailyBrief.class);
+    private final AiHotelQa aiHotelQa = mock(AiHotelQa.class);
 
     private MockMvc mvc;
 
@@ -95,7 +98,8 @@ class AiControllerTest {
                 chatSummarizer,
                 aiReviewThemes,
                 aiContentAudit,
-                aiDailyBrief);
+                aiDailyBrief,
+                aiHotelQa);
         // Spring Boot's own Jackson defaults, so dates serialise the way the app really answers.
         com.fasterxml.jackson.databind.ObjectMapper json = com.fasterxml.jackson.databind.json.JsonMapper.builder()
                 .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -325,6 +329,36 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.score").value(73))
                 .andExpect(jsonPath("$.data.checks[0].passed").value(false));
+    }
+
+    @Test
+    void askingAboutOneBranchComesBackWithItsLinks() throws Exception {
+        when(aiHotelQa.ask(eq(6L), eq("Có tour ăn uống không?"), anyString()))
+                .thenReturn(AiHotelAnswerResponse.builder()
+                        .hotelId(6L)
+                        .question("Có tour ăn uống không?")
+                        .answer("Dạ cơ sở mình có Food tour phố cổ.")
+                        .answered(true)
+                        .links(List.of(AiHotelAnswerResponse.Link.builder()
+                                .label("Xem tour Food tour phố cổ")
+                                .target("tours/7")
+                                .build()))
+                        .build());
+
+        mvc.perform(post("/ai/hotels/6/ask")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\": \"Có tour ăn uống không?\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.answered").value(true))
+                .andExpect(jsonPath("$.data.links[0].target").value("tours/7"));
+    }
+
+    @Test
+    void askingAboutOneBranchWithABlankQuestionIsRefused() throws Exception {
+        mvc.perform(post("/ai/hotels/6/ask")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\": \"   \"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
