@@ -69,7 +69,12 @@ Standard layered structure, one package per concern under `com.vanmo.booking_app
   natural-language search; see *AI features*.
 - `exception` — `AppException` + `ErrorCode` enum (numeric app-level codes, distinct from HTTP
   status) are the standard way to fail a request; `GlobalExceptionHandler` maps these (and
-  validation/upload-size/access-denied errors) to `ApiResponse.fail(...)`.
+  validation/upload-size/access-denied errors) to `ApiResponse.fail(...)`. It has a catch-all
+  `Exception` handler returning 500, so a caller's own mistake needs its own handler to come back as
+  400: wrong parameter type (`MethodArgumentTypeMismatchException`), a missing required query
+  parameter (`MissingServletRequestParameterException`) and an unreadable body
+  (`HttpMessageNotReadableException`) are mapped explicitly - add one when a new endpoint can fail that
+  way (`AiControllerTest` pins the AI endpoints' HTTP behaviour).
 - `scheduler` — `PaymentExpireScheduler` polls every 60s to expire stale pending-payment bookings.
 - `utils` — `VNPayUtil`, `AppLinks` (app deep links), `NotificationMessages` (notification copy).
 

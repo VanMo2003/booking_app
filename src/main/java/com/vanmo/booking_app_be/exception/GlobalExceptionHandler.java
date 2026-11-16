@@ -1,8 +1,10 @@
 package com.vanmo.booking_app_be.exception;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -40,6 +42,21 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(
                         ex.getName() + ": giá trị không hợp lệ '" + ex.getValue() + "'",
                         ErrorCode.BAD_REQUEST.getCode()));
+    }
+
+    /** A required query parameter left out (e.g. a report without `from`): the caller's mistake, not a 500. */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMissingParameter(MissingServletRequestParameterException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(
+                        ex.getParameterName() + ": thiếu tham số bắt buộc", ErrorCode.BAD_REQUEST.getCode()));
+    }
+
+    /** A body that is not readable JSON at all (truncated, wrong type in a field) - also a 400. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail("Nội dung gửi lên không đọc được", ErrorCode.BAD_REQUEST.getCode()));
     }
 
     @ExceptionHandler(Exception.class)
