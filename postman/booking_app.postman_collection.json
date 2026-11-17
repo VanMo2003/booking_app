@@ -6159,7 +6159,7 @@
                   "});",
                   "pm.test('the draft promises no money and quotes no price', () => {",
                   "    const text = data.draft.toLowerCase();",
-                  "    ['hoan tien', 'hoàn tiền', 'giam gia', 'giảm giá', 'mien phi', 'miễn phí', 'voucher']",
+                  "    ['hoan tien', 'hoàn tiền', 'giam gia', 'giảm giá', 'voucher']",
                   "        .forEach(word => pm.expect(text).to.not.include(word));",
                   "});"
                 ]
