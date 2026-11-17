@@ -410,7 +410,10 @@ Two features, both grounded in database data rather than model knowledge:
   `getRevenueByTour`, `getBranchPerformanceForChain`, `getRevenueOutlook`) - so the report guards apply and the
   numbers match the report screens - and the assistant model writes the answer from `brief`, a plain-text block of
   those figures, into `set_report_answer` (answer, highlights, suggestions). The KPIs travel back with the answer so
-  every claim can be checked. `period`, `brief`, `money` and `number` are pure (`AiReportAnalystTest`); the period
+  every claim can be checked. The brief also carries the cancellation report
+  (`getCancellationRate`, added through `cancellations`): the rate alone cannot answer "vì sao khách huỷ
+  nhiều?", but the lead-time buckets, who pulled out and how many cancelled close to arrival can.
+  `period`, `brief`, `cancellations`, `money` and `number` are pure (`AiReportAnalystTest`); the period
   defaults to this month to date and is clamped to today and to `MAX_DAYS`.
 
 - **Pricing advisor** (`AiPricingAdvisor`, `GET /ai/branches/{hotelId}/pricing-advice`, branch manager or above

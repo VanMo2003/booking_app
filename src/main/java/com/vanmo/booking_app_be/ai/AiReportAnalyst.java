@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.CancellationRateResponse;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -148,8 +149,13 @@ public class AiReportAnalyst {
         RevenueOutlookResponse outlook = chain
                 ? reportService.getRevenueOutlookForChain(id, OUTLOOK_DAYS)
                 : reportService.getRevenueOutlook(id, OUTLOOK_DAYS);
+        // "Vì sao khách huỷ nhiều?" is a question people actually ask, and the summary alone carries only a
+        // rate - the lead times and who pulled out live in the cancellation report.
+        CancellationRateResponse cancellations = chain
+                ? reportService.getCancellationRateForChain(id, period.from(), period.to())
+                : reportService.getCancellationRate(id, period.from(), period.to());
 
-        String brief = brief(chain, period, summary, tours, branches, outlook);
+        String brief = brief(chain, period, summary, tours, branches, outlook, cancellations);
         JsonNode answer = ai.withModelFallback(ai.getAssistantModels(), model -> answer(model, question, brief));
 
         return AiReportAnswerResponse.builder()
@@ -250,7 +256,8 @@ public class AiReportAnalyst {
             RevenueSummaryResponse summary,
             List<RevenueByTourDTO> tours,
             List<BranchPerformanceDTO> branches,
-            RevenueOutlookResponse outlook) {
+            RevenueOutlookResponse outlook,
+            CancellationRateResponse cancellations) {
         RevenuePeriodDTO now = summary.getCurrent();
         RevenuePeriodDTO before = summary.getPrevious();
         StringBuilder brief = new StringBuilder("SỐ LIỆU\n");
@@ -340,7 +347,67 @@ public class AiReportAnalyst {
                     .append(number(outlook.getOccupancyOnTheBooks()))
                     .append("%\n");
         }
+        cancellations(brief, cancellations);
         return brief.toString();
+    }
+
+    /**
+     * The cancellation picture: how many, how much money, who pulled out and how close to arrival. The
+     * lead-time buckets are what turns "huỷ nhiều" into something a manager can act on.
+     */
+    static void cancellations(StringBuilder brief, CancellationRateResponse cancellations) {
+        if (cancellations == null) {
+            return;
+        }
+        brief.append("\nHuỷ đơn:\n");
+        brief.append("- Đơn phòng: ")
+                .append(cancellations.getCanceledBooking())
+                .append("/")
+                .append(cancellations.getTotalBooking())
+                .append(" đơn bị huỷ (")
+                .append(number(cancellations.getCancellationRate()))
+                .append("%), mất ")
+                .append(money(cancellations.getCanceledRevenue()))
+                .append("\n");
+        brief.append("- Ai huỷ: khách ")
+                .append(cancellations.getCanceledByGuest())
+                .append(" đơn, cơ sở ")
+                .append(cancellations.getCanceledByHotel())
+                .append(" đơn\n");
+        if (cancellations.getMedianCancelLeadDays() != null) {
+            brief.append("- Thường huỷ trước ngày nhận phòng ")
+                    .append(cancellations.getMedianCancelLeadDays())
+                    .append(" ngày (trung vị)\n");
+        }
+        brief.append("- Huỷ sát ngày: ")
+                .append(cancellations.getLateCancellations())
+                .append(" đơn (")
+                .append(number(cancellations.getLateCancellationShare()))
+                .append("% số đơn huỷ)\n");
+        if (cancellations.getByLeadTime() != null
+                && !cancellations.getByLeadTime().isEmpty()) {
+            brief.append("- Huỷ theo thời điểm:\n");
+            cancellations.getByLeadTime().forEach(bucket -> brief.append("  + ")
+                    .append(bucket.getKey())
+                    .append(": ")
+                    .append(bucket.getCount())
+                    .append(" đơn, ")
+                    .append(number(bucket.getShare()))
+                    .append("%\n"));
+        }
+        if (cancellations.getTourOrders() > 0) {
+            brief.append("- Đơn tour: ")
+                    .append(cancellations.getTourCanceled())
+                    .append("/")
+                    .append(cancellations.getTourOrders())
+                    .append(" bị huỷ (")
+                    .append(number(cancellations.getTourCancellationRate()))
+                    .append("%), khách huỷ ")
+                    .append(cancellations.getTourCanceledByGuest())
+                    .append(", cơ sở huỷ ")
+                    .append(cancellations.getTourCanceledByHotel())
+                    .append("\n");
+        }
     }
 
     private static void period(StringBuilder brief, RevenuePeriodDTO period) {

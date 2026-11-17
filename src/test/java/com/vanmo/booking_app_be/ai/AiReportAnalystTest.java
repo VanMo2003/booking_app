@@ -13,6 +13,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vanmo.booking_app_be.dto.response.BranchPerformanceDTO;
+import com.vanmo.booking_app_be.dto.response.CancellationRateResponse;
 import com.vanmo.booking_app_be.dto.response.RevenueByTourDTO;
 import com.vanmo.booking_app_be.dto.response.RevenueOutlookResponse;
 import com.vanmo.booking_app_be.dto.response.RevenuePeriodDTO;
@@ -135,13 +136,31 @@ class AiReportAnalystTest {
         outlook.setTours(2);
         outlook.setOccupancyOnTheBooks(31.0);
 
+        CancellationRateResponse cancellations = new CancellationRateResponse();
+        cancellations.setTotalBooking(40);
+        cancellations.setCanceledBooking(6);
+        cancellations.setCancellationRate(15.0);
+        cancellations.setCanceledRevenue(new BigDecimal("9000000"));
+        cancellations.setCanceledByGuest(4);
+        cancellations.setCanceledByHotel(2);
+        cancellations.setMedianCancelLeadDays(3L);
+        cancellations.setLateCancellations(2);
+        cancellations.setLateCancellationShare(33.3);
+        cancellations.setByLeadTime(List.of(new RevenueShareDTO("Trong 24 giờ", 2, BigDecimal.ZERO, 33.3)));
+        cancellations.setTourOrders(9);
+        cancellations.setTourCanceled(1);
+        cancellations.setTourCancellationRate(11.1);
+        cancellations.setTourCanceledByGuest(1);
+        cancellations.setTourCanceledByHotel(0);
+
         String brief = AiReportAnalyst.brief(
                 true,
                 new AiReportAnalyst.Period(LocalDate.of(2026, 11, 1), TODAY, "doanh thu"),
                 summary,
                 List.of(tour),
                 List.of(branch),
-                outlook);
+                outlook,
+                cancellations);
 
         assertThat(brief).startsWith("SỐ LIỆU");
         assertThat(brief).contains("Phạm vi: toàn chuỗi");
@@ -161,5 +180,40 @@ class AiReportAnalystTest {
         assertThat(AiReportAnalyst.money(null)).isEqualTo("0 ₫");
         assertThat(AiReportAnalyst.money(new BigDecimal("1250000"))).isEqualTo("1.250.000 ₫");
         assertThat(AiReportAnalyst.number(42.5)).isEqualTo("42,5");
+    }
+
+    @Test
+    void briefKeepsTheCancellationPictureSoTheQuestionIsAnswerable() {
+        CancellationRateResponse cancellations = new CancellationRateResponse();
+        cancellations.setTotalBooking(40);
+        cancellations.setCanceledBooking(6);
+        cancellations.setCancellationRate(15.0);
+        cancellations.setCanceledRevenue(new BigDecimal("9000000"));
+        cancellations.setCanceledByGuest(4);
+        cancellations.setCanceledByHotel(2);
+        cancellations.setMedianCancelLeadDays(3L);
+        cancellations.setLateCancellations(2);
+        cancellations.setLateCancellationShare(33.3);
+        cancellations.setByLeadTime(List.of(new RevenueShareDTO("Trong 24 giờ", 2, BigDecimal.ZERO, 33.3)));
+
+        StringBuilder brief = new StringBuilder();
+        AiReportAnalyst.cancellations(brief, cancellations);
+        String text = brief.toString();
+
+        assertThat(text).contains("Đơn phòng: 6/40 đơn bị huỷ (15,0%), mất 9.000.000 ₫");
+        assertThat(text).contains("Ai huỷ: khách 4 đơn, cơ sở 2 đơn");
+        assertThat(text).contains("Thường huỷ trước ngày nhận phòng 3 ngày");
+        assertThat(text).contains("Huỷ sát ngày: 2 đơn (33,3% số đơn huỷ)");
+        assertThat(text).contains("+ Trong 24 giờ: 2 đơn, 33,3%");
+        // Không có đơn tour nào trong kỳ thì không thêm dòng tour rỗng.
+        assertThat(text).doesNotContain("Đơn tour:");
+    }
+
+    @Test
+    void briefLeavesTheCancellationBlockOutWhenThereIsNoReport() {
+        StringBuilder brief = new StringBuilder("SỐ LIỆU\n");
+        AiReportAnalyst.cancellations(brief, null);
+
+        assertThat(brief.toString()).isEqualTo("SỐ LIỆU\n");
     }
 }
