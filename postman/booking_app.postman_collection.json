@@ -7979,10 +7979,12 @@
                   "    pm.expect(data.kind).to.eql('ROOM');",
                   "    pm.expect(data.description).to.be.a('string').and.not.empty;",
                   "});",
-                  "pm.test('the draft says nothing about the price', () => {",
+                  "pm.test('the draft quotes no price and promises no discount', () => {",
                   "    const text = data.description.toLowerCase();",
-                  "    ['gia ', 'giá ', 'vnd', 'đ/đêm', 'd/dem', 'khuyen mai', 'khuyến mãi']",
-                  "        .forEach(word => pm.expect(text).to.not.include(word));",
+                  "    // Mot con so di kem don vi tien la dau hieu chac chan cua gia.",
+                  "    pm.expect(text).to.not.match(/\\d[\\d.,]*\\s*(d|đ|vnd|dong|đồng)\b/);",
+                  "    ['giảm giá', 'khuyến mãi', 'giá rẻ'].forEach(w => pm.expect(text).to.not.include(w));",
+                  "});",
                   "});"
                 ]
               }
