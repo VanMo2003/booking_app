@@ -7355,6 +7355,192 @@
           ]
         },
         {
+          "name": "Owner creates a second Branch (for the comparison)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('hotelTwoId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "data",
+                  "value": "{\n  \"name\": \"Chi nhanh Q3 (so sanh)\",\n  \"address\": \"45 Vo Van Tan, Q3\",\n  \"phone\": \"0912345679\",\n  \"category\": \"Grand\",\n  \"description\": \"Chi nhanh dung cho buoc so sanh\",\n  \"accountId\": \"{{managerAccountId}}\",\n  \"hotelChainId\": {{chainId}}\n}",
+                  "type": "text",
+                  "contentType": "application/json"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": [],
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hotels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels"
+              ]
+            }
+          }
+        },
+        {
+          "name": "AI: compare two branches (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/compare",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "compare"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hotelIds\": [{{hotelId}}, {{hotelTwoId}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('no token needed - comparing is browsing', () => {",
+                  "    pm.expect(pm.request.headers.has('Authorization')).to.be.false;",
+                  "});",
+                  "pm.test('one row per branch, in the order they were asked for', () => {",
+                  "    pm.expect(data.items).to.have.lengthOf(2);",
+                  "    pm.expect(data.items[0].hotelId).to.eql(Number(pm.collectionVariables.get('hotelId')));",
+                  "});",
+                  "pm.test('the figures come from the server, so they are there even when the model is vague', () => {",
+                  "    data.items.forEach(item => {",
+                  "        pm.expect(item.rooms).to.be.a('number');",
+                  "        pm.expect(item.reviews).to.be.a('number');",
+                  "    });",
+                  "});",
+                  "pm.test('at most four differences come back', () => {",
+                  "    pm.expect((data.differences || []).length).to.be.at.most(4);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: comparing one branch -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/compare",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "compare"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hotelIds\": [\n    \"{{hotelId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner deletes the second Branch",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hotels/{{hotelTwoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels",
+                "{{hotelTwoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: owner reads the chain's review themes",
           "request": {
             "method": "GET",
