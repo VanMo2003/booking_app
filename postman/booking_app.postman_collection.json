@@ -7508,6 +7508,108 @@
           ]
         },
         {
+          "name": "AI: read a branch page in English (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/{{hotelId}}/translate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "{{hotelId}}",
+                "translate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lang\": \"en\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('no token needed - reading a branch page is browsing', () => {",
+                  "    pm.expect(pm.request.headers.has('Authorization')).to.be.false;",
+                  "});",
+                  "pm.test('the language asked for comes back named', () => {",
+                  "    pm.expect(data.lang).to.eql('en');",
+                  "    pm.expect(data.language).to.be.a('string');",
+                  "});",
+                  "pm.test('every item keeps its original, so nothing can appear out of nowhere', () => {",
+                  "    (data.items || []).forEach(item => {",
+                  "        pm.expect(item.original).to.be.a('string').and.not.empty;",
+                  "        pm.expect(['DESCRIPTION', 'AMENITY', 'SERVICE', 'DISH', 'TOUR']).to.include(item.section);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: translating into an unsupported language -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/{{hotelId}}/translate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "{{hotelId}}",
+                "translate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lang\": \"xx\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Owner deletes the second Branch",
           "request": {
             "method": "DELETE",
