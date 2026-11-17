@@ -30,6 +30,7 @@ import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
+import com.vanmo.booking_app_be.ai.AiReviewReply;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
@@ -46,6 +47,7 @@ import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
+import com.vanmo.booking_app_be.dto.response.AiReviewReplyResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewThemesResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
@@ -79,6 +81,7 @@ class AiControllerTest {
     private final AiContentAudit aiContentAudit = mock(AiContentAudit.class);
     private final AiDailyBrief aiDailyBrief = mock(AiDailyBrief.class);
     private final AiHotelQa aiHotelQa = mock(AiHotelQa.class);
+    private final AiReviewReply aiReviewReply = mock(AiReviewReply.class);
 
     private MockMvc mvc;
 
@@ -99,7 +102,8 @@ class AiControllerTest {
                 aiReviewThemes,
                 aiContentAudit,
                 aiDailyBrief,
-                aiHotelQa);
+                aiHotelQa,
+                aiReviewReply);
         // Spring Boot's own Jackson defaults, so dates serialise the way the app really answers.
         com.fasterxml.jackson.databind.ObjectMapper json = com.fasterxml.jackson.databind.json.JsonMapper.builder()
                 .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -329,6 +333,24 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.score").value(73))
                 .andExpect(jsonPath("$.data.checks[0].passed").value(false));
+    }
+
+    @Test
+    void reviewReplyDraftComesBackWithTheAnswerAlreadyThere() throws Exception {
+        when(aiReviewReply.draft(31L))
+                .thenReturn(AiReviewReplyResponse.builder()
+                        .feedbackId(31L)
+                        .rating(2)
+                        .draft("Cảm ơn anh/chị đã nói ra, cơ sở mình sẽ kiểm tra lại.")
+                        .points(List.of("Phòng ồn"))
+                        .currentReply("Cảm ơn chị.")
+                        .build());
+
+        mvc.perform(post("/ai/feedbacks/31/reply-draft"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rating").value(2))
+                .andExpect(jsonPath("$.data.points[0]").value("Phòng ồn"))
+                .andExpect(jsonPath("$.data.currentReply").value("Cảm ơn chị."));
     }
 
     @Test

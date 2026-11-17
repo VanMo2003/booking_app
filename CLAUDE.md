@@ -479,6 +479,18 @@ Two features, both grounded in database data rather than model knowledge:
   `SecurityConfig.PUBLIC_ENDPOINT_POST` (`/ai/hotels/*/ask`). `allowedTargets`, `prompt` and `build` are pure
   (`AiHotelQaTest`).
 
+- **Review reply draft** (`AiReviewReply`, `POST /ai/feedbacks/{feedbackId}/reply-draft`, owner or branch
+  manager): the blank box is why answering reviews gets put off, so the manager gets a draft to edit. It takes
+  the same guard as publishing (`requireBranchManagerEditor` on the review's own branch) and publishes nothing -
+  `PUT /feedbacks/{id}/reply` is still the only writer. The prompt is only the stars, the branch's name and the
+  guest's words inside `<review>` tags; no prices and no policies are shown, and the rules forbid the one thing
+  a model would otherwise invent here - a refund, a discount, a free night or a policy nobody wrote down. Three
+  stars or fewer (`LOW_RATING`) is framed as a complaint to acknowledge rather than thanks; a review with stars
+  but no comment says so instead of getting an empty `<review>` block to imagine from. `build` drops repeated
+  points, keeps at most three, and carries any existing answer back as `currentReply` with a note that sending a
+  new one replaces it; a response with no draft counts as a model failure. `prompt`, `low` and `build` are pure
+  (`AiReviewReplyTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

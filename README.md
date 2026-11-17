@@ -15,10 +15,10 @@ tốt nghiệp 2026.
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
 - **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
 - **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
-  14 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
+  15 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
   câu nói, lên kế hoạch chuyến đi, trợ lý riêng của khách, tóm tắt và phân tích đánh giá, soạn nội dung
   tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay, hỏi nhanh
-  về một cơ sở
+  về một cơ sở, soạn nháp trả lời đánh giá
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -40,7 +40,7 @@ ai          -> gọi model AI: trợ lý lễ tân (đặt phòng/tour trong cha
                tìm phòng và tìm tour bằng câu nói, lên kế hoạch chuyến đi, trợ lý của khách,
                tóm tắt & phân tích đánh giá, soạn nội dung tour, hỏi đáp số liệu,
                tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay,
-               hỏi nhanh về một cơ sở
+               hỏi nhanh về một cơ sở, soạn nháp trả lời đánh giá
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -297,6 +297,14 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
     Khách đang xem trang cơ sở hỏi một câu, model trả lời **chỉ** từ hồ sơ cơ sở (`HotelKnowledge.factSheet`).
     Hồ sơ không có thông tin (giờ nhận phòng, chính sách huỷ, khuyến mãi) thì `answered = false` và app mời khách
     nhắn thẳng cho cơ sở thay vì hiện câu đoán. Liên kết trả về chỉ được trỏ tới tour của chính cơ sở đó — dạng duy nhất app mở được.
+
+15. **Soạn nháp trả lời đánh giá** (`ai/AiReviewReply`): `POST /ai/feedbacks/{feedbackId}/reply-draft` (chủ chuỗi
+    hoặc quản lý cơ sở) — quản lý nhận một bản nháp để sửa rồi tự đăng bằng `PUT /feedbacks/{id}/reply`; endpoint
+    này không ghi gì. Prompt chỉ gồm số sao, tên cơ sở và lời khách trong thẻ `<review>`; không đưa giá và không
+    đưa chính sách nào vào, và quy tắc cấm hẳn thứ model dễ bịa nhất ở đây: hứa hoàn tiền, giảm giá, tặng đêm
+    nghỉ hay viện dẫn một chính sách không ai viết. Đánh giá từ 3 sao trở xuống được soạn theo hướng nhận lỗi và
+    ghi nhận, trên 3 sao thì cảm ơn. Đánh giá đã có câu trả lời thì bản nháp mang theo câu cũ kèm lời nhắc gửi
+    câu mới sẽ thay câu cũ.
 
 **Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
 experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi

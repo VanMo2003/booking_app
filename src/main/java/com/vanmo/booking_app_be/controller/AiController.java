@@ -17,6 +17,7 @@ import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
+import com.vanmo.booking_app_be.ai.AiReviewReply;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
@@ -37,6 +38,7 @@ import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
+import com.vanmo.booking_app_be.dto.response.AiReviewReplyResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewThemesResponse;
 import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
@@ -72,6 +74,7 @@ public class AiController {
     private final AiContentAudit aiContentAudit;
     private final AiDailyBrief aiDailyBrief;
     private final AiHotelQa aiHotelQa;
+    private final AiReviewReply aiReviewReply;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -179,6 +182,15 @@ public class AiController {
     @GetMapping("/branches/{hotelId}/daily-brief")
     public ApiResponse<AiDailyBriefResponse> dailyBrief(@PathVariable Long hotelId) {
         return ApiResponse.ok(aiDailyBrief.of(hotelId));
+    }
+
+    /**
+     * Owner or branch manager: a draft answer to one guest review. Nothing is published - posting it is
+     * {@code PUT /feedbacks/{id}/reply}, which the manager sends after editing.
+     */
+    @PostMapping("/feedbacks/{feedbackId}/reply-draft")
+    public ApiResponse<AiReviewReplyResponse> draftReviewReply(@PathVariable Long feedbackId) {
+        return ApiResponse.ok(aiReviewReply.draft(feedbackId));
     }
 
     /** Chain owner: what guests across the chain keep talking about in a period, topic by topic. */
