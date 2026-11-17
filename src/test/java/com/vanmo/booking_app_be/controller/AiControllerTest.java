@@ -27,6 +27,7 @@ import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
 import com.vanmo.booking_app_be.ai.AiDailyBrief;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
+import com.vanmo.booking_app_be.ai.AiHotelCompare;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
@@ -45,6 +46,7 @@ import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
+import com.vanmo.booking_app_be.dto.response.AiHotelCompareResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewReplyResponse;
@@ -82,6 +84,7 @@ class AiControllerTest {
     private final AiDailyBrief aiDailyBrief = mock(AiDailyBrief.class);
     private final AiHotelQa aiHotelQa = mock(AiHotelQa.class);
     private final AiReviewReply aiReviewReply = mock(AiReviewReply.class);
+    private final AiHotelCompare aiHotelCompare = mock(AiHotelCompare.class);
 
     private MockMvc mvc;
 
@@ -103,7 +106,8 @@ class AiControllerTest {
                 aiContentAudit,
                 aiDailyBrief,
                 aiHotelQa,
-                aiReviewReply);
+                aiReviewReply,
+                aiHotelCompare);
         // Spring Boot's own Jackson defaults, so dates serialise the way the app really answers.
         com.fasterxml.jackson.databind.ObjectMapper json = com.fasterxml.jackson.databind.json.JsonMapper.builder()
                 .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -373,6 +377,44 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.answered").value(true))
                 .andExpect(jsonPath("$.data.links[0].target").value("tours/7"));
+    }
+
+    @Test
+    void comparingBranchesComesBackWithOneRowEach() throws Exception {
+        when(aiHotelCompare.compare(eq(List.of(6L, 7L)), anyString()))
+                .thenReturn(AiHotelCompareResponse.builder()
+                        .items(List.of(
+                                AiHotelCompareResponse.Item.builder()
+                                        .hotelId(6L)
+                                        .name("Hoàn Kiếm Palace")
+                                        .priceFrom(new BigDecimal("800000"))
+                                        .maxCapacity(4)
+                                        .fitFor("Phù hợp gia đình.")
+                                        .build(),
+                                AiHotelCompareResponse.Item.builder()
+                                        .hotelId(7L)
+                                        .name("Ba Đình Riverside")
+                                        .maxCapacity(2)
+                                        .build()))
+                        .differences(List.of("Phòng lớn nhất khác nhau."))
+                        .verdict("Gia đình chọn cơ sở đầu.")
+                        .build());
+
+        mvc.perform(post("/ai/hotels/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"hotelIds\": [6, 7]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].fitFor").value("Phù hợp gia đình."))
+                .andExpect(jsonPath("$.data.items[1].hotelId").value(7))
+                .andExpect(jsonPath("$.data.differences[0]").value("Phòng lớn nhất khác nhau."));
+    }
+
+    @Test
+    void comparingFewerThanTwoBranchesIsRefused() throws Exception {
+        mvc.perform(post("/ai/hotels/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"hotelIds\": [6]}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

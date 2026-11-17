@@ -14,6 +14,7 @@ import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
 import com.vanmo.booking_app_be.ai.AiDailyBrief;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
+import com.vanmo.booking_app_be.ai.AiHotelCompare;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
@@ -28,6 +29,7 @@ import com.vanmo.booking_app_be.ai.ReviewDigest;
 import com.vanmo.booking_app_be.ai.TourDraftWriter;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
+import com.vanmo.booking_app_be.dto.request.AiHotelCompareRequest;
 import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
@@ -36,6 +38,7 @@ import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
+import com.vanmo.booking_app_be.dto.response.AiHotelCompareResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewReplyResponse;
@@ -75,6 +78,7 @@ public class AiController {
     private final AiDailyBrief aiDailyBrief;
     private final AiHotelQa aiHotelQa;
     private final AiReviewReply aiReviewReply;
+    private final AiHotelCompare aiHotelCompare;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -100,6 +104,14 @@ public class AiController {
             @Valid @RequestBody AiSearchRequest req, Principal principal, HttpServletRequest http) {
         String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
         return ApiResponse.ok(aiTourSearch.search(req.getQuery(), client));
+    }
+
+    /** Public: two to four branches side by side, every figure counted by the backend. */
+    @PostMapping("/hotels/compare")
+    public ApiResponse<AiHotelCompareResponse> compareHotels(
+            @Valid @RequestBody AiHotelCompareRequest req, Principal principal, HttpServletRequest http) {
+        String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
+        return ApiResponse.ok(aiHotelCompare.compare(req.getHotelIds(), client));
     }
 
     /** Public: a question about one branch, answered only from what that branch published. */

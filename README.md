@@ -15,10 +15,10 @@ tốt nghiệp 2026.
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
 - **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
 - **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
-  15 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
+  16 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
   câu nói, lên kế hoạch chuyến đi, trợ lý riêng của khách, tóm tắt và phân tích đánh giá, soạn nội dung
   tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay, hỏi nhanh
-  về một cơ sở, soạn nháp trả lời đánh giá
+  về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -40,7 +40,7 @@ ai          -> gọi model AI: trợ lý lễ tân (đặt phòng/tour trong cha
                tìm phòng và tìm tour bằng câu nói, lên kế hoạch chuyến đi, trợ lý của khách,
                tóm tắt & phân tích đánh giá, soạn nội dung tour, hỏi đáp số liệu,
                tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay,
-               hỏi nhanh về một cơ sở, soạn nháp trả lời đánh giá
+               hỏi nhanh về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở, so sánh cơ sở
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -305,6 +305,12 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
     nghỉ hay viện dẫn một chính sách không ai viết. Đánh giá từ 3 sao trở xuống được soạn theo hướng nhận lỗi và
     ghi nhận, trên 3 sao thì cảm ơn. Đánh giá đã có câu trả lời thì bản nháp mang theo câu cũ kèm lời nhắc gửi
     câu mới sẽ thay câu cũ.
+
+16. **So sánh cơ sở** (`ai/AiHotelCompare`): `POST /ai/hotels/compare` (công khai) — 2 đến 4 cơ sở đặt cạnh
+    nhau. Mọi con số trong bảng đều do BE đếm từ dữ liệu thật của từng cơ sở (khoảng giá từ giá phòng thật,
+    số khách của phòng lớn nhất, số phòng/tiện ích/dịch vụ/tour, số đánh giá và điểm trung bình tính lại từ
+    đánh giá chứ không lấy `Hotel.rating`), nên bảng vẫn đúng dù model có nói sai. Model chỉ viết lời: mỗi cơ
+    sở phù hợp với ai, các khác biệt đáng để ý và một kết luận nên chọn gì trong hoàn cảnh nào.
 
 **Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
 experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi

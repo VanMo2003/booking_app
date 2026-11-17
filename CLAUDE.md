@@ -491,6 +491,18 @@ Two features, both grounded in database data rather than model knowledge:
   new one replaces it; a response with no draft counts as a model failure. `prompt`, `low` and `build` are pure
   (`AiReviewReplyTest`).
 
+- **Branch comparison** (`AiHotelCompare`, public `POST /ai/hotels/compare`): two to four branches side by
+  side - the question a star rating never answers. Every figure in the table is counted here from the branches'
+  own rows (price range from the real room prices, the largest room's capacity, how many rooms / amenities /
+  services / tours, and reviews with their real average through `ReviewDigest.stats`, not `Hotel.rating`), so
+  the comparison holds even when the model does not. The model writes only prose: one `fit_for` line per branch,
+  the differences, and a verdict. `ids` keeps the guest's order, drops duplicates and refuses fewer than
+  `MIN_HOTELS` or more than `MAX_HOTELS`; `build` keeps a `fit_for` only for a branch that was asked for, drops a
+  second line for the same branch and caps the differences at four. A branch with no priced room, or no review,
+  says so in the prompt instead of showing a zero. Public, so it needs both halves like `/ai/search`: no guard
+  and an entry in `SecurityConfig.PUBLIC_ENDPOINT_POST`. `ids`, `prompt` and `build` are pure
+  (`AiHotelCompareTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),
