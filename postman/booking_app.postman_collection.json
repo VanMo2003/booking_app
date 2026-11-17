@@ -6027,6 +6027,234 @@
           }
         },
         {
+          "name": "Reviews of a branch (public, no token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/feedbacks/hotel/{{hotelId}}?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feedbacks",
+                "hotel",
+                "{{hotelId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('no token needed - reviews are part of a branch page', () => {",
+                  "    pm.expect(pm.request.headers.has('Authorization')).to.be.false;",
+                  "});",
+                  "pm.test('a review comes back with its own content, not just an id', () => {",
+                  "    pm.expect(data.content.length).to.be.at.least(1);",
+                  "    const review = data.content[0];",
+                  "    pm.expect(review.rating).to.be.a('number');",
+                  "    pm.expect(review.hotelId).to.eql(Number(pm.collectionVariables.get('hotelId')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff cannot reply to a review -> 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feedbacks/{{feedbackId}}/reply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feedbacks",
+                "{{feedbackId}}",
+                "reply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reply\": \"Cam on anh/chi da phan hoi.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: manager drafts a reply to a review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/feedbacks/{{feedbackId}}/reply-draft",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "feedbacks",
+                "{{feedbackId}}",
+                "reply-draft"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('a draft comes back and nothing is published yet', () => {",
+                  "    pm.expect(data.draft).to.be.a('string').and.not.empty;",
+                  "    pm.expect(data.feedbackId).to.eql(Number(pm.collectionVariables.get('feedbackId')));",
+                  "});",
+                  "pm.test('the draft promises no money and quotes no price', () => {",
+                  "    const text = data.draft.toLowerCase();",
+                  "    ['hoan tien', 'hoàn tiền', 'giam gia', 'giảm giá', 'mien phi', 'miễn phí', 'voucher']",
+                  "        .forEach(word => pm.expect(text).to.not.include(word));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: staff cannot draft a review reply -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/feedbacks/{{feedbackId}}/reply-draft",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "feedbacks",
+                "{{feedbackId}}",
+                "reply-draft"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Manager replies to the review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feedbacks/{{feedbackId}}/reply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feedbacks",
+                "{{feedbackId}}",
+                "reply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reply\": \"Cam on anh/chi da phan hoi, co so minh da ghi nhan va se kiem tra lai.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('the answer is stored on the review itself', () => {",
+                  "    pm.expect(data.reply).to.include('ghi nhan');",
+                  "    pm.expect(data.replyAt).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Chat: cust_one opens a conversation with the branch",
           "request": {
             "method": "POST",
