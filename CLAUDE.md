@@ -515,6 +515,17 @@ Two features, both grounded in database data rather than model knowledge:
   says so in `notes` when it dropped something or when there is nothing to discount. `isRunning`, `label`,
   `brief`, `build`, `percent`, `horizon` and `minOrder` are pure (`AiPromotionAdvisorTest`).
 
+- **Page translation** (`AiTranslator`, public `POST /ai/hotels/{hotelId}/translate`): a branch's own published
+  text in one of the languages in `LANGUAGES` (an unknown code is a 400, not a guess). The model translates and
+  nothing else: `items` builds the list from the branch's rows - description, amenity and service names, service
+  descriptions, dish names, tour names and descriptions - each with a key, blank text left out, one item cut at
+  `MAX_ITEM_CHARS` and the list at `MAX_ITEMS`. `build` fills in a translation only for a key that was sent, so
+  the page can never grow a dish or an amenity the branch does not have; a key the model skipped keeps
+  `translated = null` and the app shows the original, which is better than an invented translation. Both counts
+  are reported in `notes`. The items are named as data the model must translate rather than obey. Nothing is
+  written to the branch. Public, so no guard plus an entry in `SecurityConfig.PUBLIC_ENDPOINT_POST`.
+  `language`, `items`, `prompt` and `build` are pure (`AiTranslatorTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

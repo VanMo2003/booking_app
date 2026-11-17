@@ -23,6 +23,7 @@ import com.vanmo.booking_app_be.ai.AiReviewReply;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
+import com.vanmo.booking_app_be.ai.AiTranslator;
 import com.vanmo.booking_app_be.ai.AiTripPlanner;
 import com.vanmo.booking_app_be.ai.ChatAssistant;
 import com.vanmo.booking_app_be.ai.ChatSummarizer;
@@ -34,6 +35,7 @@ import com.vanmo.booking_app_be.dto.request.AiHotelCompareRequest;
 import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
 import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
+import com.vanmo.booking_app_be.dto.request.AiTranslateRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
@@ -49,6 +51,7 @@ import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourDraftResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourSearchResponse;
+import com.vanmo.booking_app_be.dto.response.AiTranslationResponse;
 import com.vanmo.booking_app_be.dto.response.AiTripPlanResponse;
 import com.vanmo.booking_app_be.dto.response.ChatSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.ReviewDigestResponse;
@@ -82,6 +85,7 @@ public class AiController {
     private final AiReviewReply aiReviewReply;
     private final AiHotelCompare aiHotelCompare;
     private final AiPromotionAdvisor aiPromotionAdvisor;
+    private final AiTranslator aiTranslator;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -107,6 +111,17 @@ public class AiController {
             @Valid @RequestBody AiSearchRequest req, Principal principal, HttpServletRequest http) {
         String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
         return ApiResponse.ok(aiTourSearch.search(req.getQuery(), client));
+    }
+
+    /** Public: a branch's own published text in another language, nothing added. */
+    @PostMapping("/hotels/{hotelId}/translate")
+    public ApiResponse<AiTranslationResponse> translateHotel(
+            @PathVariable Long hotelId,
+            @Valid @RequestBody AiTranslateRequest req,
+            Principal principal,
+            HttpServletRequest http) {
+        String client = principal != null ? "user:" + principal.getName() : "ip:" + http.getRemoteAddr();
+        return ApiResponse.ok(aiTranslator.translate(hotelId, req.getLang(), client));
     }
 
     /** Public: two to four branches side by side, every figure counted by the backend. */

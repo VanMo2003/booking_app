@@ -15,10 +15,10 @@ tốt nghiệp 2026.
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
 - **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
 - **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
-  17 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
+  18 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
   câu nói, lên kế hoạch chuyến đi, trợ lý riêng của khách, tóm tắt và phân tích đánh giá, soạn nội dung
   tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay, hỏi nhanh
-  về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở, tư vấn chương trình giảm giá
+  về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở, tư vấn chương trình giảm giá, dịch trang cơ sở
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -41,7 +41,7 @@ ai          -> gọi model AI: trợ lý lễ tân (đặt phòng/tour trong cha
                tóm tắt & phân tích đánh giá, soạn nội dung tour, hỏi đáp số liệu,
                tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay,
                hỏi nhanh về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở,
-               tư vấn chương trình giảm giá, tư vấn chương trình giảm giá, so sánh cơ sở
+               tư vấn chương trình giảm giá, dịch trang cơ sở, tư vấn chương trình giảm giá, so sánh cơ sở
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -320,6 +320,12 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
     số quan trọng vẫn là của BE — phần trăm bị kẹp trong 5–25%, mốc thời gian chỉ 7/14/30 ngày và ngày bắt
     đầu/kết thúc do BE tính, đơn tối thiểu suy từ ADR thật của kỳ, chương trình trỏ vào cơ sở ngoài chuỗi hoặc
     tour không tồn tại thì bị loại.
+
+18. **Dịch trang cơ sở** (`ai/AiTranslator`): `POST /ai/hotels/{hotelId}/translate` (công khai) — nội dung cơ sở
+    đã công bố, đọc bằng tiếng Anh, Hàn, Nhật, Trung, Pháp hoặc Nga; mã ngôn ngữ lạ trả 400 chứ không đoán.
+    Model chỉ dịch: danh sách mục do BE dựng từ dữ liệu thật (mô tả, tiện ích, dịch vụ, món, tour), mỗi mục có
+    key, và `build` chỉ nhận bản dịch của key đã gửi — nên trang không thể mọc thêm một món hay tiện ích mà cơ
+    sở không có. Mục model bỏ qua thì giữ bản gốc, vì thiếu bản dịch còn hơn bản dịch bịa.
 
 **Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
 experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi

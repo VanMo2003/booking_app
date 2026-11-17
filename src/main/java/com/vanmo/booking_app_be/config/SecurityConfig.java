@@ -68,7 +68,9 @@ public class SecurityConfig {
         // Asking about one branch is part of browsing it: same surface as GET /hotels/detail/{id}.
         "/ai/hotels/*/ask",
         // Comparing branches a guest is already browsing is browsing too.
-        "/ai/hotels/compare"
+        "/ai/hotels/compare",
+        // Reading a branch's own page in another language is still reading its page.
+        "/ai/hotels/*/translate"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

@@ -36,6 +36,7 @@ import com.vanmo.booking_app_be.ai.AiReviewReply;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
 import com.vanmo.booking_app_be.ai.AiSearchService;
 import com.vanmo.booking_app_be.ai.AiTourSearch;
+import com.vanmo.booking_app_be.ai.AiTranslator;
 import com.vanmo.booking_app_be.ai.AiTripPlanner;
 import com.vanmo.booking_app_be.ai.ChatAssistant;
 import com.vanmo.booking_app_be.ai.ChatSummarizer;
@@ -57,6 +58,7 @@ import com.vanmo.booking_app_be.dto.response.AiSearchResponse;
 import com.vanmo.booking_app_be.dto.response.AiSuggestionResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourDraftResponse;
 import com.vanmo.booking_app_be.dto.response.AiTourSearchResponse;
+import com.vanmo.booking_app_be.dto.response.AiTranslationResponse;
 import com.vanmo.booking_app_be.dto.response.AiTripPlanResponse;
 import com.vanmo.booking_app_be.dto.response.ChatSummaryResponse;
 import com.vanmo.booking_app_be.dto.response.ReviewDigestResponse;
@@ -88,6 +90,7 @@ class AiControllerTest {
     private final AiReviewReply aiReviewReply = mock(AiReviewReply.class);
     private final AiHotelCompare aiHotelCompare = mock(AiHotelCompare.class);
     private final AiPromotionAdvisor aiPromotionAdvisor = mock(AiPromotionAdvisor.class);
+    private final AiTranslator aiTranslator = mock(AiTranslator.class);
 
     private MockMvc mvc;
 
@@ -111,7 +114,8 @@ class AiControllerTest {
                 aiHotelQa,
                 aiReviewReply,
                 aiHotelCompare,
-                aiPromotionAdvisor);
+                aiPromotionAdvisor,
+                aiTranslator);
         // Spring Boot's own Jackson defaults, so dates serialise the way the app really answers.
         com.fasterxml.jackson.databind.ObjectMapper json = com.fasterxml.jackson.databind.json.JsonMapper.builder()
                 .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -381,6 +385,46 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.answered").value(true))
                 .andExpect(jsonPath("$.data.links[0].target").value("tours/7"));
+    }
+
+    @Test
+    void translatingABranchKeepsTheOriginalBesideTheTranslation() throws Exception {
+        when(aiTranslator.translate(eq(6L), eq("en"), anyString()))
+                .thenReturn(AiTranslationResponse.builder()
+                        .hotelId(6L)
+                        .lang("en")
+                        .language("English")
+                        .items(List.of(
+                                AiTranslationResponse.Item.builder()
+                                        .key("hotel_description")
+                                        .section("DESCRIPTION")
+                                        .original("Khách sạn trong phố cổ.")
+                                        .translated("A hotel in the Old Quarter.")
+                                        .build(),
+                                AiTranslationResponse.Item.builder()
+                                        .key("dish_4")
+                                        .section("DISH")
+                                        .original("Bún chả")
+                                        .build()))
+                        .build());
+
+        mvc.perform(post("/ai/hotels/6/translate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lang\": \"en\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.language").value("English"))
+                .andExpect(jsonPath("$.data.items[0].translated").value("A hotel in the Old Quarter."))
+                // Mục chưa dịch được vẫn trả về bản gốc, không có trường translated.
+                .andExpect(jsonPath("$.data.items[1].original").value("Bún chả"))
+                .andExpect(jsonPath("$.data.items[1].translated").doesNotExist());
+    }
+
+    @Test
+    void translatingWithoutALanguageIsRefused() throws Exception {
+        mvc.perform(post("/ai/hotels/6/translate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lang\": \"  \"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
