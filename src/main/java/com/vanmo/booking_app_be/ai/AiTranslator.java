@@ -41,8 +41,11 @@ import com.vanmo.booking_app_be.repository.TourRepository;
 @Service
 public class AiTranslator {
 
-    /** Languages the app offers. Anything else is refused rather than guessed at. */
-    static final Map<String, String> LANGUAGES = Map.of(
+    /**
+     * Languages the app offers. Anything else is refused rather than guessed at. Public because {@code
+     * GET /ai/status} hands this list to the app, so the app does not keep a copy that would go stale.
+     */
+    public static final Map<String, String> LANGUAGES = Map.of(
             "en", "English",
             "ko", "한국어 (Korean)",
             "ja", "日本語 (Japanese)",

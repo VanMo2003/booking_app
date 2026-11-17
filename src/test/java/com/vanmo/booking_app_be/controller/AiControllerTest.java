@@ -388,6 +388,17 @@ class AiControllerTest {
     }
 
     @Test
+    void statusHandsTheAppTheLanguageListInsteadOfLettingItKeepACopy() throws Exception {
+        when(aiClient.isEnabled()).thenReturn(true);
+        when(aiClient.getProvider()).thenReturn(AiClient.Provider.GEMINI);
+
+        mvc.perform(get("/ai/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.languages.en").value("English"))
+                .andExpect(jsonPath("$.data.languages.vi").doesNotExist());
+    }
+
+    @Test
     void translatingABranchKeepsTheOriginalBesideTheTranslation() throws Exception {
         when(aiTranslator.translate(eq(6L), eq("en"), anyString()))
                 .thenReturn(AiTranslationResponse.builder()

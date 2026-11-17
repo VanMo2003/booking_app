@@ -525,6 +525,8 @@ Two features, both grounded in database data rather than model knowledge:
   are reported in `notes`. The items are named as data the model must translate rather than obey. Nothing is
   written to the branch. Public, so no guard plus an entry in `SecurityConfig.PUBLIC_ENDPOINT_POST`.
   `language`, `items`, `prompt` and `build` are pure (`AiTranslatorTest`).
+  `GET /ai/status` hands the app `LANGUAGES` (the one reason that map is public), so the app never keeps a
+  copy of the list to go stale.
 
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only

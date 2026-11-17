@@ -3,6 +3,7 @@ package com.vanmo.booking_app_be.controller;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.TreeMap;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -94,7 +95,11 @@ public class AiController {
                 "enabled",
                 aiClient.isEnabled(),
                 "provider",
-                aiClient.getProvider().name().toLowerCase()));
+                aiClient.getProvider().name().toLowerCase(),
+                // The app reads the language list from here instead of keeping its own copy, which would go
+                // stale the first time this one changes.
+                "languages",
+                new TreeMap<>(AiTranslator.LANGUAGES)));
     }
 
     /** Public like the rest of browsing; rate-limited per account, or per IP when signed out. */
