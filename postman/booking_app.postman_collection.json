@@ -6975,6 +6975,158 @@
           ]
         },
         {
+          "name": "AI: anyone asks about one branch (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/{{hotelId}}/ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "{{hotelId}}",
+                "ask"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Phòng nào ở được 4 khách và giá bao nhiêu?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('no token needed - asking about a branch is part of browsing it', () => {",
+                  "    pm.expect(pm.request.headers.has('Authorization')).to.be.false;",
+                  "});",
+                  "pm.test('an answer either stands or says it does not know', () => {",
+                  "    pm.expect(data.answered).to.be.a('boolean');",
+                  "    if (data.answered) pm.expect(data.answer).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('a link may only point at a tour of this branch', () => {",
+                  "    (data.links || []).forEach(l => pm.expect(l.target).to.match(/^tours\\/\\d+$/));",
+                  "});",
+                  "pm.test('not knowing comes with no links at all', () => {",
+                  "    if (!data.answered) pm.expect(data.links || []).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: asking about something the branch never published",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/{{hotelId}}/ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "{{hotelId}}",
+                "ask"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Mấy giờ được nhận phòng và huỷ thì có hoàn tiền không?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "// Hồ sơ cơ sở không giữ giờ nhận phòng hay chính sách huỷ, nên trợ lý phải nói là chưa có.",
+                  "pm.test('the assistant says it does not know instead of guessing', () => {",
+                  "    pm.expect(data.answered).to.be.false;",
+                  "    pm.expect(data.answer).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: asking about a branch with a blank question -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/hotels/{{hotelId}}/ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "hotels",
+                "{{hotelId}}",
+                "ask"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: owner reads the chain's review themes",
           "request": {
             "method": "GET",
