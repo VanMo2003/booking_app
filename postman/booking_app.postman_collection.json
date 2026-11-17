@@ -7639,6 +7639,96 @@
           ]
         },
         {
+          "name": "AI: owner asks which discounts to run",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/chains/{{chainId}}/promotion-advice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "chains",
+                "{{chainId}}",
+                "promotion-advice"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('the period and the chain figures come back for checking', () => {",
+                  "    pm.expect(data.from).to.be.a('string');",
+                  "    pm.expect(data.to).to.be.a('string');",
+                  "});",
+                  "pm.test('every campaign stays inside the limits the backend enforces', () => {",
+                  "    (data.campaigns || []).forEach(c => {",
+                  "        pm.expect(c.discountPercent).to.be.at.least(5);",
+                  "        pm.expect(c.discountPercent).to.be.at.most(25);",
+                  "        pm.expect(['CHAIN', 'BRANCH']).to.include(c.scope);",
+                  "        if (c.scope === 'BRANCH') pm.expect(c.hotelId).to.be.a('number');",
+                  "        if (c.scope === 'CHAIN') pm.expect(c.hotelId).to.be.undefined;",
+                  "    });",
+                  "});",
+                  "pm.test('the campaign window is 7, 14 or 30 days, dated by the backend', () => {",
+                  "    (data.campaigns || []).forEach(c => {",
+                  "        const days = (Date.parse(c.endsAt) - Date.parse(c.startsAt)) / 86400000 + 1;",
+                  "        pm.expect([7, 14, 30]).to.include(days);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI: manager cannot ask for discount advice -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{managerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ai/chains/{{chainId}}/promotion-advice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "chains",
+                "{{chainId}}",
+                "promotion-advice"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "AI: manager drafts a tour's content",
           "request": {
             "method": "POST",
