@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
 import com.vanmo.booking_app_be.ai.AiDailyBrief;
+import com.vanmo.booking_app_be.ai.AiDescriptionWriter;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiHotelCompare;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
@@ -32,6 +33,7 @@ import com.vanmo.booking_app_be.ai.ReviewDigest;
 import com.vanmo.booking_app_be.ai.TourDraftWriter;
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.AiBranchSettingsRequest;
+import com.vanmo.booking_app_be.dto.request.AiDescriptionRequest;
 import com.vanmo.booking_app_be.dto.request.AiHotelCompareRequest;
 import com.vanmo.booking_app_be.dto.request.AiReportQuestionRequest;
 import com.vanmo.booking_app_be.dto.request.AiSearchRequest;
@@ -40,6 +42,7 @@ import com.vanmo.booking_app_be.dto.request.AiTranslateRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
+import com.vanmo.booking_app_be.dto.response.AiDescriptionResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelCompareResponse;
@@ -87,6 +90,7 @@ public class AiController {
     private final AiHotelCompare aiHotelCompare;
     private final AiPromotionAdvisor aiPromotionAdvisor;
     private final AiTranslator aiTranslator;
+    private final AiDescriptionWriter aiDescriptionWriter;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -208,6 +212,15 @@ public class AiController {
     @GetMapping("/branches/{hotelId}/content-audit")
     public ApiResponse<AiContentAuditResponse> contentAudit(@PathVariable Long hotelId) {
         return ApiResponse.ok(aiContentAudit.of(hotelId));
+    }
+
+    /**
+     * Owner or branch manager: a draft description for one room, dish or service. Nothing is saved - the manager
+     * edits it and sends the ordinary update request for that row.
+     */
+    @PostMapping("/descriptions/draft")
+    public ApiResponse<AiDescriptionResponse> draftDescription(@Valid @RequestBody AiDescriptionRequest req) {
+        return ApiResponse.ok(aiDescriptionWriter.draft(req.getKind(), req.getId(), req.getNotes()));
     }
 
     /**

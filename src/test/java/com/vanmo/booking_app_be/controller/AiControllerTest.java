@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.vanmo.booking_app_be.ai.AiClient;
 import com.vanmo.booking_app_be.ai.AiContentAudit;
 import com.vanmo.booking_app_be.ai.AiDailyBrief;
+import com.vanmo.booking_app_be.ai.AiDescriptionWriter;
 import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiHotelCompare;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
@@ -46,6 +47,7 @@ import com.vanmo.booking_app_be.dto.request.AiTourDraftRequest;
 import com.vanmo.booking_app_be.dto.response.AiBranchSettingsResponse;
 import com.vanmo.booking_app_be.dto.response.AiContentAuditResponse;
 import com.vanmo.booking_app_be.dto.response.AiDailyBriefResponse;
+import com.vanmo.booking_app_be.dto.response.AiDescriptionResponse;
 import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelCompareResponse;
@@ -91,6 +93,7 @@ class AiControllerTest {
     private final AiHotelCompare aiHotelCompare = mock(AiHotelCompare.class);
     private final AiPromotionAdvisor aiPromotionAdvisor = mock(AiPromotionAdvisor.class);
     private final AiTranslator aiTranslator = mock(AiTranslator.class);
+    private final AiDescriptionWriter aiDescriptionWriter = mock(AiDescriptionWriter.class);
 
     private MockMvc mvc;
 
@@ -115,7 +118,8 @@ class AiControllerTest {
                 aiReviewReply,
                 aiHotelCompare,
                 aiPromotionAdvisor,
-                aiTranslator);
+                aiTranslator,
+                aiDescriptionWriter);
         // Spring Boot's own Jackson defaults, so dates serialise the way the app really answers.
         com.fasterxml.jackson.databind.ObjectMapper json = com.fasterxml.jackson.databind.json.JsonMapper.builder()
                 .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -385,6 +389,34 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.answered").value(true))
                 .andExpect(jsonPath("$.data.links[0].target").value("tours/7"));
+    }
+
+    @Test
+    void descriptionDraftComesBackWithWhatTheRowSaysToday() throws Exception {
+        when(aiDescriptionWriter.draft(eq("ROOM"), eq(11L), any()))
+                .thenReturn(AiDescriptionResponse.builder()
+                        .kind("ROOM")
+                        .id(11L)
+                        .description("Phòng Deluxe 301 ngủ được 3 khách.")
+                        .highlights(List.of("3 khách", "Ban công riêng"))
+                        .currentDescription("Mô tả cũ.")
+                        .build());
+
+        mvc.perform(post("/ai/descriptions/draft")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\": \"ROOM\", \"id\": 11, \"notes\": \"phòng mới sửa\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.kind").value("ROOM"))
+                .andExpect(jsonPath("$.data.highlights[1]").value("Ban công riêng"))
+                .andExpect(jsonPath("$.data.currentDescription").value("Mô tả cũ."));
+    }
+
+    @Test
+    void descriptionDraftWithoutAnIdIsRefused() throws Exception {
+        mvc.perform(post("/ai/descriptions/draft")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\": \"ROOM\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

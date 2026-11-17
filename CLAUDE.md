@@ -528,6 +528,17 @@ Two features, both grounded in database data rather than model knowledge:
   `GET /ai/status` hands the app `LANGUAGES` (the one reason that map is public), so the app never keeps a
   copy of the list to go stale.
 
+- **Description writer** (`AiDescriptionWriter`, `POST /ai/descriptions/draft`, owner or branch manager): a
+  draft description for one room, dish or service - what makes the `AiContentAudit` findings a minute's work
+  instead of an evening's. `kind` is ROOM / DISH / SERVICE (anything else is a 400) and the row is loaded here,
+  so the facts are the row's own: a room's type, capacity and real amenities, a dish's category and whether it
+  is on, a service's name. The guard is the row's branch, the same one that may edit it. Prices are deliberately
+  not in the prompt - the rules forbid writing about them and the app shows the real one beside the text - and
+  the manager's hint goes in `<notes>` tags as a hint, cut at `MAX_NOTES_CHARS`. Nothing is saved; the ordinary
+  update request for that row is still the only writer, and `currentDescription` comes back so the app can warn
+  before replacing. `kind`, `roomFacts`, `dishFacts`, `serviceFacts`, `prompt` and `build` are pure
+  (`AiDescriptionWriterTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),
