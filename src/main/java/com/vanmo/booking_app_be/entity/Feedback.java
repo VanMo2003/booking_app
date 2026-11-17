@@ -1,6 +1,7 @@
 package com.vanmo.booking_app_be.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
@@ -43,4 +44,16 @@ public class Feedback {
 
     @NotNull
     LocalDate reviewDate;
+
+    /** The branch's public answer to this review; null until someone on the branch writes one. */
+    @Column(length = 2000, columnDefinition = "TEXT")
+    String reply;
+
+    LocalDateTime replyAt;
+
+    /** Who answered. Kept as SET NULL so deleting a manager's account never deletes the reply. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replied_by_account_id")
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
+    Account repliedBy;
 }

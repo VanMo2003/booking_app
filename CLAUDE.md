@@ -310,6 +310,27 @@ refuses `ADMIN` too (chats are private; admins aren't "read everything" here). O
   `@OnDelete(CASCADE)` foreign keys. Message senders are a snapshot (id/name/role, no FK) so deleting
   a staff account never blocks on chat history.
 
+### Guest reviews and the branch's answer
+
+`Feedback` (one per booking x customer) now carries the branch's public answer: `reply`, `replyAt` and
+`repliedBy` (an `Account`, `ON DELETE SET NULL` so deleting a manager never deletes the answer). Two things
+were missing before and are worth knowing:
+
+- **`FeedbackResponse` used to carry only the id**, so the app could write a review but never show one. It now
+  carries the review itself (rating, comments, date, guest and branch) plus the answer; `FeedbackMapper` maps
+  `booking.hotel.*` and `customer.*` explicitly, because MapStruct cannot guess them. `Account` has no display
+  name, so the app shows the answer as the branch's ("Phản hồi từ <hotelName>") and `repliedBy` is only an audit
+  trail.
+- **Reading a branch's reviews is public** (`GET /feedbacks/hotel/{hotelId}`, paged, newest first), so it needs
+  both halves like the rest of the browse surface: no guard in the service *and* an entry in
+  `SecurityConfig.PUBLIC_ENDPOINT_GET`. `GET /feedbacks` (every review, any branch) stays authenticated.
+
+`PUT /feedbacks/{id}/reply` writes the answer. The guard is taken from the review's own branch
+(`requireBranchManagerEditor(hotel.getId())`, so owner/manager only - staff and admin refused), never from
+anything the caller passes; a review whose booking has no branch is refused before the guard runs. Sending it
+again replaces the previous answer. The guest hears about it as `REVIEW_REPLIED` with the booking's deep link -
+a walk-in guest with no account simply gets nothing (`FeedbackReplyTest`).
+
 ### AI features (`ai` package)
 
 Two features, both grounded in database data rather than model knowledge:

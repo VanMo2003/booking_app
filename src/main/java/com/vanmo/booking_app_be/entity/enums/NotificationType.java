@@ -25,5 +25,7 @@ public enum NotificationType {
     /** Sent to the guest when the branch confirms or cancels their room booking. */
     BOOKING_UPDATED,
     /** Sent to the branch team when the AI receptionist places a room booking for a guest in chat. */
-    BOOKING_CREATED
+    BOOKING_CREATED,
+    /** Sent to the guest when the branch answers their review. */
+    REVIEW_REPLIED
 }

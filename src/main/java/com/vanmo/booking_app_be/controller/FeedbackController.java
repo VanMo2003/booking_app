@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.vanmo.booking_app_be.dto.common.ApiResponse;
 import com.vanmo.booking_app_be.dto.request.FeedbackCreateRequest;
+import com.vanmo.booking_app_be.dto.request.FeedbackReplyRequest;
 import com.vanmo.booking_app_be.dto.request.FeedbackUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.FeedbackResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
@@ -39,6 +40,21 @@ public class FeedbackController {
     public ApiResponse<PageResponse<FeedbackResponse>> getAll(
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(feedbackService.getAll(page, size));
+    }
+
+    /** Public, like the rest of a branch's page: its reviews, newest first, each with the branch's answer. */
+    @GetMapping("/hotel/{hotelId}")
+    public ApiResponse<PageResponse<FeedbackResponse>> getByHotel(
+            @PathVariable Long hotelId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(feedbackService.getByHotel(hotelId, page, size));
+    }
+
+    /** The branch answers a review publicly. Owner or branch manager only. */
+    @PutMapping("/{id}/reply")
+    public ApiResponse<FeedbackResponse> reply(@PathVariable Long id, @Valid @RequestBody FeedbackReplyRequest req) {
+        return ApiResponse.ok(feedbackService.reply(id, req));
     }
 
     @DeleteMapping("/{id}")

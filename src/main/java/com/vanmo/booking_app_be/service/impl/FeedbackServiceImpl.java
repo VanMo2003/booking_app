@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,6 +8,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import com.vanmo.booking_app_be.dto.request.FeedbackCreateRequest;
+import com.vanmo.booking_app_be.dto.request.FeedbackReplyRequest;
 import com.vanmo.booking_app_be.dto.request.FeedbackUpdateRequest;
 import com.vanmo.booking_app_be.dto.response.FeedbackResponse;
 import com.vanmo.booking_app_be.dto.response.PageResponse;
@@ -27,6 +29,7 @@ import com.vanmo.booking_app_be.repository.FeedbackRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.FeedbackService;
 import com.vanmo.booking_app_be.service.NotificationService;
+import com.vanmo.booking_app_be.utils.AppLinks;
 import com.vanmo.booking_app_be.utils.NotificationMessages;
 
 import lombok.RequiredArgsConstructor;
@@ -127,6 +130,49 @@ public class FeedbackServiceImpl implements FeedbackService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<FeedbackResponse> data = feedbackRepository.findAll(pageable).map(feedbackMapper::toResponse);
         return PageResponse.from(data);
+    }
+
+    @Override
+    public PageResponse<FeedbackResponse> getByHotel(Long hotelId, int page, int size) {
+        Pageable pageable = PageRequest.of(
+                page, size, Sort.by("reviewDate").descending().and(Sort.by("id").descending()));
+        Page<FeedbackResponse> data =
+                feedbackRepository.findByBooking_Hotel_Id(hotelId, pageable).map(feedbackMapper::toResponse);
+        return PageResponse.from(data);
+    }
+
+    @Override
+    public FeedbackResponse reply(Long id, FeedbackReplyRequest req) {
+        Feedback entity = feedbackRepository
+                .findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found id=" + id));
+        if (entity.getBooking() == null || entity.getBooking().getHotel() == null) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Đánh giá này không thuộc cơ sở nào");
+        }
+        Hotel hotel = entity.getBooking().getHotel();
+        // The answer is public, so only the people who own the branch's voice may write it.
+        accessGuard.requireBranchManagerEditor(hotel.getId());
+        Account caller = accessGuard.currentAccount();
+        entity.setReply(req.getReply().strip());
+        entity.setReplyAt(LocalDateTime.now());
+        entity.setRepliedBy(caller);
+        Feedback saved = feedbackRepository.save(entity);
+        notifyGuestOfReply(saved, hotel);
+        return feedbackMapper.toResponse(saved);
+    }
+
+    /** The guest hears about the answer in the app; a walk-in guest with no account simply gets nothing. */
+    private void notifyGuestOfReply(Feedback feedback, Hotel hotel) {
+        Customer customer = feedback.getCustomer();
+        if (customer == null || customer.getAccount() == null) {
+            return;
+        }
+        notificationService.notify(
+                customer.getAccount(),
+                NotificationType.REVIEW_REPLIED,
+                NotificationMessages.reviewReplied(hotel.getName(), feedback.getReply()),
+                AppLinks.booking(feedback.getBooking().getId()),
+                feedback.getBooking().getId());
     }
 
     @Override

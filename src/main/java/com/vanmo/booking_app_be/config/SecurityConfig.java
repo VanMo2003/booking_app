@@ -41,6 +41,8 @@ public class SecurityConfig {
         "/services",
         "/dishes",
         "/dishes/{id}",
+        // A branch's reviews are part of its page, like its rooms and its menu.
+        "/feedbacks/hotel/{hotelId}",
         "/tours",
         "/tours/{id}",
         "/tours/search",

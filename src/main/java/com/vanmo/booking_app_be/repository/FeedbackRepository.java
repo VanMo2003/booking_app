@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,4 +29,7 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
             + "from Feedback f join f.booking b join b.hotel h join f.customer c "
             + "where h.id = :hotelId order by f.reviewDate desc, f.id desc")
     List<FeedbackRow> findByHotel(@Param("hotelId") Long hotelId);
+
+    /** One branch's reviews as rows the app shows, newest first. */
+    Page<Feedback> findByBooking_Hotel_Id(Long hotelId, Pageable pageable);
 }

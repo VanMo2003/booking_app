@@ -192,6 +192,13 @@ public final class NotificationMessages {
                         + ". Nên liên hệ lại khách sớm.");
     }
 
+    /** The branch answered the guest's review. */
+    public static Message reviewReplied(String hotelName, String reply) {
+        return new Message(
+                "Cơ sở đã trả lời đánh giá của bạn",
+                hotelName + " phản hồi: \"" + preview(reply == null ? "" : reply.strip()) + "\"");
+    }
+
     /** Last week's figures for a chain or a branch, against the week before. */
     public static Message weeklyReport(
             String scopeName,
