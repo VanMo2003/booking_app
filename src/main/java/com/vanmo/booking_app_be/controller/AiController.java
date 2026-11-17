@@ -17,6 +17,7 @@ import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiHotelCompare;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
+import com.vanmo.booking_app_be.ai.AiPromotionAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
 import com.vanmo.booking_app_be.ai.AiReviewReply;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
@@ -40,6 +41,7 @@ import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelCompareResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
+import com.vanmo.booking_app_be.dto.response.AiPromotionAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewReplyResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewThemesResponse;
@@ -79,6 +81,7 @@ public class AiController {
     private final AiHotelQa aiHotelQa;
     private final AiReviewReply aiReviewReply;
     private final AiHotelCompare aiHotelCompare;
+    private final AiPromotionAdvisor aiPromotionAdvisor;
 
     /** Public: lets the app hide AI buttons when the server has no API key. */
     @GetMapping("/status")
@@ -203,6 +206,15 @@ public class AiController {
     @PostMapping("/feedbacks/{feedbackId}/reply-draft")
     public ApiResponse<AiReviewReplyResponse> draftReviewReply(@PathVariable Long feedbackId) {
         return ApiResponse.ok(aiReviewReply.draft(feedbackId));
+    }
+
+    /**
+     * Chain owner: which discount campaigns the chain's own figures justify. Nothing is created - the owner
+     * writes the voucher themselves on the voucher screen.
+     */
+    @GetMapping("/chains/{hotelChainId}/promotion-advice")
+    public ApiResponse<AiPromotionAdviceResponse> promotionAdvice(@PathVariable Long hotelChainId) {
+        return ApiResponse.ok(aiPromotionAdvisor.of(hotelChainId));
     }
 
     /** Chain owner: what guests across the chain keep talking about in a period, topic by topic. */

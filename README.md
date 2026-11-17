@@ -15,10 +15,10 @@ tốt nghiệp 2026.
 - **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
 - **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
 - **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
-  16 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
+  17 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
   câu nói, lên kế hoạch chuyến đi, trợ lý riêng của khách, tóm tắt và phân tích đánh giá, soạn nội dung
   tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay, hỏi nhanh
-  về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở
+  về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở, tư vấn chương trình giảm giá
 - **Docker / Docker Compose** để build & deploy
 
 ## Kiến trúc
@@ -40,7 +40,8 @@ ai          -> gọi model AI: trợ lý lễ tân (đặt phòng/tour trong cha
                tìm phòng và tìm tour bằng câu nói, lên kế hoạch chuyến đi, trợ lý của khách,
                tóm tắt & phân tích đánh giá, soạn nội dung tour, hỏi đáp số liệu,
                tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay,
-               hỏi nhanh về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở, so sánh cơ sở
+               hỏi nhanh về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở,
+               tư vấn chương trình giảm giá, tư vấn chương trình giảm giá, so sánh cơ sở
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -311,6 +312,14 @@ dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo v�
     số khách của phòng lớn nhất, số phòng/tiện ích/dịch vụ/tour, số đánh giá và điểm trung bình tính lại từ
     đánh giá chứ không lấy `Hotel.rating`), nên bảng vẫn đúng dù model có nói sai. Model chỉ viết lời: mỗi cơ
     sở phù hợp với ai, các khác biệt đáng để ý và một kết luận nên chọn gì trong hoàn cảnh nào.
+
+17. **Tư vấn chương trình giảm giá** (`ai/AiPromotionAdvisor`): `GET /ai/chains/{hotelChainId}/promotion-advice`
+    (chủ chuỗi) — nên chạy chương trình giảm giá nào, dựa trên ngày trong tuần lấp phòng thấp, cơ sở đang hụt,
+    tour ít khách và phần tháng tới đã đặt trước. Brief kèm cả mã đang chạy để AI không đề xuất trùng. Không
+    tạo mã nào: chủ chuỗi tự tạo voucher trên trang mã giảm giá, nên model sai cũng không ai mất tiền. Mọi con
+    số quan trọng vẫn là của BE — phần trăm bị kẹp trong 5–25%, mốc thời gian chỉ 7/14/30 ngày và ngày bắt
+    đầu/kết thúc do BE tính, đơn tối thiểu suy từ ADR thật của kỳ, chương trình trỏ vào cơ sở ngoài chuỗi hoặc
+    tour không tồn tại thì bị loại.
 
 **Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
 experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi

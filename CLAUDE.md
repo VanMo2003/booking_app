@@ -503,6 +503,18 @@ Two features, both grounded in database data rather than model knowledge:
   and an entry in `SecurityConfig.PUBLIC_ENDPOINT_POST`. `ids`, `prompt` and `build` are pure
   (`AiHotelCompareTest`).
 
+- **Promotion advisor** (`AiPromotionAdvisor`, `GET /ai/chains/{hotelChainId}/promotion-advice`, chain owner
+  through the report service's guards): which discount campaigns the chain's own figures justify - the weekdays
+  that stay empty, the branches falling behind, the tours nobody books, and how much of the next
+  `OUTLOOK_DAYS` is already on the books. The brief also lists the vouchers running today
+  (`isRunning`/`label`), so the model is told not to propose a duplicate. Nothing is created: the owner writes
+  the voucher on the voucher screen, so a model mistake costs nobody money. The model never supplies a figure
+  that matters - `build` clamps the percentage to 5-`MAX_PERCENT`, turns the horizon into 7/14/30 days and dates
+  the campaign itself, works the suggested minimum order out from the period's own ADR (`minOrder`, nearest ten
+  thousand đồng), drops a BRANCH campaign naming a branch outside the chain and a tour that does not exist, and
+  says so in `notes` when it dropped something or when there is nothing to discount. `isRunning`, `label`,
+  `brief`, `build`, `percent`, `horizon` and `minOrder` are pure (`AiPromotionAdvisorTest`).
+
 `AiClient` is the single outbound call. Services always speak the Anthropic Messages shape
 (system blocks, `tool_use`/`tool_result`); for `AI_PROVIDER=gemini` (auto-selected when only
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),

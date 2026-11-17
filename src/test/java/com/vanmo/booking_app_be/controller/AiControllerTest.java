@@ -30,6 +30,7 @@ import com.vanmo.booking_app_be.ai.AiGuestAssistant;
 import com.vanmo.booking_app_be.ai.AiHotelCompare;
 import com.vanmo.booking_app_be.ai.AiHotelQa;
 import com.vanmo.booking_app_be.ai.AiPricingAdvisor;
+import com.vanmo.booking_app_be.ai.AiPromotionAdvisor;
 import com.vanmo.booking_app_be.ai.AiReportAnalyst;
 import com.vanmo.booking_app_be.ai.AiReviewReply;
 import com.vanmo.booking_app_be.ai.AiReviewThemes;
@@ -48,6 +49,7 @@ import com.vanmo.booking_app_be.dto.response.AiGuestAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiHotelCompareResponse;
 import com.vanmo.booking_app_be.dto.response.AiPricingAdviceResponse;
+import com.vanmo.booking_app_be.dto.response.AiPromotionAdviceResponse;
 import com.vanmo.booking_app_be.dto.response.AiReportAnswerResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewReplyResponse;
 import com.vanmo.booking_app_be.dto.response.AiReviewThemesResponse;
@@ -85,6 +87,7 @@ class AiControllerTest {
     private final AiHotelQa aiHotelQa = mock(AiHotelQa.class);
     private final AiReviewReply aiReviewReply = mock(AiReviewReply.class);
     private final AiHotelCompare aiHotelCompare = mock(AiHotelCompare.class);
+    private final AiPromotionAdvisor aiPromotionAdvisor = mock(AiPromotionAdvisor.class);
 
     private MockMvc mvc;
 
@@ -107,7 +110,8 @@ class AiControllerTest {
                 aiDailyBrief,
                 aiHotelQa,
                 aiReviewReply,
-                aiHotelCompare);
+                aiHotelCompare,
+                aiPromotionAdvisor);
         // Spring Boot's own Jackson defaults, so dates serialise the way the app really answers.
         com.fasterxml.jackson.databind.ObjectMapper json = com.fasterxml.jackson.databind.json.JsonMapper.builder()
                 .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -377,6 +381,35 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.answered").value(true))
                 .andExpect(jsonPath("$.data.links[0].target").value("tours/7"));
+    }
+
+    @Test
+    void promotionAdviceComesBackWithItsCampaigns() throws Exception {
+        when(aiPromotionAdvisor.of(3L))
+                .thenReturn(AiPromotionAdviceResponse.builder()
+                        .hotelChainId(3L)
+                        .from(LocalDate.of(2026, 10, 20))
+                        .to(LocalDate.of(2026, 11, 18))
+                        .occupancyRate(61.4)
+                        .adr(new BigDecimal("843000"))
+                        .runningVouchers(List.of("GIAMHE10 - Giảm hè (toàn chuỗi, đến 2026-11-23)"))
+                        .campaigns(List.of(AiPromotionAdviceResponse.Campaign.builder()
+                                .title("Giảm 10% đêm giữa tuần")
+                                .scope("CHAIN")
+                                .discountPercent(10)
+                                .minOrderAmount(new BigDecimal("840000"))
+                                .startsAt(LocalDate.of(2026, 11, 18))
+                                .endsAt(LocalDate.of(2026, 12, 1))
+                                .why("Thứ ba chỉ lấp 31% phòng.")
+                                .build()))
+                        .build());
+
+        mvc.perform(get("/ai/chains/3/promotion-advice"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.campaigns[0].discountPercent").value(10))
+                .andExpect(jsonPath("$.data.campaigns[0].endsAt").value("2026-12-01"))
+                .andExpect(
+                        jsonPath("$.data.runningVouchers[0]").value("GIAMHE10 - Giảm hè (toàn chuỗi, đến 2026-11-23)"));
     }
 
     @Test
