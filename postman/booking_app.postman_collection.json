@@ -7982,9 +7982,9 @@
                   "pm.test('the draft quotes no price and promises no discount', () => {",
                   "    const text = data.description.toLowerCase();",
                   "    // Mot con so di kem don vi tien la dau hieu chac chan cua gia.",
-                  "    pm.expect(text).to.not.match(/\\d[\\d.,]*\\s*(d|đ|vnd|dong|đồng)\b/);",
-                  "    ['giảm giá', 'khuyến mãi', 'giá rẻ'].forEach(w => pm.expect(text).to.not.include(w));",
-                  "});",
+                  "    pm.expect(text).to.not.match(/[0-9][0-9.,]*\\s*(vnd|dong|\\u0111\\u1ed3ng|\\u0111)/);",
+                  "    ['giam gia', 'giảm giá', 'khuyến mãi', 'giá rẻ']",
+                  "        .forEach(w => pm.expect(text).to.not.include(w));",
                   "});"
                 ]
               }
