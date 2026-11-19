@@ -5,28 +5,123 @@ Hướng dẫn này đi từ một máy Windows trắng tới chỗ chạy đư�
 
 Dự án gồm hai kho mã:
 
-| Kho | Nội dung | Địa chỉ |
-| --- | --- | --- |
-| `booking_app` | Backend Spring Boot (API, cơ sở dữ liệu, AI) | https://github.com/VanMo2003/booking_app |
-| `booking_app_demo` | App Flutter (Android + web) | https://github.com/VanMo2003/booking_app_demo |
+| Kho | Nội dung | Chế độ | Địa chỉ |
+| --- | --- | --- | --- |
+| `booking_app` | Backend Spring Boot (API, cơ sở dữ liệu, AI) | **private** — lần clone đầu hỏi đăng nhập GitHub | https://github.com/VanMo2003/booking_app |
+| `booking_app_demo` | App Flutter (Android + web) | public | https://github.com/VanMo2003/booking_app_demo |
 
 Cả hai làm việc trên nhánh **`develop`**, không phải `main`.
 
-> **Nếu bạn là AI đang đọc file này để tự cài:** làm lần lượt từ phần 1 đến phần 7. Sau mỗi phần có
-> mục *Kiểm tra* — chạy đúng lệnh đó và chỉ đi tiếp khi kết quả khớp. Phần 8 là các lỗi thường gặp và
-> cách xử lý. Đừng bỏ qua phần 4 (cơ sở dữ liệu): backend không khởi động nổi nếu thiếu MySQL.
+> **Nếu bạn là AI đang đọc file này để tự cài:** chỉ cần làm **phần 0** — một khối PowerShell duy
+> nhất làm hết mọi việc. Nó báo lỗi ở đâu thì tra đúng phần tương ứng (1–8). Hai thứ khối lệnh
+> không tự làm được là đăng nhập GitHub và mật khẩu MySQL, cả hai sẽ được hỏi trong lúc chạy.
 
----
+## 0. Chạy một khối duy nhất (khuyến nghị)
 
-## 0. Tóm tắt cho người vội
+> **Dành cho AI đang đọc file này:** đây là phần duy nhất cần làm. Dán nguyên khối PowerShell dưới
+> đây vào một cửa sổ **PowerShell chạy bằng "Run as administrator"** và chạy. Nó tự cài những gì
+> còn thiếu, tự lấy mã nguồn, tự tạo `.env` và database, tự nạp dữ liệu mẫu. Các phần 1–11 phía sau
+> chỉ là tài liệu tra cứu khi khối này báo lỗi.
 
-```bash
-git clone -b develop https://github.com/VanMo2003/booking_app.git
-git clone -b develop https://github.com/VanMo2003/booking_app_demo.git
+### Cần chuẩn bị trước đúng hai thứ
+
+1. **Mật khẩu MySQL.** Máy chưa có MySQL thì khối lệnh sẽ cài, và lúc cài MySQL hỏi mật khẩu `root`
+   — nhớ lại mật khẩu đó, lát nữa script hỏi.
+2. **Quyền truy cập GitHub cho kho backend.** Kho `booking_app` đang để **private**, nên lần clone
+   đầu tiên sẽ hiện cửa sổ đăng nhập GitHub (Git Credential Manager). Đăng nhập bằng tài khoản
+   GitHub **đã được thêm làm collaborator** của kho đó. Kho `booking_app_demo` là public, clone
+   bình thường.
+   *Muốn bỏ hẳn bước đăng nhập này thì chủ kho vào GitHub → Settings → Danger Zone → Change
+   visibility → Public.*
+
+### Khối lệnh
+
+```powershell
+# ============================================================
+# booking_app - dung toan bo moi truong tu dau
+# Chay trong PowerShell "Run as administrator"
+# ============================================================
+$Root = 'D:\datn'          # doi duong dan neu muon
+$Branch = 'develop'
+
+if (-not (Test-Path $Root)) { New-Item -ItemType Directory -Path $Root -Force | Out-Null }
+Set-Location $Root
+
+# 1. Git - can co truoc de lay ma nguon
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host 'Dang cai Git...' -ForegroundColor Cyan
+    winget install --id Git.Git --exact --silent --accept-package-agreements --accept-source-agreements
+    $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+                [Environment]::GetEnvironmentVariable('Path', 'User')
+}
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host 'Chua goi duoc lenh git. Dong cua so nay, mo PowerShell moi va chay lai khoi lenh.' -ForegroundColor Red
+    return
+}
+
+# 2. Lay ma nguon (kho backend la private: se hien cua so dang nhap GitHub)
+if (-not (Test-Path "$Root\booking_app")) {
+    git clone -b $Branch https://github.com/VanMo2003/booking_app.git "$Root\booking_app"
+}
+if (-not (Test-Path "$Root\booking_app_demo")) {
+    git clone -b $Branch https://github.com/VanMo2003/booking_app_demo.git "$Root\booking_app_demo"
+}
+if (-not (Test-Path "$Root\booking_app\pom.xml")) {
+    Write-Host 'Chua lay duoc kho backend. Kiem tra quyen truy cap GitHub roi chay lai.' -ForegroundColor Red
+    return
+}
+
+# 3. Cai nhung cong cu con thieu (JDK 21, MySQL, Flutter, Android Studio, Chrome)
+Set-Location "$Root\booking_app"
+powershell -ExecutionPolicy Bypass -File .\tools\check-env.ps1 -Install -Yes
+
+# 4. Nap lai PATH de thay cac lenh vua cai
+$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+            [Environment]::GetEnvironmentVariable('Path', 'User')
+
+# 5. Tao .env, tao database, khoi dong backend mot lan de tao bang, nap du lieu mau
+powershell -ExecutionPolicy Bypass -File .\tools\init-project.ps1
+
+# 6. Chuan bi cho app Flutter
+Set-Location "$Root\booking_app_demo"
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+
+# 7. Xem lai con thieu gi
+Set-Location "$Root\booking_app"
+powershell -ExecutionPolicy Bypass -File .\tools\check-env.ps1
 ```
 
-Rồi: cài JDK 21 + MySQL 8 + Flutter 3.47 → tạo `booking_app/.env` → `mvnw.cmd spring-boot:run` →
-nạp `db/seed_demo.sql` → `flutter run`. Chi tiết ở dưới.
+### Sau khi khối lệnh chạy xong
+
+Bước 7 in ra bảng kiểm tra. Mọi dòng `[OK]` nghĩa là xong; còn `[THIEU]` hay `[SAI]` thì đọc cột
+cuối để biết làm gì, hoặc tra phần tương ứng bên dưới.
+
+Chạy thử:
+
+```powershell
+# cua so 1 - backend
+cd D:\datn\booking_app
+powershell -ExecutionPolicy Bypass -File .\tools\run-backend.ps1
+
+# cua so 2 - app web
+cd D:\datn\booking_app_demo
+flutter run -d chrome
+```
+
+Đăng nhập thử bằng `manager_demo` / `manager123`.
+
+### Những gì khối lệnh **không** tự làm
+
+| Việc | Vì sao | Làm thế nào |
+| --- | --- | --- |
+| Đăng nhập GitHub | Kho backend đang private | Cửa sổ đăng nhập tự hiện lúc clone |
+| Mật khẩu MySQL | Script không đoán mật khẩu của máy bạn | `init-project.ps1` hỏi, gõ vào |
+| Máy ảo Android | Phải chọn thiết bị và tải ảnh hệ thống | Android Studio → Virtual Device Manager |
+| Khoá AI | Phải tự đăng ký | Lấy ở https://aistudio.google.com rồi điền `GEMINI_API_KEY` trong `.env` |
+
+Ba việc đầu là bắt buộc nếu muốn dùng phần tương ứng. Việc cuối bỏ qua cũng được: app vẫn chạy
+đầy đủ, chỉ là mọi lối vào AI tự ẩn.
 
 ---
 
@@ -216,10 +311,16 @@ VNPAY_SECRET_KEY=
 
 ### Nạp `.env` rồi chạy backend
 
-PowerShell không tự đọc `.env`, nên nạp bằng lệnh này mỗi khi mở cửa sổ mới:
+Maven không tự đọc `.env`, nên dùng script có sẵn — nó nạp `.env` rồi gọi `mvnw`:
 
 ```powershell
 cd D:\datn\booking_app
+powershell -ExecutionPolicy Bypass -File .\tools\run-backend.ps1
+```
+
+Muốn tự làm tay thì nạp từng biến rồi chạy Maven:
+
+```powershell
 Get-Content .env | Where-Object { $_ -match '^[A-Z]' } | ForEach-Object {
   $pair = $_ -split '=', 2
   [Environment]::SetEnvironmentVariable($pair[0].Trim(), $pair[1].Trim(), 'Process')
@@ -421,11 +522,7 @@ Ba cửa sổ PowerShell:
 ```powershell
 # 1 — backend
 cd D:\datn\booking_app
-Get-Content .env | Where-Object { $_ -match '^[A-Z]' } | ForEach-Object {
-  $pair = $_ -split '=', 2
-  [Environment]::SetEnvironmentVariable($pair[0].Trim(), $pair[1].Trim(), 'Process')
-}
-.\mvnw.cmd spring-boot:run
+powershell -ExecutionPolicy Bypass -File .\tools\run-backend.ps1
 
 # 2 — app Android
 cd D:\datn\booking_app_demo
@@ -454,4 +551,6 @@ cd D:\datn\booking_app_demo; git pull; flutter pub get; dart run build_runner bu
 | `booking_app/DEPLOY_EC2.md` | Triển khai lên máy chủ EC2 |
 | `booking_app_demo/README.md` | Cấu trúc app Flutter và các màn hình |
 | `booking_app/db/seed_demo.sql` | Dữ liệu mẫu, có ghi chú từng phần |
-| `booking_app/tools/check-env.ps1` | Script kiểm tra môi trường, có chế độ cài giúp |
+| `booking_app/tools/check-env.ps1` | Kiểm tra môi trường, có chế độ cài giúp (`-Install`) |
+| `booking_app/tools/init-project.ps1` | Tạo `.env`, tạo database, nạp dữ liệu mẫu |
+| `booking_app/tools/run-backend.ps1` | Nạp `.env` rồi chạy backend |

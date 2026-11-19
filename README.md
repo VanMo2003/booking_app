@@ -27,6 +27,9 @@ tốt nghiệp 2026.
 Máy mới, chưa có gì: làm theo [SETUP.md](SETUP.md) — cài JDK 21 / MySQL 8 / Flutter, lấy mã, tạo
 `.env`, nạp dữ liệu mẫu, chạy cả app Android lẫn app web, kèm mục lỗi thường gặp.
 
+Máy mới hoàn toàn: dán khối lệnh ở **phần 0 của SETUP.md** là xong — nó tự cài công cụ, lấy mã,
+tạo `.env`, tạo database và nạp dữ liệu mẫu.
+
 Kiểm tra nhanh máy còn thiếu gì (và cài giúp với `-Install`):
 
 ```powershell
