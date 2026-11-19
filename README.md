@@ -21,6 +21,15 @@ tốt nghiệp 2026.
   về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở, tư vấn chương trình giảm giá, dịch trang cơ sở, soạn mô tả phòng/món/dịch vụ
 - **Docker / Docker Compose** để build & deploy
 
+
+## Cài đặt từ đầu
+
+Máy mới, chưa có gì: làm theo [SETUP.md](SETUP.md) — cài JDK 21 / MySQL 8 / Flutter, lấy mã, tạo
+`.env`, nạp dữ liệu mẫu, chạy cả app Android lẫn app web, kèm mục lỗi thường gặp.
+
+Dữ liệu mẫu nằm ở [db/seed_demo.sql](db/seed_demo.sql) (chạy sau lần khởi động đầu tiên, chạy lại
+được nhiều lần). Bộ Postman và file môi trường đi kèm nằm trong [postman/](postman).
+
 ## Kiến trúc
 
 Layered architecture theo domain, chi tiết xem [CLAUDE.md](CLAUDE.md):
