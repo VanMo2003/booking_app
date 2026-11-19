@@ -27,6 +27,12 @@ tốt nghiệp 2026.
 Máy mới, chưa có gì: làm theo [SETUP.md](SETUP.md) — cài JDK 21 / MySQL 8 / Flutter, lấy mã, tạo
 `.env`, nạp dữ liệu mẫu, chạy cả app Android lẫn app web, kèm mục lỗi thường gặp.
 
+Kiểm tra nhanh máy còn thiếu gì (và cài giúp với `-Install`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\check-env.ps1
+```
+
 Dữ liệu mẫu nằm ở [db/seed_demo.sql](db/seed_demo.sql) (chạy sau lần khởi động đầu tiên, chạy lại
 được nhiều lần). Bộ Postman và file môi trường đi kèm nằm trong [postman/](postman).
 

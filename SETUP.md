@@ -32,6 +32,36 @@ nạp `db/seed_demo.sql` → `flutter run`. Chi tiết ở dưới.
 
 ## 1. Phần mềm cần cài
 
+> **Đi đường tắt:** nếu đã có Git và đã clone kho `booking_app`, chạy script dưới đây là biết ngay
+> còn thiếu gì, và thêm `-Install` thì nó cài giúp luôn (xem [phần 1.0](#10-script-kiểm-tra-và-cài-giúp)).
+> Vẫn chưa có Git thì cài Git ở mục 1.1 trước đã.
+
+### 1.0 Script kiểm tra và cài giúp
+
+```powershell
+# chỉ kiểm tra, không đụng gì vào máy
+powershell -ExecutionPolicy Bypass -File .\tools\check-env.ps1
+
+# cài những thứ còn thiếu (mở PowerShell bằng "Run as administrator")
+powershell -ExecutionPolicy Bypass -File .\tools\check-env.ps1 -Install -Yes
+```
+
+Script in ra một bảng: `[OK]` là xong, `[THIEU]`/`[SAI]` là phải xử lý, `[CAN XEM]` là không bắt
+buộc nhưng nên đọc. Cuối bảng có danh sách việc còn lại kèm lệnh cần chạy. Mã thoát 0 nghĩa là đủ,
+1 nghĩa là còn thiếu thứ bắt buộc.
+
+Nó kiểm tra cả công cụ (Git, JDK **đúng bản 21**, `JAVA_HOME`, MySQL, Flutter đúng phiên bản tối
+thiểu, Android SDK, Chrome) lẫn tình trạng dự án (đã clone chưa, đúng nhánh chưa, đã sinh mã chưa,
+có `.env` chưa và `JWT_SIGNER_KEY` đủ dài chưa, database đã tạo và đã nạp dữ liệu mẫu chưa, backend
+có đang chạy không).
+
+Hai điều script **không** làm, phải tự làm tay: điền `.env` (nó không đoán mật khẩu MySQL của bạn)
+và tạo máy ảo Android.
+
+Phần còn lại của mục 1 là cách cài tay, dùng khi script báo lỗi hoặc khi muốn hiểu nó đang làm gì.
+
+### Cài tay
+
 Cài theo đúng thứ tự này. Sau mỗi mục có lệnh kiểm tra, mở **PowerShell mới** rồi chạy (cửa sổ cũ
 không thấy biến môi trường vừa cài).
 
@@ -424,3 +454,4 @@ cd D:\datn\booking_app_demo; git pull; flutter pub get; dart run build_runner bu
 | `booking_app/DEPLOY_EC2.md` | Triển khai lên máy chủ EC2 |
 | `booking_app_demo/README.md` | Cấu trúc app Flutter và các màn hình |
 | `booking_app/db/seed_demo.sql` | Dữ liệu mẫu, có ghi chú từng phần |
+| `booking_app/tools/check-env.ps1` | Script kiểm tra môi trường, có chế độ cài giúp |
