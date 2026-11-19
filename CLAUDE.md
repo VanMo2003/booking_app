@@ -183,6 +183,11 @@ plus `/ws/chat`, which authenticates its own upgrade, and `GET /ai/status` / `PO
 every other endpoint requires authentication. `/uploads/**` is excluded from the security
 filter chain entirely (served as static files, see `file.upload-dir` in `application.yaml`).
 
+CORS has two halves that must stay together: `CorsConfig` publishes a `CorsConfigurationSource` bean and
+`SecurityConfig` enables `.cors(Customizer.withDefaults())`. The MVC mapping alone is not enough - a
+preflight `OPTIONS` hits the security chain first and carries no token, so without the `.cors(...)` line it
+is answered 401 and the Flutter web build never gets to send the real request.
+
 Coarse "who is even authenticated" gating stops at `SecurityConfig`; everything ownership-shaped
 (does this manager actually run this branch, does this staff member belong to this branch, does
 this owner's chain contain this branch, has this owner been approved) is enforced by
