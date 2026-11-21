@@ -19,9 +19,15 @@ on:
 permissions:
   contents: write
   packages: write
+  # Buoc bao cao test tao mot check run. Khai bao permissions o day thi moi quyen khong
+  # liet ke deu ve none - thieu dong nay, job test do du 213 test deu xanh.
+  checks: write
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/booking_app
+  # Viet cung chu thuong. github.repository_owner la "VanMo2003" - Docker bat buoc ten image
+  # chu thuong, nen ghep tu bien do thi job build chet voi "repository name must be lowercase".
+  # Ten nay cung phai khop tung ky tu voi image trong k8s/.
+  IMAGE: ghcr.io/vanmo2003/booking_app
 
 jobs:
   test:
@@ -116,4 +122,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add k8s/overlays/dev/kustomization.yaml
           git commit -m "chore(k8s): deploy ${{ needs.build.outputs.tag }} [skip ci]"
+          # Trong luc build chay, co the da co commit khac len develop - rebase truoc khi day.
+          git pull --rebase origin develop
           git push
