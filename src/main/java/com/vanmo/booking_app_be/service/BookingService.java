@@ -45,6 +45,13 @@ public interface BookingService {
      * to that branch; paid at the hotel, PENDING until the branch confirms. Asking twice for the same stay returns
      * the open booking instead of a second one ({@link PlacedBooking#created()} false).
      */
+    /**
+     * The guest's newest room bookings at one branch, for the chat assistant's prompt. Carries no access
+     * check: the only caller is the assistant, which reads the guest and the branch off the conversation
+     * row it already loaded, never off anything a caller passed in.
+     */
+    List<BookingResponse> recentForAssistant(Long customerId, Long hotelId);
+
     PlacedBooking placeRoomsFromChat(
             Long conversationId, List<String> roomNumbers, LocalDate checkin, LocalDate checkout, String note);
 

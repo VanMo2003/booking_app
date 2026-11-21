@@ -181,6 +181,19 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toResponse(bookingRepository.save(entity));
     }
 
+    /** Bao nhiêu đơn gần nhất được đưa vào prompt của trợ lý; khớp với bên đơn tour. */
+    private static final int ASSISTANT_HISTORY = 5;
+
+    @Override
+    @Transactional
+    public List<BookingResponse> recentForAssistant(Long customerId, Long hotelId) {
+        return bookingRepository
+                .findByCustomer_IdAndHotel_IdOrderByIdDesc(customerId, hotelId, PageRequest.of(0, ASSISTANT_HISTORY))
+                .stream()
+                .map(this::convertToBookingResponse)
+                .toList();
+    }
+
     @Override
     public BookingResponse getById(Long id) {
         Booking booking = bookingRepository

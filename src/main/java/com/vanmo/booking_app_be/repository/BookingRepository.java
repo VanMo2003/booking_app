@@ -43,6 +43,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByPaymentStatusAndPaymentExpireAtBefore(PaymentStatus paymentStatus, LocalDateTime time);
 
+    /** One guest's newest bookings at one branch - what the chat assistant is told about them. */
+    List<Booking> findByCustomer_IdAndHotel_IdOrderByIdDesc(Long customerId, Long hotelId, Pageable pageable);
+
     /** One branch's bookings in a status - the desk's own queue, e.g. what is still waiting to be confirmed. */
     List<Booking> findAllByHotel_IdAndBookingStatus(Long hotelId, BookingStatus bookingStatus);
 

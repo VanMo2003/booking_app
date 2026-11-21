@@ -343,7 +343,10 @@ Two features, both grounded in database data rather than model knowledge:
 - **Chat receptionist** (`ChatAssistant`): the system prompt carries `HotelKnowledge.factSheet(hotelId)`
   (room types/prices, amenities, services, menu, tours as `[mã id]` lines with paused ones marked
   "TẠM NGỪNG" and each package's rooms/nights - public browse data only; the user prompt adds the guest's
-  last 5 tour orders at the branch) and the rules make tour ordering two turns: look up free package rooms
+  last 5 room bookings and last 5 tour orders at the branch, each as plain lines - dates in dd/MM/yyyy like the
+  rest of the prompt, the rooms by number, the amounts through `HotelKnowledge.money`, and the two statuses in
+  Vietnamese; a status or date the labels do not know is passed through rather than guessed, and `roomBookingLines`
+  / `prompt` are pure, `ChatAssistantRoomBookingsTest`) and the rules make tour ordering two turns: look up free package rooms
   with `find_tour_rooms`, send a summary (rooms, stay, tour + room amounts) and ask for "Đồng ý", then
   call `create_tour_booking` with the room numbers. `ChatAssistant.bookTour` refuses the call unless the newest message is the
   guest's and `looksLikeConsent` matches it (accent-insensitive word list), so a model that skips the
