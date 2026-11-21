@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Dùng "labels" chứ không phải "commonLabels": commonLabels nhét nhãn vào cả
+# selector của Deployment, mà selector là trường bất biến - đổi nhãn sau này sẽ
+# làm Argo CD không sync được nữa. Dạng này chỉ gắn nhãn lên metadata.
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: booking-app
+
+resources:
+  - mysql.yaml
+  - app.yaml

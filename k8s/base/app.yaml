@@ -1,0 +1,141 @@
+# Backend booking_app.
+#
+# Một replica, vì hai chỗ trong code giữ trạng thái trong bộ nhớ của tiến trình và sẽ sai nếu
+# chạy nhiều bản:
+#   - ChatSessionRegistry giữ WebSocket đang mở -> bản A không biết khách đang online ở bản B,
+#     nên sẽ đẩy thông báo thừa.
+#   - AiRateLimiter đếm lượt gọi AI trong bộ nhớ -> hạn mức bị nhân lên theo số bản.
+# Muốn tăng replicas thì phải chuyển hai thứ đó sang Redis trước.
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-app
+spec:
+  selector:
+    app: booking-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-app
+spec:
+  replicas: 1
+  strategy:
+    # Cùng lý do với MySQL: PVC uploads là ReadWriteOnce, pod mới và pod cũ không gắn song song được.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: booking-app
+  template:
+    metadata:
+      labels:
+        app: booking-app
+    spec:
+      containers:
+        - name: booking-app
+          # kustomize ghi đè tag ở overlay; CI sửa đúng dòng newTag đó.
+          image: ghcr.io/vanmo2003/booking_app:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TZ
+              value: Asia/Ho_Chi_Minh
+            - name: SPRING_DATASOURCE_URL
+              # "mysql" là tên Service ở cùng namespace.
+              value: jdbc:mysql://mysql:3306/booking_app_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh
+          envFrom:
+            # Mọi khoá bí mật nằm trong Secret booking-app-secrets, tạo ngoài Git.
+            - secretRef:
+                name: booking-app-secrets
+            - configMapRef:
+                name: booking-app-config
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+          # App mất 60-90 giây để khởi động (Spring + Hibernate + chờ MySQL). startupProbe cho nó
+          # tối đa 5 phút, sau đó liveness mới bắt đầu tính - nếu không kubelet sẽ giết pod giữa
+          # lúc đang khởi động và lặp CrashLoopBackOff mãi.
+          startupProbe:
+            httpGet:
+              path: /booking-app/api/v1/ai/status
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /booking-app/api/v1/ai/status
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /booking-app/api/v1/ai/status
+              port: 8080
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 768Mi
+            limits:
+              memory: 1536Mi
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploads
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: booking-app-config
+data:
+  PORT: "8080"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  APP_PUBLIC_URL: http://booking.local/booking-app/api/v1
+  VNPAY_URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  VNPAY_RETURN_URL: http://booking.local/booking-app/api/v1/payment/vn-pay-callback
+  MAIL_HOST: smtp.gmail.com
+  MAIL_PORT: "587"
+  MAIL_SMTP_AUTH: "true"
+  MAIL_SMTP_STARTTLS: "true"
+  AI_AUTO_REPLY_DELAY_SECONDS: "90"
+  AI_TIMEOUT_SECONDS: "60"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: booking-app
+  annotations:
+    # Ảnh khách sạn upload qua multipart, mặc định nginx chặn ở 1 MB.
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    # WebSocket /ws/chat giữ kết nối mở; app ping 25 giây một lần, để dư ra.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: booking.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: booking-app
+                port:
+                  number: 80
