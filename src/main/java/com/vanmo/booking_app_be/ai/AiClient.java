@@ -1,5 +1,7 @@
 package com.vanmo.booking_app_be.ai;
 
+import java.io.InterruptedIOException;
+import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -223,10 +225,47 @@ public class AiClient {
                                 ? ErrorCode.AI_QUOTA_EXCEEDED
                                 : status >= 500 ? ErrorCode.AI_OVERLOADED : ErrorCode.AI_UNAVAILABLE);
             } catch (RestClientException | JsonProcessingException e) {
-                log.warn("Cannot reach {}: {}", provider, e.getMessage());
+                // A model so busy it never answers is the same problem as one answering 503, and the caller's
+                // fallback chain only moves on for AI_OVERLOADED - a timeout reported as AI_UNAVAILABLE would
+                // stop at the first model and tell the guest the assistant is off.
+                if (timedOut(e)) {
+                    if (attempt < RETRY_DELAYS_MS.length) {
+                        log.info("{} {} did not answer in time - retrying", provider, model);
+                        pause(RETRY_DELAYS_MS[attempt]);
+                        continue;
+                    }
+                    log.warn("{} {} did not answer in time", provider, model);
+                    throw new AppException(ErrorCode.AI_OVERLOADED);
+                }
+                log.warn("Cannot reach {} {}: {}", provider, model, rootCause(e).toString());
                 throw new AppException(ErrorCode.AI_UNAVAILABLE);
             }
         }
+    }
+
+    /**
+     * Did the call die waiting rather than on a real answer? Spring wraps the socket timeout several layers deep
+     * and reports it as "Error while extracting response", so the message alone names neither the timeout nor the
+     * model - the reason a busy model used to look like a broken API key in the log.
+     */
+    static boolean timedOut(Throwable e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SocketTimeoutException || cause instanceof InterruptedIOException) {
+                return true;
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return false;
+    }
+
+    static Throwable rootCause(Throwable e) {
+        Throwable cause = e;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause;
     }
 
     private static void pause(long millis) {
@@ -264,6 +303,7 @@ public class AiClient {
                 .header("x-api-key", apiKey)
                 .header("anthropic-version", ANTHROPIC_VERSION)
                 .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
                 .body(objectMapper.writeValueAsString(request))
                 .retrieve()
                 .body(JsonNode.class);
@@ -276,6 +316,7 @@ public class AiClient {
                 .uri("/chat/completions")
                 .header("Authorization", "Bearer " + apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
                 .body(objectMapper.writeValueAsString(chat))
                 .retrieve()
                 .body(JsonNode.class);

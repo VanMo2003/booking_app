@@ -565,8 +565,13 @@ Two features, both grounded in database data rather than model knowledge:
 `GEMINI_API_KEY` is set - the free default) or `openai` (Groq, OpenRouter, Ollama via `AI_BASE_URL`),
 `OpenAiCompat` translates to/from Chat Completions. It carries the model's tool-calling assistant turn
 through verbatim in a private `_openai_raw` block because Gemini 3 rejects a follow-up turn without
-its thought signatures. A provider 5xx is retried twice on the same model; a model still overloaded
-(`AI_OVERLOADED`, 1017) or out of quota (`AI_QUOTA_EXCEEDED`, 1018 - quotas are per model) makes
+its thought signatures. A provider 5xx is retried twice on the same model, and so is a **read timeout**: a model too busy to answer
+within `AI_TIMEOUT_SECONDS` is the same problem as one answering 503, and it ends as `AI_OVERLOADED` so the
+fallback chain runs (it used to end as `AI_UNAVAILABLE`, which stops at the first model and tells the guest the
+assistant is off while the other two sit unused). Spring buries the socket timeout several layers deep and
+reports it as "Error while extracting response ... content type [application/octet-stream]", naming neither the
+timeout nor the model - `timedOut`/`rootCause` walk the cause chain, cycle-safe (`AiClientTimeoutTest`). A model
+still overloaded (`AI_OVERLOADED`, 1017) or out of quota (`AI_QUOTA_EXCEEDED`, 1018 - quotas are per model) makes
 `AiClient.withModelFallback` rerun the *whole* generation on the next model of the chain
 (`gemini-3.8-flash > gemini-3.5-flash > gemini-2.5-flash`, search `gemini-3.5-flash-lite >
 gemini-2.5-flash-lite`; override with `AI_*_FALLBACK_MODELS`). Never switch models mid tool loop:
