@@ -4,11 +4,12 @@ kind: Kustomization
 namespace: booking-dev
 
 resources:
-  - ../../base
-  - namespace.yaml
+- ../../base
+- namespace.yaml
 
 # Dòng newTag dưới đây là thứ duy nhất CI sửa. Mỗi lần đẩy lên develop, workflow
 # chạy "kustomize edit set image" rồi commit lại, Argo CD thấy Git đổi và đồng bộ.
 images:
-  - name: ghcr.io/vanmo2003/booking_app
-    newTag: latest
+- name: ghcr.io/vanmo2003/booking_app
+  newName: ghcr.io/vanmo2003/booking_app
+  newTag: 9a2608a
