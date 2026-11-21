@@ -27,6 +27,12 @@ public interface VoucherService {
 
     VoucherCheckResponse check(VoucherCheckRequest req);
 
+    /**
+     * The same answer for a guest the caller already resolved, used by the chat assistant: auto-reply runs with
+     * no signed-in account, so the once-per-guest limit would otherwise be read as "never used".
+     */
+    VoucherCheckResponse checkFor(VoucherCheckRequest req, Customer customer);
+
     /** The voucher an order will use, refused with TOUR_BOOKING_INVALID when it does not apply. */
     Voucher reserve(String code, Customer customer, Hotel hotel, BigDecimal tourAmount);
 

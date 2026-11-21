@@ -39,6 +39,7 @@ import com.vanmo.booking_app_be.repository.RoomRepository;
 import com.vanmo.booking_app_be.repository.ServiceRepository;
 import com.vanmo.booking_app_be.repository.TourRepository;
 import com.vanmo.booking_app_be.repository.TourRoomRepository;
+import com.vanmo.booking_app_be.service.impl.TourPricing;
 
 import lombok.RequiredArgsConstructor;
 
@@ -170,9 +171,9 @@ public class HotelKnowledge {
                         .collect(Collectors.joining("; ")))
                 .append('\n'));
 
-        out.append(
-                "\nTour tham quan (giá mỗi khách, thanh toán tại khách sạn; tour kèm phòng thì khách chọn phòng"
-                        + " của gói, ở từ ngày đi tour; tra phòng trống bằng find_tour_rooms, lên đơn bằng create_tour_booking):\n");
+        out.append("\nTour tham quan (giá hôm nay cho mỗi khách, thanh toán tại khách sạn; tour kèm phòng thì khách"
+                + " chọn phòng của gói, ở từ ngày đi tour; tra phòng trống bằng find_tour_rooms, kiểm tra mã"
+                + " giảm giá bằng check_voucher, lên đơn bằng create_tour_booking):\n");
         List<Tour> tours = tourRepository.findAllByHotel_Id(hotelId);
         if (tours.isEmpty()) {
             out.append("- (chưa có)\n");
@@ -180,9 +181,10 @@ public class HotelKnowledge {
         Map<Long, List<Room>> packageRooms = tourRoomRepository.findAllByTour_Hotel_Id(hotelId).stream()
                 .collect(Collectors.groupingBy(
                         link -> link.getTour().getId(), Collectors.mapping(TourRoom::getRoom, Collectors.toList())));
+        LocalDate today = TourPricing.today();
         tours.stream()
                 .sorted(Comparator.comparing((Tour t) -> !t.isAvailable()).thenComparing(Tour::getPrice))
-                .forEach(tour -> out.append(tourLine(tour, packageRooms.getOrDefault(tour.getId(), List.of())))
+                .forEach(tour -> out.append(tourLine(tour, packageRooms.getOrDefault(tour.getId(), List.of()), today))
                         .append('\n'));
 
         out.append(
@@ -190,14 +192,31 @@ public class HotelKnowledge {
         return out.toString();
     }
 
-    /** "- Food tour phố cổ: 450.000 ₫/khách; 4 giờ; khởi hành 18:00 hằng ngày; gồm …; tối đa 10 khách. Mô tả…" */
-    private static String tourLine(Tour tour, List<Room> rooms) {
+    /**
+     * "- [mã 12] Food tour phố cổ: 360.000 ₫/người lớn (đang giảm 20%, giá gốc 450.000 ₫); 250.000 ₫/trẻ em; 4 giờ…"
+     *
+     * <p>Giá phải là giá của ngày hôm nay qua {@link TourPricing}, không phải {@code Tour.getPrice()}: một tour
+     * đang khuyến mãi được tính theo giá giảm khi lên đơn, nên báo giá niêm yết là báo thừa tiền cho khách. Giá trẻ
+     * em cũng phải có, nếu không trợ lý tính cả trẻ em theo giá người lớn.
+     */
+    static String tourLine(Tour tour, List<Room> rooms, LocalDate day) {
         StringBuilder line =
                 new StringBuilder("- [mã ").append(tour.getId()).append("] ").append(tour.getName());
         if (!tour.isAvailable()) {
             line.append(" (TẠM NGỪNG, không nhận khách)");
         }
-        line.append(": ").append(money(tour.getPrice())).append("/khách");
+        TourPricing.Price price = TourPricing.of(tour, day);
+        line.append(": ").append(money(price.adult())).append("/người lớn");
+        if (price.onSale()) {
+            line.append(" (đang giảm ")
+                    .append(tour.getDiscountPercent())
+                    .append("%, giá gốc ")
+                    .append(money(tour.getPrice()))
+                    .append(')');
+        }
+        if (tour.getChildPrice() != null) {
+            line.append("; ").append(money(price.child())).append("/trẻ em");
+        }
         if (tour.getDuration() != null) {
             line.append("; ").append(tour.getDuration());
         }

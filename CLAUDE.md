@@ -342,13 +342,23 @@ Two features, both grounded in database data rather than model knowledge:
 
 - **Chat receptionist** (`ChatAssistant`): the system prompt carries `HotelKnowledge.factSheet(hotelId)`
   (room types/prices, amenities, services, menu, tours as `[mã id]` lines with paused ones marked
-  "TẠM NGỪNG" and each package's rooms/nights - public browse data only; the user prompt adds the guest's
+  "TẠM NGỪNG" and each package's rooms/nights - public browse data only. A tour line quotes **today's**
+  price through `TourPricing`, with the list price and the percentage beside it when the tour is on sale, and
+  the child price when the tour has one: `Tour.getPrice()` is what the order is *not* charged at, so quoting it
+  overcharges the guest in writing, `HotelKnowledgeTourLineTest`; the user prompt adds the guest's
   last 5 room bookings and last 5 tour orders at the branch, each as plain lines - dates in dd/MM/yyyy like the
   rest of the prompt, the rooms by number, the amounts through `HotelKnowledge.money`, and the two statuses in
   Vietnamese; a status or date the labels do not know is passed through rather than guessed, and `roomBookingLines`
   / `prompt` are pure, `ChatAssistantRoomBookingsTest`) and the rules make tour ordering two turns: look up free package rooms
   with `find_tour_rooms`, send a summary (rooms, stay, tour + room amounts) and ask for "Đồng ý", then
-  call `create_tour_booking` with the room numbers. `ChatAssistant.bookTour` refuses the call unless the newest message is the
+  call `create_tour_booking` with the room numbers, the child count and any voucher code. A code the guest
+  gives is checked first with `check_voucher` -> `VoucherService.checkFor`, the overload that takes the guest
+  instead of reading one off the security context, because auto-reply has no signed-in caller and the
+  once-per-guest limit would otherwise read as "never used"; it reserves nothing, `place` checks the code again.
+  `placeFromChat` takes a `ChatTourOrder` record carrying `children` and `voucherCode` - it used to hardcode
+  0 and null, so a chat order with children or a code cost more than the same order placed in the app. The
+  duplicate-order check compares the child count too, or re-confirming with a different split would silently
+  return the first order at the other price. `ChatAssistant.bookTour` refuses the call unless the newest message is the
   guest's and `looksLikeConsent` matches it (accent-insensitive word list), so a model that skips the
   summary books nothing; the tool runs in both suggest and auto-reply mode. It also books **rooms** the same
   way: `create_room_booking` (room numbers from `find_available_rooms`, check-in and check-out) goes through

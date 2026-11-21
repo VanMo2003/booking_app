@@ -17,8 +17,22 @@ public interface TourBookingService {
      * check: the assistant runs outside any request. Asking again for the same tour, date and head count returns the
      * open order instead of a second one ({@link Placed#created()} false).
      */
-    Placed placeFromChat(
-            Long conversationId, Long tourId, LocalDate tourDate, int guests, List<String> roomNumbers, String note);
+    Placed placeFromChat(ChatTourOrder order);
+
+    /**
+     * What the assistant agreed with the guest. {@code guests} is everyone, {@code children} how many of them are
+     * children (at least one adult), and {@code voucherCode} a code the guest gave - the same fields the app's own
+     * order screen sends, so a tour ordered in chat costs what it costs anywhere else.
+     */
+    record ChatTourOrder(
+            Long conversationId,
+            Long tourId,
+            LocalDate tourDate,
+            int guests,
+            int children,
+            String voucherCode,
+            List<String> roomNumbers,
+            String note) {}
 
     /** The stay that goes with the tour from this date, and which of its rooms are free for it. */
     TourRoomAvailabilityResponse availableRooms(Long tourId, LocalDate tourDate);

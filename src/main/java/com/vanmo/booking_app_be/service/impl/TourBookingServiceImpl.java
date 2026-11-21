@@ -108,26 +108,26 @@ public class TourBookingServiceImpl implements TourBookingService {
     }
 
     @Override
-    public Placed placeFromChat(
-            Long conversationId, Long tourId, LocalDate tourDate, int guests, List<String> roomNumbers, String note) {
+    public Placed placeFromChat(ChatTourOrder order) {
         Conversation conversation = conversationRepository
-                .findById(conversationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found id=" + conversationId));
+                .findById(order.conversationId())
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Conversation not found id=" + order.conversationId()));
         Long hotelId = conversation.getHotel().getId();
         Tour tour = tourRepository
-                .findById(tourId)
+                .findById(order.tourId())
                 .filter(t -> t.getHotel().getId().equals(hotelId))
-                .orElseThrow(() -> invalid("Cơ sở không có tour mã " + tourId + "."));
+                .orElseThrow(() -> invalid("Cơ sở không có tour mã " + order.tourId() + "."));
         return place(
                 tour,
                 conversation.getCustomer(),
                 conversation,
-                tourDate,
-                guests,
-                0,
-                null,
-                roomIdsByNumber(tour, roomNumbers),
-                note,
+                order.tourDate(),
+                order.guests(),
+                order.children(),
+                order.voucherCode(),
+                roomIdsByNumber(tour, order.roomNumbers()),
+                order.note(),
                 true);
     }
 
@@ -195,7 +195,9 @@ public class TourBookingServiceImpl implements TourBookingService {
                 .findFirstByCustomer_IdAndTour_IdAndTourDateAndStatusIn(customer.getId(), tour.getId(), tourDate, OPEN)
                 .orElse(null);
         if (existing != null) {
-            if (existing.getGuests() == guests && roomIdsOf(existing).equals(chosen)) {
+            if (existing.getGuests() == guests
+                    && existing.getChildren() == children
+                    && roomIdsOf(existing).equals(chosen)) {
                 return new Placed(toResponse(existing), false);
             }
             throw invalid("Khách đã có đơn tour #" + existing.getId() + " cho tour này ngày " + tourDate.format(DAY)

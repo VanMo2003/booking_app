@@ -131,12 +131,36 @@ public class VoucherServiceImpl implements VoucherService {
     @Override
     @Transactional(readOnly = true)
     public VoucherCheckResponse check(VoucherCheckRequest req) {
+        return answer(
+                req,
+                usedBy(voucherRepository
+                        .findByCodeIgnoreCase(normalize(req.getCode()))
+                        .orElse(null)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VoucherCheckResponse checkFor(VoucherCheckRequest req, Customer customer) {
+        Voucher voucher =
+                voucherRepository.findByCodeIgnoreCase(normalize(req.getCode())).orElse(null);
+        long used = voucher == null || customer == null
+                ? 0
+                : tourBookingRepository.countByCustomer_IdAndVoucher_IdAndStatusIn(
+                        customer.getId(), voucher.getId(), COUNTED);
+        return answer(req, used);
+    }
+
+    private static String normalize(String code) {
+        return code == null ? "" : code.strip().toUpperCase(Locale.ROOT);
+    }
+
+    private VoucherCheckResponse answer(VoucherCheckRequest req, long usedByGuest) {
         Tour tour = tourRepository
                 .findById(req.getTourId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tour not found id=" + req.getTourId()));
         int children = req.getChildren() == null ? 0 : req.getChildren();
         BigDecimal amount = tourAmount(tour, req.getGuests() - children, children);
-        String code = req.getCode().strip().toUpperCase(Locale.ROOT);
+        String code = normalize(req.getCode());
         Voucher voucher = voucherRepository.findByCodeIgnoreCase(code).orElse(null);
         if (voucher == null) {
             return VoucherCheckResponse.builder()
@@ -150,7 +174,7 @@ public class VoucherServiceImpl implements VoucherService {
         }
         Hotel hotel = tour.getHotel();
         String refusal = VoucherRules.refusal(
-                voucher, hotel.getHotelChain().getId(), hotel.getId(), amount, TourPricing.today(), usedBy(voucher));
+                voucher, hotel.getHotelChain().getId(), hotel.getId(), amount, TourPricing.today(), usedByGuest);
         BigDecimal discount = refusal == null ? VoucherRules.discount(voucher, amount) : BigDecimal.ZERO;
         return VoucherCheckResponse.builder()
                 .valid(refusal == null)
