@@ -11,6 +11,10 @@ import com.vanmo.booking_app_be.entity.HotelChain;
 @Mapper(componentModel = "spring")
 public interface HotelChainMapper {
     @Mapping(target = "account", ignore = true)
+    @Mapping(target = "approvalStatus", ignore = true)
+    @Mapping(target = "rejectionReason", ignore = true)
+    @Mapping(target = "submittedAt", ignore = true)
+    @Mapping(target = "reviewedAt", ignore = true)
     HotelChain toEntity(HotelChainCreateRequest req);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -18,9 +22,11 @@ public interface HotelChainMapper {
     void updateEntity(@MappingTarget HotelChain hotelChain, HotelChainUpdateRequest req);
 
     @Mapping(source = "account.id", target = "accountId")
+    @Mapping(source = "account.username", target = "ownerUsername")
     ListHotelChainResponse toResponse(HotelChain hotelChain);
 
     @Mapping(source = "account.id", target = "accountId")
+    @Mapping(source = "account.username", target = "ownerUsername")
     @Mapping(target = "hotels", ignore = true)
     HotelChainDetailResponse toDetailResponse(HotelChain hotelChain);
 }

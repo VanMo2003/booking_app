@@ -1,0 +1,127 @@
+name: CI/CD
+
+# Vòng GitOps: push -> test -> build & đẩy image -> sửa newTag trong k8s/ -> Argo CD đồng bộ.
+# Workflow này KHÔNG gọi kubectl. Cụm minikube nằm trên máy cá nhân, GitHub không với tới được;
+# Argo CD ở trong cụm tự kéo Git về. Đó cũng là điểm chính của GitOps: Git là nguồn sự thật,
+# không ai đẩy từ ngoài vào cụm.
+
+on:
+  push:
+    branches: [develop, main]
+    paths-ignore:
+      # Commit do chính workflow này tạo ra chỉ sửa k8s/ - bỏ qua để không tự kích hoạt lại.
+      - 'k8s/**'
+      - '**.md'
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  # Buoc bao cao test tao mot check run. Khai bao permissions o day thi moi quyen khong
+  # liet ke deu ve none - thieu dong nay, job test do du 213 test deu xanh.
+  checks: write
+
+env:
+  # Viet cung chu thuong. github.repository_owner la "VanMo2003" - Docker bat buoc ten image
+  # chu thuong, nen ghep tu bien do thi job build chet voi "repository name must be lowercase".
+  # Ten nay cung phai khop tung ky tu voi image trong k8s/.
+  IMAGE: ghcr.io/vanmo2003/booking_app
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cài JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: Chạy test
+        # BookingAppBeApplicationTests nâng cả Spring context nên cần MySQL thật; CI không có.
+        # Mọi test còn lại đều là test đơn vị thuần, chạy được không cần hạ tầng.
+        run: ./mvnw -B test '-Dtest=!BookingAppBeApplicationTests'
+
+      - name: Báo cáo test
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: target/surefire-reports/TEST-*.xml
+          detailed_summary: true
+
+  build:
+    name: Build & đẩy image
+    needs: test
+    # PR chỉ cần biết test có xanh không; đẩy image là việc của nhánh thật.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag theo commit
+        id: meta
+        # Tag bất biến theo SHA, không dùng "latest": Argo CD so sánh Git với cụm, mà một tag
+        # đổi nội dung ngầm thì Git không đổi -> Argo CD tưởng đã đồng bộ và không làm gì.
+        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Đăng nhập GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build và đẩy
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  bump:
+    name: Cập nhật tag trong k8s/
+    needs: build
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cài kustomize
+        run: |
+          curl -sS "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Đặt tag mới
+        working-directory: k8s/overlays/dev
+        run: kustomize edit set image ${{ env.IMAGE }}=${{ env.IMAGE }}:${{ needs.build.outputs.tag }}
+
+      - name: Commit nếu có thay đổi
+        run: |
+          if git diff --quiet; then
+            echo "newTag khong doi, khong commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8s/overlays/dev/kustomization.yaml
+          git commit -m "chore(k8s): deploy ${{ needs.build.outputs.tag }} [skip ci]"
+          # Trong luc build chay, co the da co commit khac len develop - rebase truoc khi day.
+          git pull --rebase origin develop
+          git push

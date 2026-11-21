@@ -18,6 +18,12 @@ public class HotelChainCreateRequest {
     String description;
     String pathImage;
 
+    // Optional contact details, same as at owner registration; the new chain waits for admin review.
+    String ownerName;
+    String email;
+    String phone;
+    String address;
+
     @NotBlank
     String accountId;
 }

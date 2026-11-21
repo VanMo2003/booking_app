@@ -15,5 +15,10 @@ public interface FeedbackMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateEntity(@MappingTarget Feedback entity, FeedbackUpdateRequest req);
 
+    @Mapping(target = "bookingId", source = "booking.id")
+    @Mapping(target = "hotelId", source = "booking.hotel.id")
+    @Mapping(target = "hotelName", source = "booking.hotel.name")
+    @Mapping(target = "customerId", source = "customer.id")
+    @Mapping(target = "customerName", source = "customer.fullName")
     FeedbackResponse toResponse(Feedback entity);
 }

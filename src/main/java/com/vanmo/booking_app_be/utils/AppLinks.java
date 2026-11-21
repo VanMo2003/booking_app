@@ -1,0 +1,44 @@
+package com.vanmo.booking_app_be.utils;
+
+/** Deep links the Flutter app handles ({@code bookingapp://...}), opened from push notifications and emails. */
+public final class AppLinks {
+
+    public static final String SCHEME = "bookingapp";
+    public static final String OWNER_STATUS = "owner-status";
+    public static final String NOTIFICATIONS = "notifications";
+
+    private AppLinks() {}
+
+    public static String deepLink(String target) {
+        return SCHEME + "://" + target;
+    }
+
+    public static String ownerStatus() {
+        return deepLink(OWNER_STATUS);
+    }
+
+    public static String ownerRegistration(Long chainId) {
+        return deepLink("owner-registrations/" + chainId);
+    }
+
+    public static String chat(Long conversationId) {
+        return deepLink("chat/" + conversationId);
+    }
+
+    /** Path of a tour's public share page, under the API's public URL. */
+    public static String tourSharePath(Long tourId) {
+        return "/app-links/tours/" + tourId;
+    }
+
+    public static String tour(Long tourId) {
+        return deepLink("tours/" + tourId);
+    }
+
+    public static String booking(Long bookingId) {
+        return deepLink("bookings/" + bookingId);
+    }
+
+    public static String tourBooking(Long tourBookingId) {
+        return deepLink("tour-bookings/" + tourBookingId);
+    }
+}

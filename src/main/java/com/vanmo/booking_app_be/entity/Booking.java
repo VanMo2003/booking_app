@@ -13,6 +13,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import com.vanmo.booking_app_be.entity.enums.BookingStatus;
+import com.vanmo.booking_app_be.entity.enums.ChatSide;
 import com.vanmo.booking_app_be.entity.enums.PaymentMethod;
 import com.vanmo.booking_app_be.entity.enums.PaymentStatus;
 
@@ -64,6 +65,14 @@ public class Booking {
     @JoinColumn(name = "customer_id", nullable = false)
     Customer customer;
 
+    /**
+     * Staff/manager account that took this booking at the front desk; null when the customer
+     * booked it themselves. Drives the staff-performance report.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "handled_by_account_id")
+    Account handledBy;
+
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<BookingRoom> bookingRooms;
 
@@ -76,6 +85,13 @@ public class Booking {
 
     @Column(length = 5000, columnDefinition = "TEXT")
     String note;
+
+    /** When the booking was cancelled and from which side; null for bookings cancelled before this was recorded. */
+    Date canceledAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    ChatSide canceledBy;
 
     @CreationTimestamp
     @Column(updatable = false)

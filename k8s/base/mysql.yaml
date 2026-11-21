@@ -1,0 +1,98 @@
+# MySQL cho cụm: một bản chạy duy nhất, dữ liệu nằm trên PersistentVolumeClaim.
+#
+# Một replica là cố ý. MySQL không nhân bản được chỉ bằng cách tăng replicas - hai pod cùng
+# ghi vào một PVC sẽ hỏng dữ liệu. Muốn nhiều bản thì phải là StatefulSet kèm sao chép, nằm
+# ngoài phạm vi đồ án này.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  # Headless: app gọi thẳng pod qua DNS "mysql", không cần cân bằng tải cho một bản chạy.
+  clusterIP: None
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  strategy:
+    # Mặc định là RollingUpdate: pod mới lên trước khi pod cũ chết, hai pod cùng gắn một PVC
+    # ReadWriteOnce -> pod mới kẹt ở Pending mãi. Recreate tắt pod cũ trước.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.4
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+          env:
+            - name: TZ
+              value: Asia/Ho_Chi_Minh
+            - name: MYSQL_DATABASE
+              value: booking_app_db
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: booking-app-secrets
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: booking-app-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: booking-app-secrets
+                  key: MYSQL_ROOT_PASSWORD
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mysql-data

@@ -6,13 +6,38 @@ tốt nghiệp 2026.
 ## Tech stack
 
 - **Java 21**, **Spring Boot 3.5.6** (`spring-boot-starter-web`, `-data-jpa`, `-validation`,
-  `-oauth2-resource-server`)
+  `-oauth2-resource-server`, `-mail`)
 - **MySQL 8.4** (JPA/Hibernate, `ddl-auto=update`)
 - **JWT** (Nimbus JOSE JWT, HMAC-SHA512) cho authentication/authorization
 - **MapStruct** + **Lombok** cho mapping entity &lt;-&gt; DTO
 - **VNPay** sandbox cho thanh toán online
 - **Apache POI** cho xuất báo cáo Excel
+- **Spring Mail** gửi email kết quả xét duyệt, **Firebase Cloud Messaging** (HTTP v1) gửi thông báo đẩy
+- **Spring WebSocket** cho nhắn tin realtime giữa khách hàng và khách sạn
+- **Google Gemini API** (mặc định, gói miễn phí; đổi được sang Claude hoặc máy chủ chuẩn OpenAI) cho
+  19 tính năng AI: trợ lý lễ tân đặt phòng và tour trong chat, tóm tắt hội thoại, tìm phòng/tìm tour bằng
+  câu nói, lên kế hoạch chuyến đi, trợ lý riêng của khách, tóm tắt và phân tích đánh giá, soạn nội dung
+  tour, hỏi đáp số liệu, tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay, hỏi nhanh
+  về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở, tư vấn chương trình giảm giá, dịch trang cơ sở, soạn mô tả phòng/món/dịch vụ
 - **Docker / Docker Compose** để build & deploy
+
+
+## Cài đặt từ đầu
+
+Máy mới, chưa có gì: làm theo [SETUP.md](SETUP.md) — cài JDK 21 / MySQL 8 / Flutter, lấy mã, tạo
+`.env`, nạp dữ liệu mẫu, chạy cả app Android lẫn app web, kèm mục lỗi thường gặp.
+
+Máy mới hoàn toàn: dán khối lệnh ở **phần 0 của SETUP.md** là xong — nó tự cài công cụ, lấy mã,
+tạo `.env`, tạo database và nạp dữ liệu mẫu.
+
+Kiểm tra nhanh máy còn thiếu gì (và cài giúp với `-Install`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\check-env.ps1
+```
+
+Dữ liệu mẫu nằm ở [db/seed_demo.sql](db/seed_demo.sql) (chạy sau lần khởi động đầu tiên, chạy lại
+được nhiều lần). Bộ Postman và file môi trường đi kèm nằm trong [postman/](postman).
 
 ## Kiến trúc
 
@@ -27,6 +52,14 @@ dto         -> request/response riêng cho từng thao tác
 mapper      -> MapStruct
 config      -> security, CORS, VNPay, seed admin mặc định
 security    -> AccessGuard - kiểm tra quyền theo phân cấp khách sạn/cơ sở
+event       -> sự kiện sau khi commit: gửi push, gửi email xét duyệt, phát tin nhắn chat
+websocket   -> kênh chat realtime /ws/chat (xác thực token, danh sách kết nối)
+ai          -> gọi model AI: trợ lý lễ tân (đặt phòng/tour trong chat), tóm tắt hội thoại,
+               tìm phòng và tìm tour bằng câu nói, lên kế hoạch chuyến đi, trợ lý của khách,
+               tóm tắt & phân tích đánh giá, soạn nội dung tour, hỏi đáp số liệu,
+               tư vấn giá phòng, kiểm tra mức hoàn thiện trang, bản tin việc hôm nay,
+               hỏi nhanh về một cơ sở, soạn nháp trả lời đánh giá, so sánh cơ sở,
+               tư vấn chương trình giảm giá, dịch trang cơ sở, soạn mô tả phòng/món/dịch vụ, tư vấn chương trình giảm giá, so sánh cơ sở
 exception   -> AppException + ErrorCode, xử lý tập trung ở GlobalExceptionHandler
 scheduler   -> job hết hạn thanh toán pending
 ```
@@ -35,23 +68,366 @@ scheduler   -> job hết hạn thanh toán pending
 
 Hệ thống quản lý **nhiều khách sạn (chuỗi)**, mỗi khách sạn có **nhiều cơ sở**:
 
-- **Khách sạn** (`HotelChain`) — 1 tài khoản `HOTEL_OWNER` sở hữu đúng 1 khách sạn (chuỗi). Chủ sở
-  hữu quản lý tài khoản quản lý của các cơ sở, xem báo cáo/doanh thu/khách hàng toàn chuỗi.
+- **Khách sạn** (`HotelChain`) — 1 tài khoản `HOTEL_OWNER` sở hữu đúng 1 khách sạn (chuỗi). Chủ khách
+  sạn **tự đăng ký** và phải được quản trị viên **duyệt** mới được mở cơ sở, tạo quản lý, xem báo cáo.
 - **Cơ sở** (entity `Hotel`, giữ nguyên tên trong code) — mỗi cơ sở có 1 tài khoản `HOTEL_MANAGER`
   quản lý, nhưng 1 quản lý có thể phụ trách nhiều cơ sở. Quản lý cơ sở quản lý nhân viên, tiện ích,
   dịch vụ, phòng, khách hàng, đơn đặt phòng và xem báo cáo của (các) cơ sở mình phụ trách.
 - **Nhân viên** (`Employee`, role `STAFF`) — thuộc đúng 1 cơ sở, được quản lý cơ sở tạo qua
   `POST /employees`. Có thể tạo/sửa tiện ích, dịch vụ, phòng, khách hàng, đơn đặt phòng nhưng
   **không được xoá**.
-- **`ADMIN`**: toàn quyền. **`CUSTOMER`**: tài khoản khách hàng, đặt phòng ở bất kỳ cơ sở nào.
+- **`ADMIN`**: xem toàn bộ dữ liệu, **xét duyệt** chủ khách sạn, khoá/mở tài khoản, quản lý danh mục
+  (loại phòng, chức vụ). Admin **không tạo** tài khoản, phòng, tiện ích, dịch vụ, nhân viên.
+- **`CUSTOMER`**: tài khoản khách hàng, đặt phòng ở bất kỳ cơ sở nào.
 
 Việc kiểm tra quyền theo phân cấp trên nằm ở `AccessGuard` (package `security`), gọi từ tầng
 service — không phải chỉ role-check đơn thuần mà còn xác thực quan hệ sở hữu (chain ↔ owner,
-branch ↔ manager, staff ↔ branch của họ).
+branch ↔ manager, staff ↔ branch của họ) và trạng thái duyệt của chủ khách sạn.
 
-Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Booking, BookingRoom,
-BookingService (dịch vụ đi kèm), Customer, Employee, Position, Payroll, Feedback, Payment, Report,
-Account (auth).
+Các domain chính: HotelChain, Hotel (cơ sở), Room, RoomType, Amenity, Dish (món ăn), Tour, TourBooking, Booking,
+BookingRoom, BookingService (dịch vụ đi kèm), Customer, Employee, Position, Payroll, Feedback,
+Payment, Report, Notification, DeviceToken, Conversation + ChatMessage (nhắn tin), Account (auth).
+
+### Thực đơn món ăn
+
+Mỗi cơ sở có thực đơn riêng (`Dish`: tên, mô tả, giá, nhóm món, ảnh, còn phục vụ/tạm hết), xoá cơ
+sở thì xoá theo thực đơn. Nhóm món cố định theo thứ tự đọc thực đơn: `APPETIZER` (khai vị),
+`MAIN_COURSE`, `SIDE_DISH`, `DESSERT`, `DRINK`, `OTHER`.
+
+| Thao tác | Endpoint | Ai được gọi |
+|---|---|---|
+| Xem thực đơn | `GET /dishes?hotelId=`, `GET /dishes/{id}` | Công khai, không cần đăng nhập |
+| Thêm món | `POST /dishes` | `HOTEL_OWNER` của chuỗi / `HOTEL_MANAGER` của cơ sở |
+| Sửa món (sửa một phần) | `PUT /dishes/{id}` | như trên |
+| Tải ảnh từ máy | `POST /dishes/{id}/image` (multipart, part `file`) | như trên |
+| Xoá món | `DELETE /dishes/{id}` | như trên |
+
+Nhân viên và quản trị viên chỉ xem (`403`). `PUT` chỉ đổi các trường được gửi, nên có thể gửi
+`{"available": false}` để đánh dấu tạm hết; `pathImage: ""` để gỡ ảnh. Ảnh có thể là link ngoài
+(`https://...`) hoặc đường dẫn `/uploads/...` sau khi tải lên. Danh sách trả về đã sắp theo nhóm món
+rồi theo tên. Chưa có đặt món/tính tiền món vào đơn đặt phòng.
+
+### Đổi phương thức thanh toán
+
+Đơn chưa thanh toán và còn mở (chờ xác nhận / đã xác nhận) đổi được phương thức bằng
+`PUT /bookings/{id}/payment-method` `{"paymentMethod": "CASH" | "BANK_TRANSFER" | "VN_PAY"}`. Khách
+chỉ đổi được đơn của mình; chủ khách sạn, quản lý, nhân viên của cơ sở cũng đổi được; quản trị viên
+chỉ xem.
+
+| Đổi sang | Trạng thái thanh toán sau khi đổi |
+|---|---|
+| `VN_PAY` | `PENDING`, giữ đơn 15 phút để thanh toán online (quá hạn → `FAILED`, thanh toán lại được) |
+| `CASH`, `BANK_TRANSFER` | `UNPAID`, không có hạn — trả tại khách sạn, lễ tân ghi nhận khi nhận tiền |
+
+Đơn đã thanh toán, đã hoàn tất hoặc đã huỷ trả `400` mã `1019`. Gửi lại đúng phương thức đang dùng
+thì không đổi gì (không làm mới hạn VNPay). Khách đã mở trang VNPay rồi đổi sang tiền mặt nhưng vẫn
+trả tiền xong trên VNPay thì đơn được ghi `VN_PAY` + đã thanh toán. Sửa đơn (`PUT /bookings/{id}`) mà
+đổi phương thức cũng áp dụng đúng quy tắc trên.
+
+### Tour tham quan
+
+Mỗi cơ sở giới thiệu các tour do khách sạn tổ chức (`Tour`: tên, mô tả/lịch trình, giá **mỗi khách**,
+thời lượng, giờ khởi hành, giá đã gồm, số chỗ mỗi chuyến, ảnh, đang nhận khách/tạm ngừng), xoá cơ sở
+thì xoá theo tour.
+
+**Tour là gói tour + phòng:** khách sạn gắn cho mỗi tour các phòng cụ thể của cơ sở (`roomIds` — tour
+bình dân gắn phòng Standard, tour cao cấp gắn Deluxe/Suite…) và số đêm ở (`stayNights`, mặc định 1).
+Đặt tour = đặt luôn phòng: nhận phòng đúng ngày đi tour, ở `stayNights` đêm, khách chọn trong các phòng
+của gói còn trống đêm đó. Tổng tiền = giá tour × số khách + giá phòng × số đêm. Tour không gắn phòng thì
+chỉ đặt tour. Quyền giống thực đơn:
+
+| Thao tác | Endpoint | Ai được gọi |
+|---|---|---|
+| Xem tour (kèm `stayNights`, `rooms`) | `GET /tours?hotelId=`, `GET /tours/{id}` | Công khai, không cần đăng nhập |
+| Phòng của gói còn trống cho ngày đi | `GET /tours/{id}/rooms/available?date=YYYY-MM-DD` | Công khai |
+| Thêm tour | `POST /tours` | `HOTEL_OWNER` của chuỗi / `HOTEL_MANAGER` của cơ sở |
+| Sửa tour (sửa một phần) | `PUT /tours/{id}` | như trên |
+| Tải ảnh từ máy | `POST /tours/{id}/image` (multipart, part `file`) | như trên |
+| Xoá tour | `DELETE /tours/{id}` | như trên |
+
+`PUT` chỉ đổi các trường được gửi: `{"available": false}` để tạm ngừng, `maxGuests: 0` để bỏ giới
+hạn số khách, chuỗi rỗng để xoá mô tả/thời lượng/giờ khởi hành/giá đã gồm/ảnh, `roomIds` thay toàn bộ
+phòng của gói (`[]` = bỏ hết, phòng phải thuộc cơ sở). Danh sách trả về đặt
+tour đang nhận khách lên trước, rồi theo giá, rồi theo tên.
+
+#### Đơn tour
+
+Khách đặt tour trong app (chọn ngày, số khách, phòng) hoặc qua tin nhắn: trợ lý AI tra phòng trống,
+gửi tóm tắt, khách nhắn "Đồng ý" thì trợ lý lên đơn (xem *Tích hợp AI*). Đơn tour (`TourBooking`) thanh
+toán tại khách sạn, chốt tên tour và giá lúc đặt (sửa hay xoá tour sau đó không đổi đơn cũ). Trạng
+thái: `PENDING` (chờ khách sạn xác nhận) → `CONFIRMED` → `COMPLETED`; đơn còn mở thì khách hoặc khách
+sạn huỷ được (`CANCELED`).
+
+**Đơn phòng đi kèm:** tour có phòng thì khi đặt, BE tạo luôn một đơn đặt phòng thường (`Booking`,
+`bookingId` trong đơn tour): nhận phòng ngày đi tour, trả phòng sau `stayNights` đêm, các phòng khách
+chọn, tiền mặt/chưa thanh toán, ghi chú "Phòng kèm đơn tour #…". Phòng vì vậy bị giữ với khách khác và
+lễ tân nhận/trả phòng như mọi đơn (khách đổi được sang VNPay). Xác nhận đơn tour → đơn phòng xác nhận
+theo; huỷ đơn tour → đơn phòng huỷ theo. Không huỷ riêng được đơn phòng của đơn tour đang mở (`400`
+`1020`: "Phòng này thuộc đơn tour #…").
+
+| Thao tác | Endpoint | Ai gọi |
+|---|---|---|
+| Đặt tour cho mình | `POST /tour-bookings` `{tourId, tourDate, guests, roomIds, note}` | Khách hàng (có hồ sơ) |
+| Đơn tour của tôi | `GET /tour-bookings/me` | Khách hàng |
+| Đơn tour của cơ sở | `GET /tour-bookings?hotelId=&status=` | Chủ / quản lý / nhân viên cơ sở (quản trị viên chỉ xem) |
+| Chi tiết | `GET /tour-bookings/{id}` | Khách của đơn, đội ngũ cơ sở |
+| Xác nhận / hoàn tất | `PUT /tour-bookings/{id}/confirm`, `/complete` | Chủ / quản lý / nhân viên cơ sở |
+| Huỷ | `PUT /tour-bookings/{id}/cancel` `{reason}` | Khách của đơn (lý do tuỳ chọn) hoặc đội ngũ cơ sở (bắt buộc lý do) |
+
+- Kiểm tra khi đặt: tour đang nhận khách, ngày đi từ hôm nay đến 1 năm tới, 1–50 khách mỗi đơn,
+  `maxGuests` là **số chỗ mỗi chuyến** (tổng khách các đơn còn mở cùng ngày không vượt quá); tour có phòng
+  thì bắt buộc chọn phòng, phòng phải thuộc gói, còn trống cả kỳ ở (không bảo trì, không trùng đơn chờ
+  xác nhận/đã xác nhận) và đủ chỗ cho số khách. Lỗi trả `400` mã `1020` kèm câu tiếng Việt ("Phòng 101 đã
+  có khách từ 18/10/2026 đến 19/10/2026. Hãy chọn phòng khác.").
+- Khách đặt lại đúng tour, ngày, số khách, phòng thì nhận lại đơn đang mở (không tạo trùng); khác thì báo
+  đã có đơn.
+- **Thông báo** (trong app + đẩy FCM, deep link `bookingapp://tour-bookings/{id}`): đơn mới hoặc khách
+  huỷ → chủ khách sạn, quản lý và nhân viên của cơ sở; khách sạn xác nhận hoặc huỷ (kèm lý do) → khách.
+
+### Nhắn tin khách hàng ↔ khách sạn
+
+Khách hàng (đã có hồ sơ) nhắn tin với **một cơ sở**; phía cơ sở là **hộp thư chung** — chủ khách
+sạn, quản lý cơ sở và mọi nhân viên của cơ sở đều nhận và trả lời được, trạng thái "đã đọc" tính
+theo phía (một người của cơ sở mở là cả cơ sở đã đọc). Quản trị viên không xem được tin nhắn.
+
+- **REST** (gửi tin, lịch sử, hộp thư) dưới `/conversations`:
+
+| Thao tác | Endpoint | Ai gọi |
+|---|---|---|
+| Mở (hoặc lấy lại) cuộc trò chuyện với cơ sở | `POST /conversations` `{hotelId}` | Khách hàng |
+| Hộp thư của khách | `GET /conversations/me?page&size` | Khách hàng |
+| Hộp thư của cơ sở | `GET /conversations/inbox?hotelId&page&size` (bỏ `hotelId` = mọi cơ sở mình phụ trách) | Chủ / quản lý / nhân viên |
+| Số tin chưa đọc | `GET /conversations/unread-count?hotelId` | Cả hai phía |
+| Chi tiết | `GET /conversations/{id}` | Hai bên của cuộc trò chuyện |
+| Tin nhắn (mới nhất trước) | `GET /conversations/{id}/messages?beforeId&size` | Hai bên |
+| Gửi tin (≤ 2000 ký tự) | `POST /conversations/{id}/messages` `{content}` | Hai bên |
+| Đánh dấu đã đọc | `PUT /conversations/{id}/read` | Hai bên |
+
+- **WebSocket** (nhận tin tức thì): `ws://<host>:8080/booking-app/api/v1/ws/chat?token=<accessToken>`
+  (WebSocket thuần, không STOMP). Máy chủ đẩy JSON `{"type": "CONNECTED" | "MESSAGE" | "READ" | "PONG",
+  "conversation": {...}, "message": {...}}` tới mọi thiết bị đang mở của cả hai phía; client gửi
+  `{"type":"PING"}` để giữ kết nối. Token sai/đã đăng xuất → `401`, tài khoản quản trị → `403`.
+- Người nhận **không mở app** (không có kết nối WebSocket) được gửi **thông báo đẩy FCM** kèm deep
+  link `bookingapp://chat/{id}`; tin nhắn không tạo thông báo trong hộp thông báo.
+- Xoá cơ sở hoặc hồ sơ khách thì các cuộc trò chuyện và tin nhắn bị xoá theo (ràng buộc
+  `ON DELETE CASCADE`). Tên, vai trò người gửi lưu kèm từng tin nên xoá tài khoản nhân viên vẫn giữ
+  được lịch sử.
+- Chỉ chạy một instance: danh sách kết nối nằm trong bộ nhớ (`ChatSessionRegistry`); chạy nhiều máy
+  chủ thì cần message broker dùng chung.
+
+### Tích hợp AI (mặc định Google Gemini, gói miễn phí)
+
+Mọi lời gọi AI đi qua BE (`ai/AiClient`) — app không bao giờ giữ API key. Nhà cung cấp chọn bằng biến
+môi trường, logic AI không đổi:
+
+| `AI_PROVIDER` | Key | Model mặc định (trợ lý / tìm kiếm) |
+|---|---|---|
+| `gemini` (tự chọn khi có `GEMINI_API_KEY`) | `GEMINI_API_KEY` — aistudio.google.com → *Get API key* | `gemini-3.8-flash` / `gemini-3.5-flash-lite` (đều có gói free) |
+| `anthropic` | `ANTHROPIC_API_KEY` (trả phí) | `claude-sonnet-5` / `claude-haiku-4-5-20251001` |
+| `openai` (Groq, OpenRouter, Ollama… qua `AI_BASE_URL`) | `AI_API_KEY` | đặt bằng `AI_ASSISTANT_MODEL` / `AI_FAST_MODEL` |
+
+Gemini được gọi qua endpoint chuẩn OpenAI của Google (`…/v1beta/openai/chat/completions`);
+`ai/OpenAiCompat` đổi qua lại giữa định dạng đó và định dạng nội bộ, và gửi lại nguyên văn lượt gọi
+công cụ (gồm *thought signature* mà Gemini 3 bắt buộc). Không có key nào thì mọi tính năng AI tự tắt,
+`GET /ai/status` trả `enabled: false` và app ẩn các nút AI. **Lưu ý:** ở gói miễn phí, Google có thể
+dùng dữ liệu gửi lên để cải thiện sản phẩm — chỉ demo với dữ liệu test.
+
+1. **Trợ lý lễ tân trong chat** (`ai/ChatAssistant`):
+   - AI chỉ biết **hồ sơ cơ sở** lấy từ DB (`ai/HotelKnowledge`: loại phòng và giá, tiện ích, dịch vụ,
+     thực đơn, tour tham quan) và **tra phòng trống thật** qua công cụ `find_available_rooms` — không
+     tự bịa giá hay phòng. Việc cần người (đặt/huỷ/đổi đơn, thanh toán, khiếu nại, câu hỏi hồ sơ không
+     có) → công cụ `handoff_to_staff`: cuộc trò chuyện được gắn `needsStaff` + lý do cho đội ngũ cơ sở
+     (khách không thấy).
+   - **Gợi ý tour:** khách hỏi đi chơi, tham quan, ăn uống quanh khu vực hoặc nói sẽ ở vài ngày thì
+     trợ lý gợi ý 1–3 tour phù hợp của cơ sở (tên, giá mỗi khách, thời lượng, giờ khởi hành), không
+     gợi ý tour tạm ngừng.
+   - **Lên đơn phòng (công cụ `find_available_rooms` + `create_room_booking`), 2 bước:** (1) đủ ngày nhận,
+     ngày trả, số khách thì trợ lý tra phòng trống thật, để khách chọn (hoặc gợi ý phòng rẻ nhất đủ chỗ),
+     gửi tóm tắt gồm phòng, loại phòng, ngày nhận/trả, số đêm, giá mỗi đêm, tổng tiền phòng rồi mời khách
+     nhắn "Đồng ý"; (2) khách đồng ý thì trợ lý lên đơn (thanh toán tại khách sạn, chờ cơ sở xác nhận) và
+     đội ngũ cơ sở nhận thông báo `BOOKING_CREATED`. Máy chủ kiểm lại từng phòng (thuộc cơ sở, không bảo
+     trì, còn trống cả kỳ), tính tiền theo giá × số đêm, và hỏi lại cùng kỳ nghỉ thì trả về đơn đang mở
+     thay vì tạo đơn thứ hai.
+   - **Lên đơn tour (công cụ `find_tour_rooms` + `create_tour_booking`), 2 bước:** (1) đủ tour, ngày đi,
+     số khách thì trợ lý tra phòng của gói còn trống (tour kèm phòng), cho khách chọn hoặc gợi ý phòng rẻ
+     nhất đủ chỗ, gửi tóm tắt gồm phòng, ngày nhận/trả, tiền tour + tiền phòng và mời khách nhắn "Đồng ý"; (2) khách đồng ý thì trợ lý lên đơn, báo mã đơn,
+     khách sạn nhận thông báo. Máy chủ tự chặn: tin mới nhất của khách phải là lời đồng ý ("đồng ý", "ok",
+     "xác nhận", "chốt", "được"… — không dấu cũng nhận) thì mới tạo đơn, nên model bỏ qua bước tóm tắt
+     cũng không đặt được. Trợ lý thấy các đơn tour gần đây của khách ở cơ sở nên trả lời được "đơn của tôi
+     xác nhận chưa" và không đặt trùng. Đổi ngày/số khách → chuyển nhân viên; huỷ → khách tự huỷ trong app.
+   - **Gợi ý trả lời:** `POST /ai/conversations/{id}/suggest-reply` (chủ/quản lý/nhân viên của cơ sở)
+     trả bản nháp, **không gửi gì cho khách**.
+   - **Tự trả lời:** chủ khách sạn/quản lý bật bằng `PUT /ai/branches/{hotelId}/settings
+     {"autoReply": true}` (`GET` để xem). Khách nhắn mà sau `AI_AUTO_REPLY_DELAY_SECONDS` (mặc định 90
+     giây) chưa ai của cơ sở trả lời thì trợ lý trả lời, tin mang nhãn "Trợ lý AI" (`aiGenerated`).
+     Nhân viên trả lời kịp hoặc khách nhắn tiếp thì bỏ lượt đó; nhân viên trả lời thì `needsStaff` tự xoá.
+2. **Tóm tắt hội thoại cho nhân viên** (`ai/ChatSummarizer`): `GET /ai/conversations/{id}/summary` đọc 40
+   tin nhắn mới nhất và trả về một ghi chú ngắn — khách cần gì, việc gì còn treo, nên làm gì tiếp, mức gấp
+   (LOW/NORMAL/HIGH). "Khách đang chờ" suy ra từ ai nhắn cuối, không hỏi model. Không gửi gì cho khách.
+3. **Tìm phòng bằng câu nói tự nhiên:** `POST /ai/search {"query": "..."}` (công khai, 20 lần/10 phút mỗi
+   tài khoản hoặc IP). Model nhanh chỉ **tách câu thành bộ lọc** (ngày, số khách, giá, khu vực, tiện ích);
+   lọc cơ sở và phòng trống do BE làm trên dữ liệu thật. Điều kiện không dùng được (ngày đã qua, tiện ích
+   không cơ sở nào có) được bỏ kèm ghi chú `notes`.
+
+4. **Tìm tour bằng câu nói tự nhiên** (`ai/AiTourSearch`): `POST /ai/tours/search` (công khai). Model nhanh
+   tách câu thành bộ lọc (điểm đến, chủ đề `TravelTheme`, giá mỗi người lớn, số người lớn/trẻ em, ngày đi,
+   số đêm, kèm phòng, từ khoá); BE chọn và xếp hạng tour trên dữ liệu thật. Điểm đến, giá, số khách, kèm
+   phòng, số đêm là điều kiện bắt buộc; chủ đề và từ khoá chỉ đẩy tour lên trên. Có ngày đi thì kiểm tra
+   chỗ còn lại thật theo các đơn đang mở.
+5. **Lên kế hoạch chuyến đi** (`ai/AiTripPlanner`): `POST /ai/trip-plan` (công khai). Hai lượt gọi model và
+   model không quyết định gì liên quan tiền: model nhanh đọc câu thành yêu cầu chuyến đi, BE tìm cơ sở còn
+   phòng trống và tour phù hợp, model trợ lý chỉ xếp chúng thành từng ngày. BE loại mọi khách sạn/tour
+   không có trong danh sách, cắt ngày thừa, chọn voucher giảm nhiều nhất cho phần tour và tính tiền
+   phòng/tour/tổng/mỗi người.
+6. **Trợ lý riêng của khách** (`ai/AiGuestAssistant`): `POST /ai/assistant/ask` (chỉ khách). Chỉ đọc đơn
+   phòng, đơn tour, mã giảm giá và sở thích của chính khách đang đăng nhập; deep link trả về được BE kiểm
+   là trỏ đúng đơn của khách. Không đặt, không huỷ, không thanh toán hộ.
+7. **Tóm tắt đánh giá của cơ sở** (`ai/ReviewDigest`): `GET /ai/hotels/{hotelId}/review-digest` (công khai)
+   — "khách thường khen / thường phàn nàn", đọc từ chính đánh giá của cơ sở. Lưu cache trong
+   `HotelReviewDigest`, chỉ viết lại khi số đánh giá đổi; phổ sao và điểm trung bình do BE tự tính. Dưới 4
+   đánh giá thì trả `available: false` để app ẩn thẻ.
+8. **Phân tích đánh giá toàn chuỗi** (`ai/AiReviewThemes`): `GET /ai/chains/{id}/review-themes?from=&to=`
+   (chủ chuỗi) — khách nói nhiều về chủ đề gì (sạch sẽ, nhân viên, vị trí, tiếng ồn…), mức
+   GOOD/MIXED/BAD và cơ sở nào bị nhắc. BE chỉ giữ tên cơ sở thuộc chuỗi; số đánh giá và điểm từng cơ sở
+   do BE tính.
+9. **Soạn nội dung tour giúp quản lý** (`ai/TourDraftWriter`): `POST /ai/tours/draft` (chủ/quản lý cơ sở) —
+   từ tên tour và vài thông tin đã nhập, model viết mô tả, phần bao gồm, lịch trình theo chặng và điều
+   khoản huỷ để quản lý sửa rồi tự lưu. Không ghi gì vào tour; quy tắc cấm nhắc giá và cấm bịa dịch vụ.
+10. **Hỏi đáp số liệu** (`ai/AiReportAnalyst`): `POST /ai/reports/ask` (quản lý cơ sở với `hotelId`, chủ
+    chuỗi với `hotelChainId`). Model nhanh chỉ đọc khoảng thời gian từ câu hỏi, BE gọi đúng
+    `ReportService` (nên quyền và con số khớp các trang báo cáo), model trợ lý viết nhận xét từ khối số
+    liệu dạng văn bản. KPI trả về kèm câu trả lời để người đọc tự kiểm.
+11. **Tư vấn giá phòng** (`ai/AiPricingAdvisor`): `GET /ai/branches/{hotelId}/pricing-advice` (quản lý trở
+    lên) — mỗi loại phòng nên tăng/giữ/giảm bao nhiêu phần trăm, dựa trên 30 ngày lấp phòng, ADR thực so
+    với giá niêm yết, lấp phòng theo ngày trong tuần và lượng đã đặt trước. BE chặn phần trăm quá 30, loại
+    loại phòng không tồn tại và tự tính giá đề xuất. Không đổi giá phòng nào.
+12. **Kiểm tra mức hoàn thiện trang** (`ai/AiContentAudit`): `GET /ai/branches/{hotelId}/content-audit`
+    (quản lý trở lên) — 11 tiêu chí (mô tả, ảnh, tiện ích, dịch vụ, phòng có ảnh/giá, tour có điểm
+    đến/lịch trình/ảnh, món có giá) và điểm số đều do BE đếm, nên vẫn trả về được khi chưa có API key;
+    model chỉ diễn đạt nên sửa gì trước.
+
+13. **Bản tin "việc hôm nay"** (`ai/AiDailyBrief`): `GET /ai/branches/{hotelId}/daily-brief` (quản lý trở lên) —
+    khách nhận/trả phòng hôm nay, đơn còn chờ xác nhận (gấp khi đã quá 24 giờ), tour khởi hành hôm nay và ngày
+    mai, tin nhắn khách chưa trả lời, đánh giá từ 2 sao trở xuống trong 7 ngày, tiền chưa thu, phòng bảo trì và
+    chỉ tiêu doanh thu tháng đo theo lịch. Mọi con số và mức URGENT/WATCH/QUIET do BE đếm nên vẫn trả về được khi
+    chưa có API key; model chỉ xếp thứ tự việc và viết mỗi việc một câu, và việc trỏ vào dòng không cần xử lý thì
+    bị loại.
+14. **Hỏi nhanh về một cơ sở** (`ai/AiHotelQa`): `POST /ai/hotels/{hotelId}/ask` (công khai, không cần đăng nhập).
+    Khách đang xem trang cơ sở hỏi một câu, model trả lời **chỉ** từ hồ sơ cơ sở (`HotelKnowledge.factSheet`).
+    Hồ sơ không có thông tin (giờ nhận phòng, chính sách huỷ, khuyến mãi) thì `answered = false` và app mời khách
+    nhắn thẳng cho cơ sở thay vì hiện câu đoán. Liên kết trả về chỉ được trỏ tới tour của chính cơ sở đó — dạng duy nhất app mở được.
+
+15. **Soạn nháp trả lời đánh giá** (`ai/AiReviewReply`): `POST /ai/feedbacks/{feedbackId}/reply-draft` (chủ chuỗi
+    hoặc quản lý cơ sở) — quản lý nhận một bản nháp để sửa rồi tự đăng bằng `PUT /feedbacks/{id}/reply`; endpoint
+    này không ghi gì. Prompt chỉ gồm số sao, tên cơ sở và lời khách trong thẻ `<review>`; không đưa giá và không
+    đưa chính sách nào vào, và quy tắc cấm hẳn thứ model dễ bịa nhất ở đây: hứa hoàn tiền, giảm giá, tặng đêm
+    nghỉ hay viện dẫn một chính sách không ai viết. Đánh giá từ 3 sao trở xuống được soạn theo hướng nhận lỗi và
+    ghi nhận, trên 3 sao thì cảm ơn. Đánh giá đã có câu trả lời thì bản nháp mang theo câu cũ kèm lời nhắc gửi
+    câu mới sẽ thay câu cũ.
+
+16. **So sánh cơ sở** (`ai/AiHotelCompare`): `POST /ai/hotels/compare` (công khai) — 2 đến 4 cơ sở đặt cạnh
+    nhau. Mọi con số trong bảng đều do BE đếm từ dữ liệu thật của từng cơ sở (khoảng giá từ giá phòng thật,
+    số khách của phòng lớn nhất, số phòng/tiện ích/dịch vụ/tour, số đánh giá và điểm trung bình tính lại từ
+    đánh giá chứ không lấy `Hotel.rating`), nên bảng vẫn đúng dù model có nói sai. Model chỉ viết lời: mỗi cơ
+    sở phù hợp với ai, các khác biệt đáng để ý và một kết luận nên chọn gì trong hoàn cảnh nào.
+
+17. **Tư vấn chương trình giảm giá** (`ai/AiPromotionAdvisor`): `GET /ai/chains/{hotelChainId}/promotion-advice`
+    (chủ chuỗi) — nên chạy chương trình giảm giá nào, dựa trên ngày trong tuần lấp phòng thấp, cơ sở đang hụt,
+    tour ít khách và phần tháng tới đã đặt trước. Brief kèm cả mã đang chạy để AI không đề xuất trùng. Không
+    tạo mã nào: chủ chuỗi tự tạo voucher trên trang mã giảm giá, nên model sai cũng không ai mất tiền. Mọi con
+    số quan trọng vẫn là của BE — phần trăm bị kẹp trong 5–25%, mốc thời gian chỉ 7/14/30 ngày và ngày bắt
+    đầu/kết thúc do BE tính, đơn tối thiểu suy từ ADR thật của kỳ, chương trình trỏ vào cơ sở ngoài chuỗi hoặc
+    tour không tồn tại thì bị loại.
+
+18. **Dịch trang cơ sở** (`ai/AiTranslator`): `POST /ai/hotels/{hotelId}/translate` (công khai) — nội dung cơ sở
+    đã công bố, đọc bằng tiếng Anh, Hàn, Nhật, Trung, Pháp hoặc Nga; mã ngôn ngữ lạ trả 400 chứ không đoán.
+    Model chỉ dịch: danh sách mục do BE dựng từ dữ liệu thật (mô tả, tiện ích, dịch vụ, món, tour), mỗi mục có
+    key, và `build` chỉ nhận bản dịch của key đã gửi — nên trang không thể mọc thêm một món hay tiện ích mà cơ
+    sở không có. Mục model bỏ qua thì giữ bản gốc, vì thiếu bản dịch còn hơn bản dịch bịa.
+
+19. **Soạn mô tả phòng, món, dịch vụ** (`ai/AiDescriptionWriter`): `POST /ai/descriptions/draft` (chủ chuỗi hoặc
+    quản lý cơ sở) — `kind` là ROOM/DISH/SERVICE kèm mã dòng; BE đọc đúng dòng đó và dựng prompt từ dữ liệu
+    thật của nó (hạng phòng, sức chứa, tiện nghi thật của phòng; nhóm món và tình trạng; tên dịch vụ). Giá cố
+    tình không đưa vào prompt và quy tắc cấm viết về giá, vì app đã hiện giá ngay cạnh phần mô tả. Ghi chú của
+    quản lý nằm trong thẻ `<notes>` và được nói rõ là gợi ý chứ không phải chỉ thị. Không lưu gì: quản lý sửa
+    rồi gửi API cập nhật bình thường của dòng đó.
+
+**Khi Gemini quá tải hoặc hết lượt:** model mới nhất ở gói miễn phí hay trả `503` "This model is currently
+experiencing high demand" (lỗi phía Google, không phải hết lượt). BE tự thử lại 2 lần (chờ 1 s rồi
+2,5 s), vẫn lỗi hoặc gặp `429` (hết lượt — mỗi model có hạn mức riêng) thì chuyển sang model dự phòng:
+trợ lý `gemini-3.8-flash` → `gemini-3.5-flash` → `gemini-2.5-flash`, tìm kiếm `gemini-3.5-flash-lite` →
+`gemini-2.5-flash-lite`. Một lượt trả lời (kể cả các vòng gọi công cụ) luôn ở trên một model. Đổi chuỗi
+dự phòng bằng `AI_ASSISTANT_FALLBACK_MODELS` / `AI_FAST_FALLBACK_MODELS` (danh sách cách nhau bởi dấu
+phẩy, `none` = tắt).
+
+Mã lỗi: `1015 AI_UNAVAILABLE` (503 — chưa có key hoặc lỗi khác), `1016 AI_RATE_LIMITED` (429 — giới hạn
+của chính app), `1017 AI_OVERLOADED` (503 — mọi model đều quá tải), `1018 AI_QUOTA_EXCEEDED` (429 — mọi
+model đều hết lượt).
+
+### Đăng ký chủ khách sạn và xét duyệt
+
+1. Khách vãng lai gửi `POST /owner-registrations` (công khai): tên đăng nhập, mật khẩu, thông tin
+   khách sạn (tên, địa chỉ, SĐT, email, người đại diện, giới thiệu). Tài khoản `HOTEL_OWNER` và
+   khách sạn được tạo với trạng thái `PENDING`; quản trị viên nhận thông báo.
+2. Chủ khách sạn đăng nhập được ngay nhưng chỉ xem được `GET /owner-registrations/me` và sửa/gửi lại
+   bằng `PUT /owner-registrations/me`. Mọi thao tác vận hành trả `403` mã `1011`.
+3. Quản trị viên xem hàng chờ `GET /owner-registrations?status=PENDING`, rồi
+   `PUT /owner-registrations/{id}/approve` hoặc `PUT /owner-registrations/{id}/reject` (bắt buộc
+   `reason`).
+4. Chủ khách sạn nhận thông báo trong app (`GET /notifications`), thông báo đẩy FCM và email. Nút
+   trong email mở `GET /app-links/owner-status`, trang này chuyển điện thoại sang deep link
+   `bookingapp://owner-status` của app.
+5. Bị từ chối thì sửa theo lý do và gửi lại (quay về bước 3). Được duyệt thì chủ khách sạn tự tạo
+   quản lý, mở cơ sở, thêm phòng, tiện ích, dịch vụ, thực đơn món ăn, tour tham quan.
+
+### Báo cáo doanh thu
+
+Mỗi báo cáo có hai bản: cấp cơ sở `/reports/...?hotelId=` (chủ chuỗi hoặc quản lý cơ sở) và cấp chuỗi
+`/reports/chain/...?hotelChainId=` (chủ chuỗi). Doanh thu chỉ tính đơn **hoàn tất**: đơn phòng ghi
+nhận vào ngày trả phòng, đơn tour vào ngày đi. Tiền phòng của gói tour nằm ở đơn phòng đi kèm nên chỉ
+được tính một lần, khi khách trả phòng.
+
+| Báo cáo | Endpoint | Ghi chú |
+|---|---|---|
+| Tổng quan kỳ | `GET /reports/summary?from=&to=` | Tổng doanh thu (phòng + dịch vụ + tour), ADR, RevPAR, lấp đầy, tỷ lệ huỷ, tỷ lệ đơn mua thêm dịch vụ và tiền dịch vụ trung bình mỗi đơn (`serviceAttachRate`, `servicePerBooking`); số khách khác nhau và chi tiêu trung bình mỗi khách (`uniqueGuests`, `revenuePerGuest`); đơn hoàn tất theo thời điểm thu tiền (`byPaymentTiming`: trả trước khi đến / trong thời gian ở / sau khi trả phòng / chưa thu / không rõ) và số ngày thu muộn trung bình; so với kỳ trước (xem bên dưới); chia theo phương thức thanh toán, kênh bán (khách tự đặt / tại quầy / tour) và loại khách (mới / quay lại — đã có đơn hoàn tất trả phòng trước kỳ). `from`, `to` tính cả hai đầu |
+| Diễn biến doanh thu | `GET /reports/trend?from=&to=&granularity=day\|week\|month\|year` | Đơn phòng + tour, từng mốc (tuần ISO bắt đầu thứ Hai, mốc đầu/cuối cắt theo khoảng), đủ cả mốc trống; theo ngày tối đa 400 ngày. Mỗi mốc kèm chi phí lương chia theo ngày và lợi nhuận sau lương. App dùng endpoint này cho biểu đồ |
+| Doanh thu theo thời gian (cũ) | `GET /reports/daily`, `/weekly`, `/weekly-in-month`, `/monthly`, `/monthly/last-5-months`, `/yearly` | Chỉ đơn phòng (đã gồm dịch vụ); giữ cho client cũ |
+| Lấp đầy | `GET /reports/occupancy`, `/occupancy/daily` | `[from, to)`; theo ngày tối đa 92 ngày, chỉ cấp cơ sở |
+| Báo cáo tuần tự động | (thông báo `WEEKLY_REPORT`), admin chạy ngay: `POST /reports/weekly-digest` | 8:00 thứ Hai (`WeeklyReportScheduler`): tuần trước (T2–CN) so với tuần trước nữa — chủ chuỗi đã duyệt nhận bản cả chuỗi, quản lý nhận bản cơ sở mình; doanh thu (± %), lấp đầy, đơn hoàn tất, đơn huỷ. Bỏ qua khi cả hai tuần không có hoạt động. Lưu ý: chạy trên DB dùng chung thì các tài khoản demo cũng nhận |
+| Tiền chưa thu | `GET /reports/receivables?hotelId=`, `/reports/chain/receivables?hotelChainId=` | Đơn đã hoàn tất nhưng chưa ghi nhận thanh toán, trả phòng lâu nhất trước: khách, SĐT, cơ sở, ngày trả phòng, số tiền, phương thức, số ngày quá hạn. Ghi nhận đã thu bằng `PUT /bookings/{id}/payment-status` có sẵn |
+| Khách đặt vào lúc nào | `GET /reports/booking-hours?hotelId=&from=&to=`, `/reports/chain/booking-hours?hotelChainId=` | Đơn phòng và đơn tour tạo trong kỳ (mọi trạng thái) theo thứ × giờ tạo (giờ máy chủ): bảng 7 × 24, tổng theo giờ, khung đông nhất, tỷ lệ đơn đặt từ 22h đến 6h |
+| Sổ thu tiền | `GET /reports/collections?hotelId=&from=&to=`, `/reports/chain/collections?hotelChainId=` | Đơn phòng được ghi nhận đã thu trong khoảng (tối đa 92 ngày), theo ngày thu (`paidAt`) chứ không theo ngày trả phòng: tổng, số khoản, chia tiền mặt / chuyển khoản / VNPay, từng ngày kể cả ngày trống |
+| Mục tiêu doanh thu tháng | `PUT /reports/targets` (`{hotelId, month: "2026-11", amount}`, amount 0 = bỏ), `GET /reports/targets/progress?hotelId=&month=`, `GET /reports/chain/targets/progress?hotelChainId=&month=` | Chủ chuỗi hoặc quản lý cơ sở đặt. Tiến độ: doanh thu tháng đến hôm nay, dự kiến cả tháng (+ đơn/tour đã đặt hoàn tất trong phần còn lại của tháng), % đạt và % dự kiến; bản chuỗi cộng mục tiêu các cơ sở, tỷ lệ chỉ tính cơ sở đã đặt mục tiêu. Tiến độ cơ sở kèm gợi ý khi đặt: doanh thu cùng tháng năm trước (`lastYearRevenue`) và trung bình 3 tháng liền trước (`recentMonthlyAverage`). Bảng `revenue_targets`, xoá theo cơ sở. 8:00 mỗi sáng (`RevenueTargetScheduler`) gửi thông báo cho chủ chuỗi và quản lý: `REVENUE_TARGET_REACHED` khi vừa đạt mục tiêu, `REVENUE_TARGET_AT_RISK` khi từ giữa tháng dự kiến < 80% — mỗi loại một lần cho mỗi mục tiêu (đổi số tiền thì tính lại). Admin chạy ngay bằng `POST /reports/targets/alerts` |
+| Khách đến từ đâu | `GET /reports/guest-origins?hotelId=&from=&to=`, `/reports/chain/guest-origins?hotelChainId=` | Đơn hoàn tất (theo ngày trả phòng) và tour hoàn tất (theo ngày đi) gộp theo quê quán khách khai (bỏ qua khoảng trắng, hoa thường; chưa khai gộp một nhóm): số khách, đơn, tour, doanh thu, tỷ trọng |
+| Đánh giá của khách | `GET /reports/ratings?hotelId=&from=&to=`, `/reports/chain/ratings?hotelChainId=` | Đánh giá viết trong kỳ (theo ngày đánh giá): số đánh giá, điểm trung bình và của kỳ trước, phân bố 1–5 sao, tỷ lệ đơn hoàn tất có đánh giá, tối đa 5 đánh giá ≤ 3 sao mới nhất. So sánh cơ sở cũng có số đánh giá và điểm trung bình từng cơ sở |
+| Trợ lý AI | `GET /reports/ai-assistant?hotelId=&from=&to=`, `/reports/chain/ai-assistant?hotelChainId=` | Hội thoại có tin nhắn trong kỳ: số AI tự xử lý trọn và số có nhân viên viết, tin của khách, tin trả lời của AI và của nhân viên (tỷ lệ AI), trung vị thời gian trả lời của mỗi bên (tính từ tin đầu tiên khách còn chờ); số hội thoại AI đã chuyển đang chờ nhân viên (tính tới lúc xem); đơn tour AI lên trong kỳ theo trạng thái hiện tại, doanh thu tour AI bán (hoàn tất, theo ngày đi) và tỷ trọng trong doanh thu tour |
+| Theo thứ trong tuần | `GET /reports/weekdays?from=&to=` | 7 dòng, thứ Hai → Chủ nhật: số ngày của thứ đó trong kỳ, lấp đầy trung bình, doanh thu trung bình mỗi ngày (đơn phòng theo ngày trả phòng + tour theo ngày đi) |
+| Từng phòng (chỉ cấp cơ sở) | `GET /reports/rooms?hotelId=&from=&to=` | Mọi phòng của cơ sở, đông khách nhất trước: số đêm có khách và tỷ lệ lấp đầy (đơn chưa huỷ), lượt ở hoàn tất và doanh thu (giá phòng × số đêm); phòng không có khách vẫn có mặt với số 0 |
+| Doanh thu dự kiến & tiền chưa thu | `GET /reports/outlook?days=30` | Từ hôm nay, tối đa 90 ngày: đơn chờ/đã xác nhận theo ngày trả phòng và tour chờ/đã xác nhận theo ngày đi (từng ngày), phần khách đã trả trước, phần còn chờ xác nhận; đơn quá ngày trả phòng chưa hoàn tất; đơn đã hoàn tất chưa ghi nhận thanh toán. Kèm phòng đã được đặt: số phòng có khách đặt từng đêm (đơn chưa huỷ, như báo cáo lấp đầy), tổng đêm phòng đã đặt / có thể bán và tỷ lệ lấp đầy đã đặt trước (`occupancyOnTheBooks`), cạnh mức lấp đầy thực tế của chính những đêm đó năm trước (`lastYearOccupancy`, vắng khi năm trước chưa có đơn) |
+| Đã đặt trước theo cơ sở (chỉ cấp chuỗi) | `GET /reports/chain/outlook/branches?hotelChainId=&days=30` | Mỗi cơ sở của chuỗi trong những ngày tới: số phòng, đêm phòng đã đặt / có thể bán, lấp đầy đã đặt trước, lấp đầy cùng kỳ năm trước, doanh thu dự kiến; cơ sở vắng nhất trước |
+| So sánh cơ sở (chỉ cấp chuỗi) | `GET /reports/chain/branches?hotelChainId=&from=&to=` | Mỗi cơ sở: KPI như tổng quan, doanh thu kỳ trước, % tăng trưởng, tỷ trọng trong doanh thu chuỗi; nhiều doanh thu nhất trước |
+| Doanh thu theo tour | `GET /reports/revenue-by-tour?from=&to=` | Đơn tour hoàn tất gộp theo tour: số đơn, số khách, tiền tour, tiền phòng gói (chỉ tham khảo), số đơn do AI lên, số chuyến (ngày đi có đơn hoàn tất), số chỗ (chuyến × số khách tối đa) và tỷ lệ lấp chỗ |
+| Hiệu suất nhân viên | `GET /reports/staff-performance?from=&to=` | Mỗi tài khoản quầy/quản lý: số đơn đã nhận và giá trị (nhận phòng trong kỳ, chưa huỷ), số đơn của họ đã hoàn tất và doanh thu thật (trả phòng trong kỳ), số tour hoàn tất họ xử lý và tiền tour; xếp theo hoàn tất + tour |
+| Khách chi tiêu nhiều nhất | `GET /reports/top-customers?from=&to=&limit=` | Tổng chi tiêu = đơn phòng hoàn tất (trả phòng trong kỳ) + tour hoàn tất (ngày đi trong kỳ), kèm số đơn, số tour, tiền tour; khách chỉ đi tour cũng được xếp hạng |
+| Tỷ lệ huỷ | `GET /reports/cancellation-rate?from=&to=` | Đơn nhận phòng trong kỳ: tổng, huỷ, hoàn tất, tỷ lệ; giá trị đơn bị huỷ; đơn huỷ chia khách tự đặt / đặt tại quầy; đơn tour có ngày đi trong kỳ: số đơn, số huỷ, khách huỷ / khách sạn huỷ, tỷ lệ huỷ tour. Đơn phòng huỷ chia theo số ngày huỷ trước ngày nhận phòng (`byLeadTime`: trong ngày, 1–2, 3–7, 8–30, hơn 30 ngày), trung vị số ngày, tỷ lệ huỷ sát ngày (≤ 2 ngày) và ai huỷ — đơn ghi `canceledAt`/`canceledBy` khi huỷ; đơn huỷ trước đó lấy ngày cập nhật cuối thay cho ngày huỷ |
+| Cơ cấu, khách, nhân viên | `GET /reports/revenue-by-room-type`, `/revenue-by-service`, `/top-customers`, `/staff-performance`, `/cancellation-rate` | Theo loại phòng: mọi loại có phòng ở cơ sở (kể cả chưa bán), số phòng, lượt ở và đêm của đơn hoàn tất, tiền phòng thực thu, lấp đầy (đơn chưa huỷ), ADR, RevPAR và giá niêm yết trung bình để so với ADR |
+| Xuất Excel | `GET /reports/export?from=&to=` | Nhiều sheet: tổng quan, **KPI so với kỳ trước**, **thanh toán & kênh bán**, doanh thu theo ngày (đơn phòng + tour, đủ mọi ngày; quá 400 ngày thì theo tháng) / loại phòng / dịch vụ / **tour**, top khách, hiệu suất nhân viên, **trợ lý AI**, khách theo quê quán, đánh giá, giờ khách đặt, sổ thu tiền (khoảng ≤ 92 ngày), **dự kiến 30 ngày tới** (phòng đã đặt, lấp đầy, doanh thu dự kiến từng ngày), **tiền chưa thu** (danh sách tại thời điểm xuất); bản chuỗi thêm **so sánh cơ sở** |
+
+Cách tính trong tổng quan: tiền phòng = tổng đơn − dòng dịch vụ; ADR = tiền phòng / đêm đã bán; RevPAR =
+tiền phòng / (số phòng × số ngày); lưu trú TB = số đêm trung bình mỗi đơn hoàn tất; đặt trước TB = số ngày
+trung bình từ lúc tạo đơn đến ngày nhận phòng (đơn tạo sau ngày nhận phòng tính 0); doanh thu mất do huỷ =
+tổng tiền các đơn bị huỷ có ngày nhận phòng trong kỳ; chi phí lương = phiếu lương đã duyệt/đã trả của
+nhân viên cơ sở, mỗi phiếu chia đều theo số ngày của tháng và chỉ tính phần ngày nằm trong kỳ (quản lý
+không có phiếu lương nên không tính); lợi nhuận sau lương = tổng doanh thu − chi phí lương, kèm biên lợi
+nhuận (%) và tăng trưởng lợi nhuận (chỉ khi kỳ trước có lãi). Mức tăng trưởng là % so với kỳ trước, bị bỏ khỏi JSON khi kỳ trước
+bằng 0; lấp đầy so bằng điểm phần trăm (`occupancyChange`).
+
+Kỳ trước (`previous`, cũng dùng cho tăng trưởng của từng cơ sở) theo lịch khi có thể:
+
+- Khoảng trong một tháng bắt đầu từ mùng 1 → cùng các ngày của tháng trước (01–20/10 so với 01–20/09);
+  cả tháng so với cả tháng trước (09 so với 01–31/08).
+- Khoảng từ 1/1 kéo dài nhiều tháng → cùng kỳ năm trước (01/01–20/10/2026 so với 01/01–20/10/2025).
+- Khoảng khác → cùng số ngày ngay trước đó (14–20/10 so với 07–13/10).
 
 ## Yêu cầu môi trường
 
@@ -75,13 +451,15 @@ Account (auth).
 API sẽ chạy tại `http://localhost:8080/booking-app/api/v1`.
 
 Khi khởi động lần đầu, ứng dụng tự tạo tài khoản admin mặc định `admin123` / `admin123`
-(`ApplicationInitConfig`) — **đổi ngay sau khi chạy production**.
+(`ApplicationInitConfig`) — **đổi ngay sau khi chạy production**. Các khách sạn tạo trước khi có quy
+trình duyệt được tự đánh dấu `APPROVED` khi khởi động.
 
 > **Lưu ý khi cập nhật từ schema cũ:** entity `Hotel` vừa được thêm quan hệ bắt buộc tới
 > `HotelChain` (`hotel_chain_id NOT NULL`) và đổi `Hotel.account` từ 1-1 sang N-1. Vì project dùng
 > `ddl-auto=update` (không có Flyway/Liquibase), Hibernate không tự ALTER được các thay đổi này trên
 > dữ liệu cũ — cần xoá và tạo lại database (`DROP DATABASE booking_app_db; CREATE DATABASE
-> booking_app_db;`) trước lần chạy đầu tiên sau khi cập nhật.
+> booking_app_db;`) trước lần chạy đầu tiên sau khi cập nhật. Các cột duyệt chủ khách sạn và bảng
+> `notifications`, `device_tokens` thì Hibernate tự thêm, không cần tạo lại database.
 
 ## Chạy bằng Docker
 
@@ -93,7 +471,8 @@ docker compose up -d --build
 ```
 
 App chạy ở `http://localhost/booking-app/api/v1` (port 80 map vào container 8080). Thư mục
-`uploads/` được mount làm volume để ảnh không mất khi container restart.
+`uploads/` được mount làm volume để ảnh không mất khi container restart; `secrets/` được mount
+chỉ-đọc vào `/app/secrets` cho file khoá Firebase.
 
 Kiểm tra:
 
@@ -105,6 +484,40 @@ docker compose logs -f booking-db
 
 Hướng dẫn deploy lên EC2: [DEPLOY_EC2.md](DEPLOY_EC2.md).
 
+## Email và thông báo đẩy
+
+Cả hai đều **tuỳ chọn**: chưa cấu hình thì BE vẫn chạy, thông báo trong app vẫn có, email chỉ được
+ghi log.
+
+**Email (Gmail):**
+
+1. Bật xác minh 2 bước cho tài khoản Google, vào *Bảo mật → Mật khẩu ứng dụng* tạo App Password.
+2. Đặt `MAIL_USERNAME` = địa chỉ Gmail, `MAIL_PASSWORD` = App Password 16 ký tự (không dấu cách).
+3. Đặt `APP_PUBLIC_URL` là địa chỉ API mà **điện thoại mở được** (ví dụ
+   `http://192.168.1.10:8080/booking-app/api/v1` khi chạy trong mạng LAN), vì nút "Mở ứng dụng" trong
+   email trỏ về đây.
+
+**Thông báo đẩy (Firebase Cloud Messaging):**
+
+1. Tạo project trên [Firebase console](https://console.firebase.google.com), thêm app Android với
+   package `com.example.booking_app_demo`, tải `google-services.json` cho app Flutter (xem README FE).
+2. *Project settings → Service accounts → Generate new private key*, lưu file JSON (không commit —
+   `.gitignore` đã chặn `secrets/` và `*service-account*.json`).
+3. Đặt `FIREBASE_CREDENTIALS` = đường dẫn tới file đó (Docker: đặt file vào `./secrets/` và dùng
+   `/app/secrets/<tên-file>.json`). Log khởi động không còn dòng `FIREBASE_CREDENTIALS is not set`
+   là đã bật.
+
+Thông báo hiện cả khi app **chạy nền hoặc đã tắt**: mọi push (tin nhắn, đơn tour, xét duyệt hồ sơ)
+gửi kèm khối `notification`, `priority: high`, vào kênh Android `booking_app_alerts` mà app tạo sẵn ở
+mức ưu tiên cao (bật lên đầu màn hình, có âm thanh). Tin nhắn chat chỉ đẩy cho người **không** đang mở
+app (không có WebSocket); socket im lặng quá 70 giây — điện thoại rớt mạng hay bị hệ điều hành tắt mà
+không kịp đóng — bị BE đóng để người đó không bị bỏ sót push.
+
+Thử nhận thông báo: `POST /notifications/devices/test?delaySeconds=10` gửi "Thông báo thử" tới các thiết
+bị của chính tài khoản đang đăng nhập sau `delaySeconds` giây (0–60), không thêm vào hộp thông báo; trả
+`{pushEnabled, devices, delaySeconds}` (`pushEnabled: false` = BE chưa có `FIREBASE_CREDENTIALS`,
+`devices: 0` = máy chưa đăng ký token).
+
 ## Biến môi trường chính
 
 | Biến | Mặc định | Ý nghĩa |
@@ -115,6 +528,18 @@ Hướng dẫn deploy lên EC2: [DEPLOY_EC2.md](DEPLOY_EC2.md).
 | `SPRING_JPA_HIBERNATE_DDL_AUTO` | `update` | Chiến lược Hibernate DDL |
 | `JWT_SIGNER_KEY` | key demo trong `application.yaml` | Secret ký JWT (HS512) — **bắt buộc đổi khi deploy thật** |
 | `VNPAY_TMN_CODE` / `VNPAY_SECRET_KEY` / `VNPAY_URL` / `VNPAY_RETURN_URL` | sandbox VNPay | Cấu hình cổng thanh toán VNPay |
+| `MAIL_HOST` / `MAIL_PORT` | `smtp.gmail.com` / `587` | Máy chủ SMTP |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | trống | Tài khoản SMTP; trống thì chỉ ghi log email |
+| `MAIL_FROM` | trống (dùng `MAIL_USERNAME`) | Địa chỉ người gửi |
+| `MAIL_SMTP_AUTH` / `MAIL_SMTP_STARTTLS` | `true` / `true` | Tắt khi thử với SMTP giả trên máy |
+| `APP_PUBLIC_URL` | `http://localhost:8080/booking-app/api/v1` | Địa chỉ API công khai cho link trong email |
+| `FIREBASE_CREDENTIALS` | trống | Đường dẫn file JSON service account Firebase; trống thì tắt push |
+| `GEMINI_API_KEY` | trống | Key Google AI Studio — bật AI với Gemini (gói miễn phí) |
+| `ANTHROPIC_API_KEY` | trống | Key Claude (trả phí), dùng khi `AI_PROVIDER=anthropic` |
+| `AI_PROVIDER` | tự chọn theo key | `gemini` \| `anthropic` \| `openai` |
+| `AI_API_KEY`, `AI_BASE_URL` | trống | Key / địa chỉ cho máy chủ chuẩn OpenAI khác (Groq, OpenRouter, Ollama) hoặc máy chủ giả lập khi test |
+| `AI_ASSISTANT_MODEL`, `AI_FAST_MODEL` | theo nhà cung cấp | Đổi model trợ lý / tìm kiếm |
+| `AI_AUTO_REPLY_DELAY_SECONDS` | `90` | Chờ bao lâu không ai trả lời thì trợ lý tự trả lời |
 
 Xem đầy đủ trong [.env.example](.env.example).
 
@@ -123,6 +548,9 @@ Xem đầy đủ trong [.env.example](.env.example).
 ```bash
 ./mvnw test
 ```
+
+Bộ test đầu-cuối là `postman/booking_app.postman_collection.json` (chạy tuần tự trong Collection
+Runner), gồm cả luồng đăng ký → từ chối → gửi lại → duyệt chủ khách sạn và các ca admin chỉ được xem.
 
 ## Ghi chú
 

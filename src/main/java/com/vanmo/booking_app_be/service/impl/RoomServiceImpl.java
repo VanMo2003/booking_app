@@ -42,7 +42,7 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public RoomResponse create(RoomCreateRequest req) {
-        Hotel hotel = accessGuard.requireBranchStaffOrAbove(req.getHotelId());
+        Hotel hotel = accessGuard.requireBranchEditor(req.getHotelId());
 
         boolean checkRoomNumber = roomRepository.existsByHotelAndRoomNumber(hotel, req.getRoomNumber());
         if (checkRoomNumber) {
@@ -64,7 +64,7 @@ public class RoomServiceImpl implements RoomService {
     public RoomResponse update(Long id, RoomUpdateRequest req) {
         Room room =
                 roomRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Room not found id=" + id));
-        accessGuard.requireBranchStaffOrAbove(room.getHotel().getId());
+        accessGuard.requireBranchEditor(room.getHotel().getId());
 
         RoomType roomType = roomTypeRepository
                 .findById(req.getRoomTypeId())
@@ -108,7 +108,7 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository
                 .findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found with id=" + roomId));
-        accessGuard.requireBranchStaffOrAbove(room.getHotel().getId());
+        accessGuard.requireBranchEditor(room.getHotel().getId());
 
         List<String> urls =
                 files.stream().map(fileStorageService::uploadHotelImage).toList();
@@ -119,6 +119,11 @@ public class RoomServiceImpl implements RoomService {
 
         roomImageRepository.saveAll(images);
 
+        // First photo for this room also becomes its list-thumbnail, same convention as Hotel.pathImage.
+        if ((room.getPathImage() == null || room.getPathImage().isBlank()) && !urls.isEmpty()) {
+            room.setPathImage(urls.getFirst());
+            roomRepository.save(room);
+        }
         return urls;
     }
 
@@ -126,7 +131,7 @@ public class RoomServiceImpl implements RoomService {
     public void delete(Long id) {
         Room room =
                 roomRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Room not found id=" + id));
-        accessGuard.requireBranchManagerOrAbove(room.getHotel().getId());
+        accessGuard.requireBranchManagerEditor(room.getHotel().getId());
         //        List<RoomAmenity> roomAmenities = roomAmenityRepository.findAllByRoom(room);
         //        roomAmenityRepository.deleteAll(roomAmenities);
         roomRepository.delete(room);

@@ -1,5 +1,6 @@
 package com.vanmo.booking_app_be.service.impl;
 
+import java.util.Date;
 import java.util.List;
 
 import jakarta.transaction.Transactional;
@@ -18,17 +19,21 @@ import com.vanmo.booking_app_be.dto.response.PageResponse;
 import com.vanmo.booking_app_be.entity.Account;
 import com.vanmo.booking_app_be.entity.Hotel;
 import com.vanmo.booking_app_be.entity.HotelChain;
+import com.vanmo.booking_app_be.entity.enums.ApprovalStatus;
+import com.vanmo.booking_app_be.entity.enums.NotificationType;
 import com.vanmo.booking_app_be.entity.enums.Role;
 import com.vanmo.booking_app_be.exception.AppException;
 import com.vanmo.booking_app_be.exception.ErrorCode;
 import com.vanmo.booking_app_be.exception.ResourceNotFoundException;
 import com.vanmo.booking_app_be.mapper.HotelChainMapper;
 import com.vanmo.booking_app_be.mapper.HotelMapper;
-import com.vanmo.booking_app_be.repository.AccountRepository;
 import com.vanmo.booking_app_be.repository.HotelChainRepository;
 import com.vanmo.booking_app_be.repository.HotelRepository;
 import com.vanmo.booking_app_be.security.AccessGuard;
 import com.vanmo.booking_app_be.service.HotelChainService;
+import com.vanmo.booking_app_be.service.NotificationService;
+import com.vanmo.booking_app_be.utils.AppLinks;
+import com.vanmo.booking_app_be.utils.NotificationMessages;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,33 +42,40 @@ import lombok.RequiredArgsConstructor;
 public class HotelChainServiceImpl implements HotelChainService {
 
     private final HotelChainRepository hotelChainRepository;
-    private final AccountRepository accountRepository;
     private final HotelRepository hotelRepository;
     private final HotelChainMapper hotelChainMapper;
     private final HotelMapper hotelMapper;
     private final AccessGuard accessGuard;
+    private final NotificationService notificationService;
 
+    /**
+     * An owner without a chain (e.g. after deleting theirs) submits a new one. Like a fresh owner registration it
+     * waits for an admin's review; admins themselves can't open chains.
+     */
     @Transactional
     @Override
     public ListHotelChainResponse create(HotelChainCreateRequest req) {
-        accessGuard.requireSelfOrAdmin(req.getAccountId());
-
-        Account account = accountRepository
-                .findById(req.getAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found id=" + req.getAccountId()));
-
-        if (account.getRole() != Role.HOTEL_OWNER) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "Account must have role HOTEL_OWNER");
+        Account current = accessGuard.currentAccount();
+        if (current.getRole() != Role.HOTEL_OWNER || !current.getId().equals(req.getAccountId())) {
+            throw new AppException(ErrorCode.UN_AUTHORIZED);
         }
 
-        if (hotelChainRepository.findByAccount_Id(account.getId()) != null) {
+        if (hotelChainRepository.findByAccount_Id(current.getId()) != null) {
             throw new AppException(ErrorCode.BAD_REQUEST, "Account already owns a hotel chain");
         }
 
         HotelChain hotelChain = hotelChainMapper.toEntity(req);
-        hotelChain.setAccount(account);
+        hotelChain.setAccount(current);
+        hotelChain.setApprovalStatus(ApprovalStatus.PENDING);
+        hotelChain.setSubmittedAt(new Date());
+        HotelChain saved = hotelChainRepository.save(hotelChain);
 
-        return hotelChainMapper.toResponse(hotelChainRepository.save(hotelChain));
+        notificationService.notifyAdmins(
+                NotificationType.OWNER_REGISTERED,
+                NotificationMessages.ownerSubmitted(saved, false),
+                AppLinks.ownerRegistration(saved.getId()),
+                saved.getId());
+        return hotelChainMapper.toResponse(saved);
     }
 
     @Override

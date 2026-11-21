@@ -10,7 +10,9 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
     ports:
-      - "3306:3306"
+      # Chi de ket noi tu ngoai (Workbench...). May da co MySQL rieng tren 3306 thi
+      # dat DB_PORT=3307 trong .env de khong tranh cong.
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - booking-db-data:/var/lib/mysql
     healthcheck:
@@ -41,8 +43,28 @@ services:
       VNPAY_SECRET_KEY: ${VNPAY_SECRET_KEY:-K20SB7Q7577Q70YWF5I512BL3IX95TP4}
       VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
       VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-http://localhost/booking-app/api/v1/payment/vn-pay-callback}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost/booking-app/api/v1}
+      # Ví dụ: đặt file vào ./secrets/firebase-service-account.json rồi FIREBASE_CREDENTIALS=/app/secrets/firebase-service-account.json
+      FIREBASE_CREDENTIALS: ${FIREBASE_CREDENTIALS:-}
+      # AI: có GEMINI_API_KEY là dùng Gemini (gói miễn phí); xem README mục "Tích hợp AI".
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_ASSISTANT_MODEL: ${AI_ASSISTANT_MODEL:-}
+      AI_FAST_MODEL: ${AI_FAST_MODEL:-}
+      AI_AUTO_REPLY_DELAY_SECONDS: ${AI_AUTO_REPLY_DELAY_SECONDS:-90}
     volumes:
       - ./uploads:/app/uploads
+      - ./secrets:/app/secrets:ro
 
 volumes:
   booking-db-data:

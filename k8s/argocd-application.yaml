@@ -1,0 +1,54 @@
+# Argo CD Application: cái nối giữa Git và cụm.
+#
+# Áp file này vào namespace argocd (một lần duy nhất):
+#   kubectl apply -n argocd -f k8s/argocd-application.yaml
+#
+# Repo là private, nên trước đó Argo CD phải có quyền đọc - xem k8s/README.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: booking-app
+  namespace: argocd
+  finalizers:
+    # Xoá Application thì xoá luôn tài nguyên nó đã tạo, thay vì bỏ lại rác trong cụm.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    # SSH vi repo la private: Argo CD doc bang deploy key chi-doc, xem k8s/README.md.
+    repoURL: git@github.com:VanMo2003/booking_app.git
+    targetRevision: develop
+    path: k8s/overlays/dev
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: booking-dev
+
+  syncPolicy:
+    automated:
+      # Xoá tài nguyên đã bị gỡ khỏi Git.
+      prune: true
+      # Ai sửa tay trong cụm thì Argo CD kéo về đúng như Git. Đây là chỗ GitOps khác
+      # "chạy kubectl apply trong CI": cụm tự sửa mình, không chờ lần deploy sau.
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Server-side apply: CRD và manifest lớn vượt giới hạn 262144 byte của annotation
+      # last-applied-configuration mà client-side apply dùng.
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    # Secret booking-app-secrets do script tạo ngoài Git. Argo CD không quản nó, nhưng
+    # PVC thì bị Kubernetes tự điền thêm trường sau khi tạo - bỏ qua để không báo OutOfSync mãi.
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/volumeName
+        - /spec/volumeMode

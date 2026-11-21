@@ -32,9 +32,13 @@ build/
 ### VS Code ###
 .vscode/
 
-# Environment files
-.env
-.env.local
-.env.production
+# Environment files - moi bien the deu bi chan, tru file mau
+# (.env.docker, .env.staging... deu chua khoa that, de ten nao cung khong duoc len Git)
+.env*
+!.env.example
+
+# Secrets (Firebase service account key…)
+secrets/
+*service-account*.json
 
 

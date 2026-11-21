@@ -17,7 +17,19 @@ public enum ErrorCode {
     INVALID_DOB(1007, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
     INCORRECT_ACCOUNT_OR_PASSWORD(1008, "Incorrect account or password", HttpStatus.BAD_REQUEST),
     NOT_FOUND(1009, "Resource not found", HttpStatus.NOT_FOUND),
-    BAD_REQUEST(1010, "Bad request", HttpStatus.BAD_REQUEST);
+    BAD_REQUEST(1010, "Bad request", HttpStatus.BAD_REQUEST),
+    OWNER_NOT_APPROVED(1011, "Hotel owner account is not approved yet", HttpStatus.FORBIDDEN),
+    ADMIN_READ_ONLY(1012, "Admin can only view this data", HttpStatus.FORBIDDEN),
+    REGISTRATION_NOT_PENDING(1013, "Registration is not waiting for review", HttpStatus.BAD_REQUEST),
+    CUSTOMER_PROFILE_REQUIRED(1014, "Create your customer profile before chatting", HttpStatus.BAD_REQUEST),
+    AI_UNAVAILABLE(1015, "AI assistant is unavailable right now", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_RATE_LIMITED(1016, "Too many AI requests, try again in a few minutes", HttpStatus.TOO_MANY_REQUESTS),
+    // The provider's own answers, after retries and fallback models were tried.
+    AI_OVERLOADED(1017, "AI model is overloaded, try again shortly", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_QUOTA_EXCEEDED(1018, "AI quota exceeded, try again later", HttpStatus.TOO_MANY_REQUESTS),
+    PAYMENT_METHOD_LOCKED(1019, "Payment method can no longer be changed", HttpStatus.BAD_REQUEST),
+    // Message is Vietnamese and specific: it is shown to the guest and fed back to the AI receptionist as is.
+    TOUR_BOOKING_INVALID(1020, "Tour booking is not valid", HttpStatus.BAD_REQUEST);
 
     private int code;
     private String message;

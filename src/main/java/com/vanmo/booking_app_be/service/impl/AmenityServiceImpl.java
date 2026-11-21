@@ -45,10 +45,10 @@ public class AmenityServiceImpl implements AmenityService {
         if (req.getHotelId() == null) {
             throw new ResourceNotFoundException("Id hotel not found");
         }
+        Hotel hotel = accessGuard.requireBranchEditor(req.getHotelId());
         Amenity amenity = amenityRepository.findByHotelIdAndName(req.getHotelId(), req.getName());
         if (amenity != null) throw new ResourceNotFoundException("Amenity with this name already exists");
         amenity = amenityMapper.toEntity(req);
-        Hotel hotel = accessGuard.requireBranchStaffOrAbove(req.getHotelId());
         amenity.setHotel(hotel);
         if (!req.isCommon() && req.getRoomId() != null) {
             Room room = roomRepository
@@ -82,7 +82,7 @@ public class AmenityServiceImpl implements AmenityService {
         Amenity entity = amenityRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found id=" + id));
-        accessGuard.requireBranchStaffOrAbove(entity.getHotel().getId());
+        accessGuard.requireBranchEditor(entity.getHotel().getId());
         amenityMapper.updateEntity(entity, req);
         amenityRepository.save(entity);
         return amenityMapper.toResponse(entity);
@@ -122,7 +122,7 @@ public class AmenityServiceImpl implements AmenityService {
         Amenity entity = amenityRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Amenity not found id=" + id));
-        accessGuard.requireBranchManagerOrAbove(entity.getHotel().getId());
+        accessGuard.requireBranchManagerEditor(entity.getHotel().getId());
         if (!entity.isCommon()) {
             List<RoomAmenity> roomAmenities = roomAmenityRepository.findAllByAmenity(entity);
             roomAmenityRepository.deleteAll(roomAmenities);

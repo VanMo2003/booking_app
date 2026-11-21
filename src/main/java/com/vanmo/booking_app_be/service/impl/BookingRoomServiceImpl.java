@@ -38,7 +38,7 @@ public class BookingRoomServiceImpl implements BookingRoomService {
                 .findById(req.getBooking().getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Booking not found id=" + req.getBooking().getId()));
-        accessGuard.requireBranchStaffOrAbove(booking.getHotel().getId());
+        accessGuard.requireBranchEditor(booking.getHotel().getId());
         BookingRoom entity = createBookingRoom(req);
         return bookingRoomMapper.toResponse(entity);
     }
@@ -53,7 +53,7 @@ public class BookingRoomServiceImpl implements BookingRoomService {
         BookingRoom entity = bookingRoomRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("BookingRoom not found id=" + id));
-        accessGuard.requireBranchStaffOrAbove(entity.getBooking().getHotel().getId());
+        accessGuard.requireBranchEditor(entity.getBooking().getHotel().getId());
         bookingRoomMapper.updateEntity(entity, req);
         return bookingRoomMapper.toResponse(bookingRoomRepository.save(entity));
     }
@@ -80,7 +80,7 @@ public class BookingRoomServiceImpl implements BookingRoomService {
         BookingRoom entity = bookingRoomRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("BookingRoom not found id=" + id));
-        accessGuard.requireBranchManagerOrAbove(entity.getBooking().getHotel().getId());
+        accessGuard.requireBranchManagerEditor(entity.getBooking().getHotel().getId());
         bookingRoomRepository.delete(entity);
     }
 }

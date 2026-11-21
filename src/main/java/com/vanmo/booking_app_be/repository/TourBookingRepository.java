@@ -1,0 +1,140 @@
+package com.vanmo.booking_app_be.repository;
+
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.vanmo.booking_app_be.dto.response.CustomerTourRow;
+import com.vanmo.booking_app_be.dto.response.GuestOriginRow;
+import com.vanmo.booking_app_be.dto.response.StaffTourRow;
+import com.vanmo.booking_app_be.dto.response.TourSaleRow;
+import com.vanmo.booking_app_be.dto.response.TourStatusCountRow;
+import com.vanmo.booking_app_be.entity.Account;
+import com.vanmo.booking_app_be.entity.TourBooking;
+import com.vanmo.booking_app_be.entity.enums.TourBookingStatus;
+
+@Repository
+public interface TourBookingRepository extends JpaRepository<TourBooking, Long> {
+    List<TourBooking> findAllByHotel_IdOrderByIdDesc(Long hotelId);
+
+    List<TourBooking> findAllByHotel_IdAndStatusOrderByIdDesc(Long hotelId, TourBookingStatus status);
+
+    List<TourBooking> findAllByCustomer_IdOrderByIdDesc(Long customerId);
+
+    List<TourBooking> findByCustomer_IdAndHotel_IdOrderByIdDesc(Long customerId, Long hotelId, Pageable pageable);
+
+    Optional<TourBooking> findFirstByCustomer_IdAndTour_IdAndTourDateAndStatusIn(
+            Long customerId, Long tourId, LocalDate tourDate, Collection<TourBookingStatus> statuses);
+
+    Optional<TourBooking> findFirstByBooking_IdAndStatusIn(Long bookingId, Collection<TourBookingStatus> statuses);
+
+    List<TourBooking> findAllByTourDateAndStatusIn(LocalDate tourDate, Collection<TourBookingStatus> statuses);
+
+    /** One branch's departures over a few days - what the desk has to get on the road. */
+    List<TourBooking> findAllByHotel_IdAndTourDateInAndStatusIn(
+            Long hotelId, Collection<LocalDate> tourDates, Collection<TourBookingStatus> statuses);
+
+    long countByCustomer_IdAndVoucher_IdAndStatusIn(
+            Long customerId, Long voucherId, Collection<TourBookingStatus> statuses);
+
+    /** Accounts of the guests who ordered a tour or booked a room at the chain - who hears about its vouchers. */
+    @Query("select distinct a from Customer c join c.account a where c.id in ("
+            + "select t.customer.id from TourBooking t where t.hotel.hotelChain.id = :chainId) "
+            + "or c.id in (select b.customer.id from Booking b where b.hotel.hotelChain.id = :chainId)")
+    List<Account> findCustomerAccountsOfChain(@Param("chainId") Long chainId);
+
+    /** Seats already taken on one departure. */
+    @Query("select coalesce(sum(b.guests), 0) from TourBooking b "
+            + "where b.tour.id = :tourId and b.tourDate = :tourDate and b.status in :statuses")
+    int sumGuests(
+            @Param("tourId") Long tourId,
+            @Param("tourDate") LocalDate tourDate,
+            @Param("statuses") Collection<TourBookingStatus> statuses);
+
+    /** Tour orders in a status whose tour date falls in [from, to], for the revenue reports. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.TourSaleRow("
+            + "tr.id, b.tourName, b.guests, b.tourAmount, b.roomAmount, b.totalAmount, b.createdByAi, b.tourDate) "
+            + "from TourBooking b left join b.tour tr "
+            + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to")
+    List<TourSaleRow> findSales(
+            @Param("hotelIds") Collection<Long> hotelIds,
+            @Param("status") TourBookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** Tour orders with tour date in [from, to], counted per status and, for cancellations, per side. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.TourStatusCountRow(b.status, b.canceledBy, count(b)) "
+            + "from TourBooking b "
+            + "where b.hotel.id in :hotelIds and b.tourDate between :from and :to "
+            + "group by b.status, b.canceledBy")
+    List<TourStatusCountRow> countByStatus(
+            @Param("hotelIds") Collection<Long> hotelIds, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Tour orders in a status with tour date in [from, to], per guest. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.CustomerTourRow("
+            + "c.id, c.fullName, c.phoneNumber, count(b), sum(coalesce(b.tourAmount, b.totalAmount))) "
+            + "from TourBooking b join b.customer c "
+            + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to "
+            + "group by c.id, c.fullName, c.phoneNumber")
+    List<CustomerTourRow> findByCustomer(
+            @Param("hotelIds") Collection<Long> hotelIds,
+            @Param("status") TourBookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** Tour orders in a status with tour date in [from, to] with their guest's hometown (tour part only). */
+    @Query("select new com.vanmo.booking_app_be.dto.response.GuestOriginRow("
+            + "c.id, c.hometown, coalesce(b.tourAmount, b.totalAmount)) "
+            + "from TourBooking b join b.customer c "
+            + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to")
+    List<GuestOriginRow> findGuestOrigins(
+            @Param("hotelIds") Collection<Long> hotelIds,
+            @Param("status") TourBookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** Tour orders in a status with tour date in [from, to], per team member who handled them last. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.StaffTourRow("
+            + "acc.id, acc.username, count(b), sum(coalesce(b.tourAmount, b.totalAmount))) "
+            + "from TourBooking b join b.handledBy acc "
+            + "where b.hotel.id in :hotelIds and b.status = :status and b.tourDate between :from and :to "
+            + "group by acc.id, acc.username")
+    List<StaffTourRow> findHandledByStaff(
+            @Param("hotelIds") Collection<Long> hotelIds,
+            @Param("status") TourBookingStatus status,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** Open tour orders (in one of the statuses) whose tour date falls in [from, to] - the revenue still to come. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.TourSaleRow("
+            + "tr.id, b.tourName, b.guests, b.tourAmount, b.roomAmount, b.totalAmount, b.createdByAi, b.tourDate) "
+            + "from TourBooking b left join b.tour tr "
+            + "where b.hotel.id in :hotelIds and b.status in :statuses and b.tourDate between :from and :to")
+    List<TourSaleRow> findUpcoming(
+            @Param("hotelIds") Collection<Long> hotelIds,
+            @Param("statuses") Collection<TourBookingStatus> statuses,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /** When the branches' tour orders were placed, for those placed in [start, end). */
+    @Query(
+            "select b.onCreate from TourBooking b where b.hotel.id in :hotelIds and b.onCreate >= :start and b.onCreate < :end")
+    List<Date> findCreatedTimes(
+            @Param("hotelIds") Collection<Long> hotelIds, @Param("start") Date start, @Param("end") Date end);
+
+    /** Tour orders the assistant placed in [start, end), counted by where they are now. */
+    @Query("select new com.vanmo.booking_app_be.dto.response.TourStatusCountRow(b.status, b.canceledBy, count(b)) "
+            + "from TourBooking b "
+            + "where b.hotel.id in :hotelIds and b.createdByAi = true and b.onCreate >= :start and b.onCreate < :end "
+            + "group by b.status, b.canceledBy")
+    List<TourStatusCountRow> countPlacedByAi(
+            @Param("hotelIds") Collection<Long> hotelIds, @Param("start") Date start, @Param("end") Date end);
+}

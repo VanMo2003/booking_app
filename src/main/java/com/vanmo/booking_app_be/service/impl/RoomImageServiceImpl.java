@@ -32,10 +32,17 @@ public class RoomImageServiceImpl implements RoomImageService {
         Room room = roomRepository
                 .findById(req.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found id=" + req.getRoomId()));
-        accessGuard.requireBranchStaffOrAbove(room.getHotel().getId());
+        accessGuard.requireBranchEditor(room.getHotel().getId());
         RoomImage entity = roomImageMapper.toEntity(req);
         entity.setRoom(room);
-        return roomImageMapper.toResponse(roomImageRepository.save(entity));
+        RoomImage saved = roomImageRepository.save(entity);
+
+        // First photo for this room also becomes its list-thumbnail, same convention as Hotel.pathImage.
+        if (room.getPathImage() == null || room.getPathImage().isBlank()) {
+            room.setPathImage(req.getPathImage());
+            roomRepository.save(room);
+        }
+        return roomImageMapper.toResponse(saved);
     }
 
     @Override
@@ -43,7 +50,7 @@ public class RoomImageServiceImpl implements RoomImageService {
         RoomImage entity = roomImageRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RoomImage not found id=" + id));
-        accessGuard.requireBranchStaffOrAbove(entity.getRoom().getHotel().getId());
+        accessGuard.requireBranchEditor(entity.getRoom().getHotel().getId());
         roomImageMapper.updateEntity(entity, req);
         return roomImageMapper.toResponse(roomImageRepository.save(entity));
     }

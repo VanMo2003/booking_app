@@ -44,7 +44,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional
     @Override
     public EmployeeResponse create(EmployeeCreateRequest req) {
-        Hotel hotel = accessGuard.requireBranchManagerOrAbove(req.getHotelId());
+        // Creates a STAFF login account, which admins may not do.
+        Hotel hotel = accessGuard.requireBranchManagerEditor(req.getHotelId());
 
         AccountCreateRequest accountCreateRequest = AccountCreateRequest.builder()
                 .username(req.getUsername())
